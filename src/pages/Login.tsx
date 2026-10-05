@@ -1,16 +1,41 @@
 import { useState, type FormEvent } from 'react'
-import { Mail, Ship, Wrench } from 'lucide-react'
+import { Eye, EyeOff, LogIn, Mail, Ship, Wrench } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { Button, Field, Input } from '../components/ui'
+
+/**
+ * Usuario sin @ -> email interno (alias del Gmail del app). Ej.: "jqr" -> marinepropr+jqr@gmail.com
+ * Las cuentas con usuario se crean en Supabase > Authentication > Users > Add user.
+ */
+export function userToEmail(user: string): string {
+  const u = user.trim().toLowerCase()
+  return u.includes('@') ? u : `marinepropr+${u.replace(/[^a-z0-9._-]/g, '')}@gmail.com`
+}
 
 export default function Login() {
   const { enterDemo } = useAuth()
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
-  const [step, setStep] = useState<'email' | 'code'>('email')
+  const [step, setStep] = useState<'password' | 'email' | 'code'>('password')
+  const [user, setUser] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  async function signInWithPassword(e: FormEvent) {
+    e.preventDefault()
+    if (!supabase) return
+    setBusy(true)
+    setError('')
+    const { error } = await supabase.auth.signInWithPassword({ email: userToEmail(user), password })
+    setBusy(false)
+    if (!error) return
+    if (error.status === 429) setError('Muchos intentos seguidos. Espera unos minutos.')
+    else if (error.status === 400 || error.code === 'invalid_credentials') setError('Usuario o contraseña incorrectos.')
+    else setError('No se pudo entrar. Revisa la señal e intenta otra vez.')
+  }
 
   async function sendLink(e: FormEvent) {
     e.preventDefault()
@@ -64,6 +89,30 @@ export default function Login() {
             </>
           )}
 
+          {isSupabaseConfigured && step === 'password' && (
+            <form onSubmit={signInWithPassword} className="space-y-5">
+              <h2 className="text-2xl font-bold text-navy-900">Entrar</h2>
+              <Field label="Usuario">
+                <Input required autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={user} onChange={(e) => setUser(e.target.value)} placeholder="jqr" />
+              </Field>
+              <Field label="Contraseña">
+                <div className="relative">
+                  <Input required type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="pr-14" />
+                  <button type="button" aria-label={showPassword ? 'Esconder contraseña' : 'Ver contraseña'} onClick={() => setShowPassword((v) => !v)} className="absolute right-1 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center text-slate-500">
+                    {showPassword ? <EyeOff /> : <Eye />}
+                  </button>
+                </div>
+              </Field>
+              <Button type="submit" disabled={busy}>
+                <LogIn /> {busy ? 'Entrando…' : 'Entrar'}
+              </Button>
+              <p className="text-center text-sm text-slate-500">¿Se te olvidó la contraseña? Pide que te la cambien.</p>
+              <Button type="button" variant="ghost" onClick={() => { setStep('email'); setError('') }}>
+                Entrar con código por email
+              </Button>
+            </form>
+          )}
+
           {isSupabaseConfigured && step === 'email' && (
             <form onSubmit={sendLink} className="space-y-5">
               <h2 className="text-2xl font-bold text-navy-900">Entrar</h2>
@@ -73,6 +122,9 @@ export default function Login() {
               </Field>
               <Button type="submit" disabled={busy}>
                 <Mail /> {busy ? 'Enviando…' : 'Enviarme el código'}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => { setStep('password'); setError('') }}>
+                Entrar con usuario y contraseña
               </Button>
             </form>
           )}
