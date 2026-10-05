@@ -1,0 +1,44 @@
+import { LogOut } from 'lucide-react'
+import { useAuth } from '../auth/AuthProvider'
+import { formatDate, formatMoney, formatTime } from '../lib/format'
+import { Button, PageTitle } from '../components/ui'
+
+export default function More() {
+  const { profile, session, signOut } = useAuth()
+  const now = new Date()
+
+  const row = (label: string, value: string | null | undefined) => (
+    <div className="flex justify-between gap-4 border-b border-slate-200 py-3 last:border-0">
+      <span className="text-base text-slate-600">{label}</span>
+      <span className="text-right text-base font-semibold text-slate-900">{value || '—'}</span>
+    </div>
+  )
+
+  return (
+    <>
+      <PageTitle>Más</PageTitle>
+
+      <section className="rounded-2xl border-2 border-slate-200 px-4">
+        {row('Nombre', profile?.full_name)}
+        {row('Email', profile?.email ?? session?.user.email)}
+        {row('Teléfono', profile?.phone)}
+        {row('Pueblo', profile?.town)}
+        {row('Tipo de cuenta', profile?.role === 'mechanic' ? 'Mecánico' : 'Dueño de bote')}
+      </section>
+
+      <h2 className="mb-2 mt-6 text-lg font-bold text-navy-900">Formatos</h2>
+      <section className="rounded-2xl border-2 border-slate-200 px-4">
+        {row('Fecha de hoy', formatDate(now))}
+        {row('Hora (Puerto Rico)', formatTime(now))}
+        {row('Ejemplo de dinero', formatMoney(1234.56))}
+      </section>
+
+      <div className="mt-8">
+        <Button variant="secondary" onClick={signOut}>
+          <LogOut /> Salir
+        </Button>
+      </div>
+      <p className="mt-6 text-center text-sm text-slate-500">MarinaPro PR · versión 0.1 (Hito 1)</p>
+    </>
+  )
+}
