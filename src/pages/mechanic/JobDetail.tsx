@@ -278,6 +278,11 @@ export default function JobDetail() {
             {invoiceOutdated && (
               <Button variant="secondary" disabled={busy} onClick={makeInvoice}>Actualizar factura con el total nuevo ({formatMoney(totals.total)})</Button>
             )}
+            {!mech.ath_movil_number && !invoice.paid_at && (
+              <Link to="/mas/negocio" className="block rounded-xl bg-slate-100 p-3 text-base text-slate-700">
+                La factura no muestra ATH Móvil. Si quieres que salga, ponlo en <b className="text-navy-700 underline">Más → Mi negocio</b>.
+              </Link>
+            )}
             {client.phone && (
               <LinkButton href={whatsappLink(client.phone, invoiceMsg)} external variant="primary"><MessageCircle size={22} /> Enviar factura por WhatsApp</LinkButton>
             )}

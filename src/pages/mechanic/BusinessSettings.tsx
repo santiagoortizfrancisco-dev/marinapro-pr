@@ -161,7 +161,7 @@ export default function BusinessSettings() {
             {PR_TOWNS.map((t) => <option key={t}>{t}</option>)}
           </Select>
         </Field>
-        <Field label="Número de ATH Móvil" hint="Sale en la factura para que el cliente te pague">
+        <Field label="Número de ATH Móvil (opcional)" hint="Si lo pones, sale en la factura para que el cliente te pague. Si lo dejas vacío, no sale.">
           <Input type="tel" inputMode="tel" value={f.ath_movil_number} onChange={(e) => set('ath_movil_number', e.target.value)} placeholder="787-555-0123" />
         </Field>
 
