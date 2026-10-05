@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { CalendarClock, Check, CheckCircle2, MapPin, MessageCircle, Navigation, Phone, Ship, XCircle } from 'lucide-react'
+import { CalendarClock, Check, CheckCircle2, MapPin, MessageCircle, Navigation, Phone, Ship, Wrench, XCircle } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import { APPOINTMENT_STATUS, DURATIONS, LOCATION_TYPES, WORK_AREAS, labelOf } from '../../lib/catalog'
 import { db } from '../../lib/db'
@@ -107,6 +107,9 @@ export default function AppointmentDetail() {
 
       {/* Acciones */}
       <div className="mt-6 space-y-3">
+        {a.status !== 'cancelled' && (
+          <Button onClick={() => navigate(`/trabajos/nuevo?cita=${a.id}`)} className="bg-sun-400 text-navy-900 active:bg-sun-500"><Wrench /> Empezar / ver trabajo</Button>
+        )}
         {a.status === 'requested' && <Button disabled={busy} onClick={() => setStatus('confirmed')}><Check /> Ya la confirmé con el cliente</Button>}
         {(a.status === 'confirmed' || a.status === 'requested') && <Button disabled={busy} onClick={() => setStatus('done')}><CheckCircle2 /> Marcar como hecha</Button>}
         {a.status === 'done' && <Button variant="secondary" disabled={busy} onClick={() => setStatus('confirmed')}>Desmarcar “hecha”</Button>}

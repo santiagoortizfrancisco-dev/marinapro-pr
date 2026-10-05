@@ -243,3 +243,29 @@ export function FormActions({ busy, saveLabel = 'Guardar', error, onCancel }: { 
     </div>
   )
 }
+
+/** Casilla grande de sí / no. */
+export function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`flex min-h-14 w-full items-center gap-3 rounded-xl border-2 px-4 py-2 text-left ${checked ? 'border-navy-800 bg-navy-50' : 'border-slate-300 bg-white'}`}
+    >
+      <span className={`flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition ${checked ? 'bg-navy-800' : 'bg-slate-300'}`}>
+        <span className={`h-6 w-6 rounded-full bg-white shadow transition ${checked ? 'translate-x-6' : ''}`} />
+      </span>
+      <span className="flex-1">
+        <span className="block text-base font-semibold text-slate-900">{label}</span>
+        {hint && <span className="block text-sm text-slate-500">{hint}</span>}
+      </span>
+    </button>
+  )
+}
+
+/** Etiqueta de estado (cita, trabajo). */
+export function Pill({ label, style }: { label: string; style: string }) {
+  return <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold ${style}`}>{label}</span>
+}

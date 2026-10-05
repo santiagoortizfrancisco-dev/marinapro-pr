@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import type { Role } from '../lib/types'
 import { Sheet, Toast } from './Sheet'
+import { BRAND_EVENT, logoUrl } from '../lib/brand'
+import { db } from '../lib/db'
 import { Button } from './ui'
 
 const ROLE_LABEL: Record<Role, string> = { mechanic: 'Mecánico', client: 'Dueño de bote' }
@@ -44,6 +46,20 @@ export default function Layout() {
   const { pathname } = useLocation()
   const [sheet, setSheet] = useState<'switch' | 'signout' | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  // Logo, nombre y color del negocio del mecánico
+  const [brand, setBrand] = useState<{ name: string | null; logo: string | null; color: string | null }>({ name: null, logo: null, color: null })
+
+  useEffect(() => {
+    if (!isMechanic || demo || !profile) return
+    const load = () =>
+      db().from('mechanics').select('business_name, logo_path, brand_color').eq('profile_id', profile.id).single().then(({ data }) => {
+        const m = data as { business_name: string | null; logo_path: string | null; brand_color: string | null } | null
+        if (m) setBrand({ name: m.business_name, logo: logoUrl(m.logo_path), color: m.brand_color })
+      })
+    load()
+    window.addEventListener(BRAND_EVENT, load)
+    return () => window.removeEventListener(BRAND_EVENT, load)
+  }, [isMechanic, demo, profile])
 
   useEffect(() => {
     if (!toast) return
@@ -84,16 +100,20 @@ export default function Layout() {
   return (
     <div className="min-h-full">
       {/* Cabecera y pestañas fijas; la página baja con el dedo normal (más confiable en iPhone) */}
-      <header className={`safe-top sticky top-0 z-10 text-white ${style.bg}`}>
+      <header className={`safe-top sticky top-0 z-10 text-white ${brand.color ? '' : style.bg}`} style={brand.color ? { backgroundColor: brand.color } : undefined}>
         <div className="mx-auto flex max-w-xl items-center gap-2 px-4 py-2">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
-            {isMechanic ? <Wrench size={22} /> : <Ship size={22} />}
-          </span>
+          {brand.logo ? (
+            <img src={brand.logo} alt="" className="h-12 w-12 shrink-0 rounded-xl bg-black object-contain" />
+          ) : (
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+              {isMechanic ? <Wrench size={22} /> : <Ship size={22} />}
+            </span>
+          )}
           <div className="min-w-0 flex-1 leading-tight">
             <div className="text-xs font-semibold uppercase tracking-wide text-white/75">
               MarinaPro{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-navy-900">DEMO</span>}
             </div>
-            <div className="text-lg font-bold">{isMechanic ? 'Mecánico' : 'Dueño de bote'}</div>
+            <div className="truncate text-lg font-bold">{brand.name || (isMechanic ? 'Mecánico' : 'Dueño de bote')}</div>
           </div>
           {demo && (
             <button

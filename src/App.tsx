@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { useAuth } from './auth/AuthProvider'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -15,12 +15,26 @@ import BoatDetail from './pages/mechanic/BoatDetail'
 import EngineForm from './pages/mechanic/EngineForm'
 import EquipmentForm from './pages/mechanic/EquipmentForm'
 import Jobs from './pages/mechanic/Jobs'
+import JobNew from './pages/mechanic/JobNew'
+import JobDetail from './pages/mechanic/JobDetail'
+import BusinessSettings from './pages/mechanic/BusinessSettings'
+import PublicDoc from './pages/PublicDoc'
 import MyBoats from './pages/client/MyBoats'
 import Report from './pages/client/Report'
 import Alerts from './pages/client/Alerts'
 
 export default function App() {
   const { loading, session, profile, demo } = useAuth()
+  const { pathname } = useLocation()
+
+  // Estimado / factura para el cliente: se abre sin cuenta
+  if (pathname.startsWith('/d/')) {
+    return (
+      <Routes>
+        <Route path="/d/:token" element={<PublicDoc />} />
+      </Routes>
+    )
+  }
 
   if (loading) {
     return (
@@ -53,6 +67,9 @@ export default function App() {
           <Route path="/botes/:boatId/equipos/nuevo" element={<EquipmentForm />} />
           <Route path="/equipos/:id/editar" element={<EquipmentForm />} />
           <Route path="/trabajos" element={<Jobs />} />
+          <Route path="/trabajos/nuevo" element={<JobNew />} />
+          <Route path="/trabajos/:id" element={<JobDetail />} />
+          <Route path="/mas/negocio" element={<BusinessSettings />} />
           <Route path="/mas" element={<More />} />
           <Route path="*" element={<Navigate to="/agenda" replace />} />
         </Route>

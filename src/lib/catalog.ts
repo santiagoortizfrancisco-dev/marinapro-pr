@@ -118,3 +118,40 @@ export const EQUIPMENT_MAKES = [
 export function labelOf<T extends { value: string | number; label: string }>(list: readonly T[], value: unknown): string {
   return list.find((x) => x.value === value)?.label ?? String(value ?? '')
 }
+
+export const WORK_ORDER_STATUS = {
+  estimate: { label: 'Estimado', style: 'bg-amber-100 text-amber-900' },
+  approved: { label: 'Aprobado', style: 'bg-sky-100 text-sky-900' },
+  waiting_parts: { label: 'Esperando piezas', style: 'bg-orange-100 text-orange-900' },
+  in_progress: { label: 'Trabajando', style: 'bg-blue-100 text-blue-900' },
+  sea_trial: { label: 'Prueba en el agua', style: 'bg-cyan-100 text-cyan-900' },
+  done: { label: 'Terminado', style: 'bg-emerald-100 text-emerald-900' },
+  invoiced: { label: 'Facturado', style: 'bg-violet-100 text-violet-900' },
+  paid: { label: 'Pagado', style: 'bg-slate-200 text-slate-800' },
+} as const
+
+/** Estados que el mecánico escoge a mano (Facturado y Pagado los pone la factura). */
+export const WORK_STEPS = (['estimate', 'approved', 'waiting_parts', 'in_progress', 'sea_trial', 'done'] as const).map((value) => ({
+  value,
+  label: WORK_ORDER_STATUS[value].label,
+}))
+
+export const SEA_TRIAL_METHODS = [
+  { value: 'water', label: 'En el agua' },
+  { value: 'hose_muffs', label: 'Con orejeras (hose muffs)' },
+  { value: 'not_allowed', label: 'El cliente no la permitió' },
+] as const
+
+export const PHOTO_KINDS = [
+  { value: 'before', label: 'Antes' },
+  { value: 'old_part', label: 'Pieza vieja' },
+  { value: 'new_part', label: 'Pieza nueva' },
+  { value: 'after', label: 'Después' },
+] as const
+
+export const PAYMENT_METHODS = [
+  { value: 'ath_movil', label: 'ATH Móvil' },
+  { value: 'cash', label: 'Efectivo' },
+  { value: 'check', label: 'Cheque' },
+  { value: 'other', label: 'Otro' },
+] as const

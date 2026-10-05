@@ -92,3 +92,82 @@ export interface AppointmentFull extends Appointment {
     clients: Pick<Client, 'id' | 'full_name' | 'phone'>
   }
 }
+
+export interface Mechanic {
+  profile_id: string
+  business_name: string | null
+  ath_movil_number: string | null
+  labor_rate_hour: number
+  ivu_rate: number
+  ivu_on_labor: boolean
+  ivu_on_parts: boolean
+  warranty_days: number
+  policies_text: string
+  policies_version: number
+  next_invoice_number: number
+  logo_path: string | null
+  brand_color: string
+}
+
+export type WorkOrderStatus = 'estimate' | 'approved' | 'waiting_parts' | 'in_progress' | 'sea_trial' | 'done' | 'invoiced' | 'paid'
+
+export interface WorkOrder {
+  id: string
+  boat_id: string
+  appointment_id: string | null
+  public_token: string
+  complaint: string | null
+  diagnosis: string | null
+  work_done: string | null
+  status: WorkOrderStatus
+  labor_hours: number
+  labor_rate: number
+  charge_ivu_labor: boolean
+  charge_ivu_parts: boolean
+  estimate_sent_at: string | null
+  estimate_approved_at: string | null
+  policies_accepted_version: number | null
+  sea_trial_required: boolean
+  sea_trial_done: boolean
+  sea_trial_method: 'water' | 'hose_muffs' | 'not_allowed' | null
+  sea_trial_notes: string | null
+  completed_at: string | null
+  created_at: string
+}
+
+export interface Part {
+  id: string
+  work_order_id: string
+  description: string
+  part_number: string | null
+  qty: number
+  unit_cost: number
+  supplied_by: 'client' | 'mechanic'
+  supplier: string | null
+  eta: string | null
+  received_at: string | null
+}
+
+export interface Photo {
+  id: string
+  work_order_id: string
+  kind: 'before' | 'old_part' | 'new_part' | 'after'
+  storage_path: string
+  caption: string | null
+  taken_at: string
+}
+
+export interface Invoice {
+  id: string
+  work_order_id: string
+  number: string
+  public_token: string
+  labor_subtotal: number
+  parts_subtotal: number
+  ivu_amount: number
+  total: number
+  paid_at: string | null
+  payment_method: 'ath_movil' | 'cash' | 'check' | 'other' | null
+  sent_at: string | null
+  created_at: string
+}

@@ -1,3 +1,5 @@
+import { Link } from 'react-router'
+import { Briefcase, ChevronRight } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
 import { PageTitle } from '../components/ui'
@@ -16,6 +18,17 @@ export default function More() {
   return (
     <>
       <PageTitle>Más</PageTitle>
+
+      {profile?.role === 'mechanic' && (
+        <Link to="/mas/negocio" className="mb-5 flex min-h-16 items-center gap-3 rounded-2xl bg-navy-800 px-4 text-white active:bg-navy-900">
+          <Briefcase size={26} />
+          <span className="flex-1">
+            <span className="block text-lg font-bold">Mi negocio</span>
+            <span className="block text-sm text-navy-100">ATH Móvil, tarifa, IVU, facturas y garantía</span>
+          </span>
+          <ChevronRight />
+        </Link>
+      )}
 
       <section className="rounded-2xl border-2 border-slate-200 px-4">
         {row('Nombre', profile?.full_name)}

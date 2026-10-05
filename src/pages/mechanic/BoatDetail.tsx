@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router'
-import { Calendar, Cog, Cpu, MapPin, Navigation, Pencil, User } from 'lucide-react'
-import { DRIVE_TYPES, ENGINE_POSITIONS, EQUIPMENT_CATEGORIES, FUELS, LOCATION_TYPES, labelOf } from '../../lib/catalog'
+import { Calendar, Cog, Cpu, MapPin, Navigation, Pencil, User, Wrench } from 'lucide-react'
+import { DRIVE_TYPES, ENGINE_POSITIONS, EQUIPMENT_CATEGORIES, FUELS, LOCATION_TYPES, WORK_ORDER_STATUS, labelOf } from '../../lib/catalog'
 import { db } from '../../lib/db'
 import { formatDate, formatLongDate, formatTime, todayPR } from '../../lib/format'
 import { googleMapsLink, hasPlace, wazeLink } from '../../lib/links'
@@ -14,17 +14,18 @@ export default function BoatDetail() {
   const navigate = useNavigate()
   const { data, loading, error, reload } = useLoad(async () => {
     const boat = must(await db().from('boats').select('*, clients(id, full_name, phone)').eq('id', id!).single()) as Boat & { clients: Pick<Client, 'id' | 'full_name' | 'phone'> }
-    const [engines, equipment, appts] = await Promise.all([
+    const [engines, equipment, appts, jobs] = await Promise.all([
       db().from('engines').select('*').eq('boat_id', id!).order('position'),
       db().from('equipment').select('*').eq('boat_id', id!).order('category'),
       db().from('appointments').select('*, service_requests(description)').eq('boat_id', id!).neq('status', 'cancelled').gte('starts_at', new Date(Date.now() - 30 * 86400000).toISOString()).order('starts_at').limit(8),
+      db().from('work_orders').select('id, status, complaint, diagnosis, work_done, created_at').eq('boat_id', id!).order('created_at', { ascending: false }).limit(20),
     ])
-    return { boat, engines: must(engines) as Engine[], equipment: must(equipment) as Equipment[], appts: must(appts) as (Appointment & { service_requests: { description: string } | null })[] }
+    return { boat, engines: must(engines) as Engine[], equipment: must(equipment) as Equipment[], appts: must(appts) as (Appointment & { service_requests: { description: string } | null })[], jobs: must(jobs) as { id: string; status: keyof typeof WORK_ORDER_STATUS; complaint: string | null; diagnosis: string | null; work_done: string | null; created_at: string }[] }
   }, [id])
 
   if (loading) return <Loading />
   if (error || !data) return <ErrorBox message={error || 'No se encontró el bote.'} onRetry={reload} />
-  const { boat: b, engines, equipment, appts } = data
+  const { boat: b, engines, equipment, appts, jobs } = data
   const marbeteVencido = b.marbete_expires && b.marbete_expires < todayPR()
 
   return (
@@ -104,6 +105,14 @@ export default function BoatDetail() {
       <div className="space-y-2">
         {appts.map((a) => (
           <RowLink key={a.id} to={`/citas/${a.id}`} icon={Calendar} title={`${formatLongDate(a.starts_at)} · ${formatTime(a.starts_at)}`} subtitle={[a.title, a.service_requests?.description].filter(Boolean).join(' · ') || undefined} />
+        ))}
+      </div>
+
+      <SectionHeader title="Historial de trabajos" addTo={`/trabajos/nuevo?bote=${b.id}`} addLabel="Trabajo" />
+      {jobs.length === 0 && <p className="text-base text-slate-600">Todavía no hay trabajos en este bote.</p>}
+      <div className="space-y-2">
+        {jobs.map((j) => (
+          <RowLink key={j.id} to={`/trabajos/${j.id}`} icon={Wrench} title={`${formatDate(j.created_at)} · ${WORK_ORDER_STATUS[j.status].label}`} subtitle={j.work_done || j.diagnosis || j.complaint || undefined} />
         ))}
       </div>
 
