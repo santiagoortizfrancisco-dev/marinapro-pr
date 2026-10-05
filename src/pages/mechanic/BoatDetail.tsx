@@ -17,9 +17,9 @@ export default function BoatDetail() {
     const [engines, equipment, appts] = await Promise.all([
       db().from('engines').select('*').eq('boat_id', id!).order('position'),
       db().from('equipment').select('*').eq('boat_id', id!).order('category'),
-      db().from('appointments').select('*').eq('boat_id', id!).neq('status', 'cancelled').gte('starts_at', new Date(Date.now() - 30 * 86400000).toISOString()).order('starts_at').limit(8),
+      db().from('appointments').select('*, service_requests(description)').eq('boat_id', id!).neq('status', 'cancelled').gte('starts_at', new Date(Date.now() - 30 * 86400000).toISOString()).order('starts_at').limit(8),
     ])
-    return { boat, engines: must(engines) as Engine[], equipment: must(equipment) as Equipment[], appts: must(appts) as Appointment[] }
+    return { boat, engines: must(engines) as Engine[], equipment: must(equipment) as Equipment[], appts: must(appts) as (Appointment & { service_requests: { description: string } | null })[] }
   }, [id])
 
   if (loading) return <Loading />
@@ -103,7 +103,7 @@ export default function BoatDetail() {
       {appts.length === 0 && <p className="text-base text-slate-600">No hay citas para este bote.</p>}
       <div className="space-y-2">
         {appts.map((a) => (
-          <RowLink key={a.id} to={`/citas/${a.id}`} icon={Calendar} title={`${formatLongDate(a.starts_at)} · ${formatTime(a.starts_at)}`} subtitle={a.title ?? undefined} />
+          <RowLink key={a.id} to={`/citas/${a.id}`} icon={Calendar} title={`${formatLongDate(a.starts_at)} · ${formatTime(a.starts_at)}`} subtitle={[a.title, a.service_requests?.description].filter(Boolean).join(' · ') || undefined} />
         ))}
       </div>
 

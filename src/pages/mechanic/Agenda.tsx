@@ -7,7 +7,7 @@ import type { AppointmentFull } from '../../lib/types'
 import { must, useLoad } from '../../lib/useLoad'
 import { EmptyState, ErrorBox, Fab, Loading } from '../../components/ui'
 
-const SELECT = '*, boats(id, name, location_type, marina_name, slip_number, town, lat, lng, location_notes, clients(id, full_name, phone))'
+const SELECT = '*, service_requests(description), boats(id, name, location_type, marina_name, slip_number, town, lat, lng, location_notes, clients(id, full_name, phone))'
 
 export default function Agenda() {
   const [params, setParams] = useSearchParams()
@@ -101,6 +101,7 @@ function ApptCard({ a, compact }: { a: AppointmentFull; compact?: boolean }) {
       </div>
       <div className="mt-1 text-lg font-bold text-slate-900">{b.name} <span className="font-semibold text-slate-600">· {b.clients.full_name}</span></div>
       {a.title && <div className="text-base text-slate-800">{a.title}</div>}
+      {a.service_requests?.description && <div className="mt-1 line-clamp-2 rounded-lg bg-amber-50 px-2 py-1 text-base text-amber-900">⚠ {a.service_requests.description}</div>}
       {!compact && where && (
         <div className="mt-1 flex items-center gap-1 text-base text-slate-600"><MapPin size={18} /> {where}</div>
       )}

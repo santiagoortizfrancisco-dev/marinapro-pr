@@ -86,6 +86,8 @@ export interface Appointment {
 
 /** Cita con su bote y cliente (para la agenda). */
 export interface AppointmentFull extends Appointment {
+  /** Problema que reportó el cliente */
+  service_requests: { description: string } | null
   boats: Pick<Boat, 'id' | 'name' | 'location_type' | 'marina_name' | 'slip_number' | 'town' | 'lat' | 'lng' | 'location_notes'> & {
     clients: Pick<Client, 'id' | 'full_name' | 'phone'>
   }

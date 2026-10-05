@@ -8,7 +8,7 @@ import type { Appointment } from '../../lib/types'
 import { blank } from '../../lib/useLoad'
 import { BackTitle, Choice, Field, FormActions, Input, Loading, MultiChoice, Select, Suggestions, Textarea } from '../../components/ui'
 
-interface BoatOption { id: string; name: string; clients: { full_name: string } }
+interface BoatOption { id: string; name: string; client_id: string; clients: { full_name: string } }
 
 const JOB_SUGGESTIONS = [
   'Servicio de 100 horas', 'Cambio de aceite y filtros', 'Diagnóstico', 'Cambio de impeller', 'Cambio de bujías',
@@ -31,17 +31,19 @@ export default function AppointmentForm() {
   const [systems, setSystems] = useState<string[]>([])
   const [status, setStatus] = useState<'confirmed' | 'requested'>('confirmed')
   const [notes, setNotes] = useState('')
+  const [problem, setProblem] = useState('')
+  const [requestId, setRequestId] = useState<string | null>(null)
   const [sameDay, setSameDay] = useState<{ id: string; starts_at: string; boats: { name: string } }[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     ;(async () => {
-      const { data } = await db().from('boats').select('id, name, clients(full_name)')
+      const { data } = await db().from('boats').select('id, name, client_id, clients(full_name)')
       const list = ((data ?? []) as unknown as BoatOption[]).sort((a, b) => a.clients.full_name.localeCompare(b.clients.full_name) || a.name.localeCompare(b.name))
       if (id) {
-        const { data: ap } = await db().from('appointments').select('*').eq('id', id).single()
-        const a = ap as Appointment | null
+        const { data: ap } = await db().from('appointments').select('*, service_requests(id, description)').eq('id', id).single()
+        const a = ap as (Appointment & { service_requests: { id: string; description: string } | null }) | null
         if (a) {
           setBoatId(a.boat_id)
           setDay(prDay(a.starts_at))
@@ -51,6 +53,8 @@ export default function AppointmentForm() {
           setSystems(a.systems)
           setStatus(a.status === 'requested' ? 'requested' : 'confirmed')
           setNotes(a.notes ?? '')
+          setProblem(a.service_requests?.description ?? '')
+          setRequestId(a.service_requests?.id ?? null)
         }
       }
       setBoats(list)
@@ -75,7 +79,25 @@ export default function AppointmentForm() {
     }
     setBusy(true)
     setError('')
-    const row = { boat_id: boatId, starts_at: prToISO(day, time), duration_min: duration, title: blank(title), systems, notes: blank(notes) }
+    // El problema se guarda como "problema reportado" del bote (service_requests) y se liga a la cita
+    let srId = requestId
+    const text = problem.trim()
+    const clientId = boats?.find((b) => b.id === boatId)?.client_id
+    if (text && srId) {
+      await db().from('service_requests').update({ description: text, boat_id: boatId, client_id: clientId }).eq('id', srId)
+    } else if (text && clientId) {
+      const sr = await db().from('service_requests').insert({ boat_id: boatId, client_id: clientId, description: text, status: 'scheduled' }).select('id').single()
+      if (sr.error) {
+        setBusy(false)
+        setError('No se pudo guardar el problema. Intenta otra vez.')
+        return
+      }
+      srId = (sr.data as { id: string }).id
+    } else if (!text && srId) {
+      await db().from('service_requests').delete().eq('id', srId)
+      srId = null
+    }
+    const row = { service_request_id: srId, boat_id: boatId, starts_at: prToISO(day, time), duration_min: duration, title: blank(title), systems, notes: blank(notes) }
     const res = id
       ? await db().from('appointments').update({ ...row, status }).eq('id', id).select('id').single()
       : await db().from('appointments').insert({ ...row, status, mechanic_id: session!.user.id }).select('id').single()
@@ -101,6 +123,9 @@ export default function AppointmentForm() {
               <option value="">Escoge el bote</option>
               {boats.map((b) => <option key={b.id} value={b.id}>{b.clients.full_name} — {b.name}</option>)}
             </Select>
+          </Field>
+          <Field label="¿Qué problema tiene?" hint="Lo que te dice el cliente. Ej.: el motor de babor no arranca en frío y suena la alarma de aceite">
+            <Textarea rows={4} value={problem} onChange={(e) => setProblem(e.target.value)} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Día *">

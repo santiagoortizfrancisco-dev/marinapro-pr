@@ -12,7 +12,7 @@ import ConfirmDelete from '../../components/ConfirmDelete'
 import { Sheet } from '../../components/Sheet'
 import { BackTitle, Button, ErrorBox, LinkButton, Loading } from '../../components/ui'
 
-const SELECT = '*, boats(id, name, location_type, marina_name, slip_number, town, lat, lng, location_notes, clients(id, full_name, phone))'
+const SELECT = '*, service_requests(description), boats(id, name, location_type, marina_name, slip_number, town, lat, lng, location_notes, clients(id, full_name, phone))'
 
 export default function AppointmentDetail() {
   const { id } = useParams()
@@ -59,6 +59,12 @@ export default function AppointmentDetail() {
           </div>
           <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold ${st.style}`}>{st.label}</span>
         </div>
+        {a.service_requests?.description && (
+          <div className="mt-3 rounded-xl bg-amber-50 p-3">
+            <div className="text-sm font-bold uppercase tracking-wide text-amber-800">Problema</div>
+            <p className="whitespace-pre-line text-lg text-amber-950">{a.service_requests.description}</p>
+          </div>
+        )}
         {a.title && <div className="mt-3 text-lg font-bold text-slate-900">{a.title}</div>}
         {a.systems.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
