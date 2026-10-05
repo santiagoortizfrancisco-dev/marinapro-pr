@@ -59,14 +59,23 @@ Todo lo que hace el cliente le llega al mecánico como aviso, y viceversa.
 Garantía de mano de obra 90 días; reclamar dentro de 30 días de notar el defecto. Piezas del mecánico: garantía del fabricante. Piezas del cliente: solo se garantiza la instalación. Trabajos eléctricos: no se garantiza cableado viejo o corroído fuera del área trabajada. Sin prueba en el agua, la garantía queda anulada. Trabajo con balance pendiente no tiene garantía. No se responde por daños indirectos. *(Texto a revisar con abogado.)*
 
 ## Hitos de desarrollo
-1. **Base:** proyecto Vite + React + TS + Tailwind + PWA, conexión a Supabase, login (email con magic link), roles, layout móvil con navegación inferior. Migraciones SQL + RLS + seed.
-2. **Clientes y botes:** CRUD de clientes, botes (con ubicación: agua/muelle, guardería, casa, trailer; pueblo; pin en mapa) y motores. Link de invitación para el cliente.
+**Decisión (2026-10-05):** primero SOLO la app del mecánico (Fase 1). La app del cliente queda para la Fase 2.
+En la Fase 1 el cliente no tiene cuenta: es un registro del mecánico (`clients.profile_id` queda null) y recibe
+facturas y recordatorios por WhatsApp/email sin instalar nada. Al entrar, todo usuario nuevo es mecánico
+(no se muestra "Tengo un bote"). La base de datos y la RLS del cliente se quedan como están para la Fase 2.
+
+1. ✅ **Base:** PWA, Supabase, login con código por email (SMTP Gmail marinepropr@gmail.com), roles, navegación inferior, migraciones + RLS + seed. Publicada en Render.
+
+**Fase 1 — app del mecánico**
+2. **Clientes y botes:** CRUD de clientes, botes (ubicación: agua/muelle, guardería, casa, trailer; pueblo; pin en mapa) y motores. Llamar / WhatsApp al cliente.
 3. **Agenda:** vista de día y semana; crear, confirmar, mover y cancelar citas.
-4. **App del cliente:** ver mis botes, reportar problema (texto + fotos/video), pedir cita, notificaciones.
-5. **Órdenes de trabajo:** estimado → aprobación del cliente (con políticas) → estados → piezas (quién las compra) → fotos antes/después y pieza vieja/nueva → prueba en el agua.
-6. **Factura y pago:** factura con IVU, envío por WhatsApp (link) y email, ATH Móvil, marcar pagado, historial.
-7. **Mantenimiento:** próximos servicios por bote/motor, job diario con pg_cron + Edge Function + Resend.
-8. **Publicar:** deploy en Render, dominio, prueba de instalación en iPhone y Android.
+4. **Órdenes de trabajo:** estimado → el mecánico marca "aprobado por el cliente" (guarda versión de políticas y fecha) → estados → piezas (quién las compra) → fotos antes/después y pieza vieja/nueva → prueba en el agua.
+5. **Factura y pago:** factura con IVU, link público para enviar por WhatsApp y email (el cliente no necesita cuenta), ATH Móvil, marcar pagado, historial.
+6. **Mantenimiento:** próximos servicios por bote/motor, job diario (pg_cron + Edge Function) que envía email al cliente.
+7. **Prueba real:** el mecánico amigo la usa 1 a 3 meses; dominio propio si hace falta.
+
+**Fase 2 — app del cliente (después)**
+8. Invitación por link/QR, ver mis botes, reportar problema (texto + fotos/video), pedir cita, aprobar estimados en la app, avisos.
 
 ## Fuera del MVP
 Directorio público de mecánicos por pueblo, firma digital, reportes de ingresos, varios mecánicos por taller, integración ATH Móvil Business, WhatsApp API, inventario de piezas.
