@@ -26,6 +26,31 @@ interface Doc {
   policies: string
 }
 
+/** Pagar por ATH Móvil: el cliente copia el número y el total y los pega en su app. */
+function AthBox({ number, total }: { number: string; total: number }) {
+  const [copied, setCopied] = useState('')
+  async function copy(text: string, what: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(what)
+      setTimeout(() => setCopied(''), 2500)
+    } catch {
+      setCopied('')
+    }
+  }
+  return (
+    <div className="mt-4 rounded-xl bg-orange-50 p-4 text-center">
+      <p className="text-lg">Paga por <b>ATH Móvil</b> al</p>
+      <p className="text-3xl font-extrabold tracking-wide">{number}</p>
+      <div className="mt-3 grid grid-cols-2 gap-2 print:hidden">
+        <button onClick={() => copy(number.replace(/D/g, ''), 'número')} className="min-h-14 rounded-xl bg-orange-500 px-3 text-base font-bold text-white active:bg-orange-600">Copiar número</button>
+        <button onClick={() => copy(total.toFixed(2), 'total')} className="min-h-14 rounded-xl border-2 border-orange-500 bg-white px-3 text-base font-bold text-orange-700">Copiar total</button>
+      </div>
+      <p className="mt-2 min-h-6 text-sm text-slate-600 print:hidden">{copied ? `✓ Se copió el ${copied}. Ábrelo en tu app de ATH Móvil y pégalo.` : 'Copia el número, abre tu ATH Móvil y pégalo.'}</p>
+    </div>
+  )
+}
+
 /** Estimado o factura que ve el cliente desde el link de WhatsApp (no necesita cuenta). */
 export default function PublicDoc() {
   const { token } = useParams()
@@ -140,11 +165,7 @@ export default function PublicDoc() {
               PAGADA el {formatDate(doc.paid_at)}{doc.payment_method ? ` · ${labelOf(PAYMENT_METHODS, doc.payment_method)}` : ''}
             </p>
           ) : (
-            doc.business.ath_movil && (
-              <p className="mt-4 rounded-xl bg-orange-50 p-4 text-center text-lg">
-                Paga por <b>ATH Móvil</b> al <b className="text-2xl">{doc.business.ath_movil}</b>
-              </p>
-            )
+            doc.business.ath_movil && <AthBox number={doc.business.ath_movil} total={Number(t.total)} />
           )
         )}
         {!isInvoice && doc.work.approved_at && (
