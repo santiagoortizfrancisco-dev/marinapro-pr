@@ -1,10 +1,9 @@
-import { LogOut } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
-import { Button, PageTitle } from '../components/ui'
+import { PageTitle } from '../components/ui'
 
 export default function More() {
-  const { profile, session, signOut } = useAuth()
+  const { profile, session } = useAuth()
   const now = new Date()
 
   const row = (label: string, value: string | null | undefined) => (
@@ -33,12 +32,7 @@ export default function More() {
         {row('Ejemplo de dinero', formatMoney(1234.56))}
       </section>
 
-      <div className="mt-8">
-        <Button variant="secondary" onClick={signOut}>
-          <LogOut /> Salir
-        </Button>
-      </div>
-      <p className="mt-6 text-center text-sm text-slate-500">MarinaPro PR · versión 0.1 (Hito 1)</p>
+      <p className="mt-8 text-center text-sm text-slate-500">MarinaPro PR · versión 0.1 (Hito 1)</p>
     </>
   )
 }
