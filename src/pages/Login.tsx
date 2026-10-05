@@ -22,8 +22,12 @@ export default function Login() {
       options: { emailRedirectTo: window.location.origin },
     })
     setBusy(false)
-    if (error) setError('No se pudo enviar el email. Verifica la dirección e intenta otra vez.')
-    else setStep('code')
+    if (!error) setStep('code')
+    else if (error.status === 429 || error.code?.includes('rate_limit'))
+      setError('Se enviaron muchos emails seguidos. Espera unos minutos y vuelve a intentar.')
+    else if (error.code === 'email_address_invalid' || error.code === 'validation_failed')
+      setError('Ese email no parece correcto. Revísalo e intenta otra vez.')
+    else setError('No se pudo enviar el email. Intenta otra vez en unos minutos.')
   }
 
   async function verifyCode(e: FormEvent) {
