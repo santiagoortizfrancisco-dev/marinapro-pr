@@ -5,7 +5,15 @@ import Login from './pages/Login'
 import ChooseRole from './pages/ChooseRole'
 import More from './pages/More'
 import Agenda from './pages/mechanic/Agenda'
+import AppointmentForm from './pages/mechanic/AppointmentForm'
+import AppointmentDetail from './pages/mechanic/AppointmentDetail'
 import Clients from './pages/mechanic/Clients'
+import ClientForm from './pages/mechanic/ClientForm'
+import ClientDetail from './pages/mechanic/ClientDetail'
+import BoatForm from './pages/mechanic/BoatForm'
+import BoatDetail from './pages/mechanic/BoatDetail'
+import EngineForm from './pages/mechanic/EngineForm'
+import EquipmentForm from './pages/mechanic/EquipmentForm'
 import Jobs from './pages/mechanic/Jobs'
 import MyBoats from './pages/client/MyBoats'
 import Report from './pages/client/Report'
@@ -30,7 +38,20 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/agenda" element={<Agenda />} />
+          <Route path="/citas/nueva" element={<AppointmentForm />} />
+          <Route path="/citas/:id" element={<AppointmentDetail />} />
+          <Route path="/citas/:id/editar" element={<AppointmentForm />} />
           <Route path="/clientes" element={<Clients />} />
+          <Route path="/clientes/nuevo" element={<ClientForm />} />
+          <Route path="/clientes/:id" element={<ClientDetail />} />
+          <Route path="/clientes/:id/editar" element={<ClientForm />} />
+          <Route path="/botes/nuevo" element={<BoatForm />} />
+          <Route path="/botes/:id" element={<BoatDetail />} />
+          <Route path="/botes/:id/editar" element={<BoatForm />} />
+          <Route path="/botes/:boatId/motores/nuevo" element={<EngineForm />} />
+          <Route path="/motores/:id/editar" element={<EngineForm />} />
+          <Route path="/botes/:boatId/equipos/nuevo" element={<EquipmentForm />} />
+          <Route path="/equipos/:id/editar" element={<EquipmentForm />} />
           <Route path="/trabajos" element={<Jobs />} />
           <Route path="/mas" element={<More />} />
           <Route path="*" element={<Navigate to="/agenda" replace />} />
@@ -39,6 +60,7 @@ export default function App() {
     )
   }
 
+  // Fase 2: app del cliente (por ahora solo pantallas de muestra)
   return (
     <Routes>
       <Route element={<Layout />}>

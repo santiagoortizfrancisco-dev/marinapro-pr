@@ -67,12 +67,12 @@ export default function Login() {
           {isSupabaseConfigured && step === 'email' && (
             <form onSubmit={sendLink} className="space-y-5">
               <h2 className="text-2xl font-bold text-navy-900">Entrar</h2>
-              <p className="text-base text-slate-600">Escribe tu email y te enviamos un link para entrar. No necesitas contraseña.</p>
+              <p className="text-base text-slate-600">Escribe tu email y te enviamos un código para entrar. No necesitas contraseña.</p>
               <Field label="Email">
                 <Input type="email" inputMode="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@gmail.com" />
               </Field>
               <Button type="submit" disabled={busy}>
-                <Mail /> {busy ? 'Enviando…' : 'Enviarme el link'}
+                <Mail /> {busy ? 'Enviando…' : 'Enviarme el código'}
               </Button>
             </form>
           )}
@@ -81,7 +81,7 @@ export default function Login() {
             <form onSubmit={verifyCode} className="space-y-5">
               <h2 className="text-2xl font-bold text-navy-900">Revisa tu email</h2>
               <p className="text-base text-slate-600">
-                Te enviamos un email a <b>{email}</b>. Ábrelo y toca el link para entrar. Si el email trae un código, escríbelo aquí.
+                Te enviamos un código a <b>{email}</b>. Escríbelo aquí. (También puedes tocar el link del email.)
               </p>
               <Field label="Código">
                 <Input
@@ -97,7 +97,7 @@ export default function Login() {
               </Field>
               <Button type="submit" disabled={busy}>{busy ? 'Verificando…' : 'Entrar'}</Button>
               <Button type="button" variant="ghost" onClick={() => { setStep('email'); setCode('') }}>
-                Usar otro email o enviarlo otra vez
+                Usar otro email o pedir otro código
               </Button>
             </form>
           )}
