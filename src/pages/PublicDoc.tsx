@@ -81,16 +81,16 @@ export default function PublicDoc() {
     <div className="min-h-full bg-slate-100 py-4 print:bg-white print:py-0">
       <article className="mx-auto max-w-2xl bg-white px-5 py-6 text-slate-900 shadow print:max-w-none print:shadow-none">
         {/* Encabezado */}
-        <header className="flex items-start justify-between gap-4 border-b-4 pb-4" style={{ borderColor: color }}>
+        <header className="flex flex-col gap-3 border-b-4 pb-4 sm:flex-row sm:items-start sm:justify-between" style={{ borderColor: color }}>
           <div className="flex items-start gap-3">
             {logo && <img src={logo} alt="" className="h-20 w-20 shrink-0 rounded-xl bg-black object-contain" />}
             <div>
             <h1 className="text-2xl font-extrabold text-navy-900">{doc.business.name}</h1>
             <p className="text-base text-slate-600">{[doc.business.owner !== doc.business.name && doc.business.owner, doc.business.town && `${doc.business.town}, PR`].filter(Boolean).join(' · ')}</p>
-            <p className="text-base text-slate-600">{[doc.business.phone, doc.business.email].filter(Boolean).join(' · ')}</p>
+            <p className="whitespace-nowrap text-base text-slate-600">{[doc.business.phone, doc.business.email].filter(Boolean).join(' · ')}</p>
             </div>
           </div>
-          <div className="text-right">
+          <div className="sm:text-right">
             <div className="text-2xl font-extrabold" style={{ color }}>{isInvoice ? `FACTURA #${doc.number}` : 'ESTIMADO'}</div>
             <div className="text-base text-slate-600">{formatDate(doc.date)}</div>
           </div>
@@ -118,22 +118,22 @@ export default function PublicDoc() {
         )}
 
         {/* Detalle */}
-        <table className="mt-5 w-full text-base">
+        <table className="mt-5 w-full text-sm sm:text-base">
           <thead>
             <tr className="border-b-2 border-slate-300 text-left text-sm uppercase text-slate-500">
               <th className="py-2">Descripción</th>
-              <th className="py-2 text-right">Cant.</th>
-              <th className="py-2 text-right">Precio</th>
-              <th className="py-2 text-right">Total</th>
+              <th className="py-2 pl-2 text-right">Cant.</th>
+              <th className="py-2 pl-3 text-right">Precio</th>
+              <th className="py-2 pl-3 text-right">Total</th>
             </tr>
           </thead>
           <tbody>
             {Number(t.labor_hours) > 0 && (
               <tr className="border-b border-slate-200">
                 <td className="py-2">Mano de obra</td>
-                <td className="py-2 text-right">{Number(t.labor_hours)} h</td>
-                <td className="py-2 text-right">{formatMoney(Number(t.labor_rate))}</td>
-                <td className="py-2 text-right">{formatMoney(Number(t.labor))}</td>
+                <td className="whitespace-nowrap py-2 pl-3 text-right">{Number(t.labor_hours)} h</td>
+                <td className="whitespace-nowrap py-2 pl-3 text-right">{formatMoney(Number(t.labor_rate))}</td>
+                <td className="whitespace-nowrap py-2 pl-3 text-right">{formatMoney(Number(t.labor))}</td>
               </tr>
             )}
             {doc.parts.map((p, i) => (
@@ -143,9 +143,9 @@ export default function PublicDoc() {
                   {p.part_number && <span className="block text-sm text-slate-500"># {p.part_number}</span>}
                   {p.supplied_by === 'client' && <span className="block text-sm text-slate-500">Pieza suplida por el cliente: solo se garantiza la instalación.</span>}
                 </td>
-                <td className="py-2 text-right">{Number(p.qty)}</td>
-                <td className="py-2 text-right">{p.supplied_by === 'client' ? '—' : formatMoney(Number(p.unit_cost))}</td>
-                <td className="py-2 text-right">{p.supplied_by === 'client' ? 'No se cobra' : formatMoney(Number(p.qty) * Number(p.unit_cost))}</td>
+                <td className="whitespace-nowrap py-2 pl-3 text-right">{Number(p.qty)}</td>
+                <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' ? '—' : formatMoney(Number(p.unit_cost))}</td>
+                <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' ? 'No se cobra' : formatMoney(Number(p.qty) * Number(p.unit_cost))}</td>
               </tr>
             ))}
           </tbody>
