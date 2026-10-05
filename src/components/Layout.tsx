@@ -1,5 +1,5 @@
-import { NavLink, Outlet } from 'react-router'
-import { Bell, Calendar, Ship, Menu, Users, Wrench, MessageSquareWarning, type LucideIcon } from 'lucide-react'
+import { NavLink, Outlet, useNavigate } from 'react-router'
+import { Bell, Calendar, LogOut, Menu, MessageSquareWarning, Repeat, Ship, Users, Wrench, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
 
 interface Tab {
@@ -23,29 +23,45 @@ const CLIENT_TABS: Tab[] = [
 ]
 
 export default function Layout() {
-  const { profile, demo } = useAuth()
-  const tabs = profile?.role === 'mechanic' ? MECHANIC_TABS : CLIENT_TABS
+  const { profile, demo, enterDemo, signOut } = useAuth()
+  const isMechanic = profile?.role === 'mechanic'
+  const tabs = isMechanic ? MECHANIC_TABS : CLIENT_TABS
+  const navigate = useNavigate()
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="safe-top bg-navy-800 text-white">
-        <div className="mx-auto flex max-w-xl items-center gap-3 px-4 py-3">
+    <div className="min-h-full">
+      {/* Cabecera y pestañas fijas; la página baja con el dedo normal (más confiable en iPhone) */}
+      <header className="safe-top sticky top-0 z-10 bg-navy-800 text-white">
+        <div className="mx-auto flex max-w-xl items-center gap-2 px-4 py-2">
           <img src="/logo.svg" alt="" className="h-9 w-9 rounded-lg" />
-          <div className="flex-1 leading-tight">
+          <div className="min-w-0 flex-1 leading-tight">
             <div className="text-lg font-bold">MarinaPro PR</div>
-            <div className="text-sm text-navy-100">{profile?.role === 'mechanic' ? 'Mecánico' : 'Dueño de bote'}</div>
+            <div className="text-sm text-navy-100">
+              {isMechanic ? 'Mecánico' : 'Dueño de bote'}
+              {demo && <span className="ml-2 rounded-full bg-sun-400 px-2 text-xs font-bold text-navy-900">DEMO</span>}
+            </div>
           </div>
-          {demo && <span className="rounded-full bg-sun-400 px-3 py-1 text-sm font-bold text-navy-900">DEMO</span>}
+          {demo && (
+            <button
+              onClick={() => { enterDemo(isMechanic ? 'client' : 'mechanic'); navigate('/') }}
+              className="flex min-h-12 items-center gap-1 rounded-xl bg-sun-400 px-3 text-sm font-bold text-navy-900 active:bg-sun-500"
+            >
+              <Repeat size={18} /> Cambiar
+            </button>
+          )}
+          <button onClick={signOut} aria-label="Salir" className="flex min-h-12 min-w-12 flex-col items-center justify-center rounded-xl text-xs font-semibold active:bg-navy-900">
+            <LogOut size={22} /> Salir
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="pb-24">
         <div className="mx-auto max-w-xl px-4 py-5">
           <Outlet />
         </div>
       </main>
 
-      <nav className="safe-bottom border-t-2 border-slate-200 bg-white">
+      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-10 border-t-2 border-slate-200 bg-white">
         <div className="mx-auto grid max-w-xl grid-cols-4">
           {tabs.map(({ to, label, icon: Icon }) => (
             <NavLink
