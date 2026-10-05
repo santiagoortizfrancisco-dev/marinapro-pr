@@ -12,6 +12,8 @@
 }
 
 html, body, #root { height: 100%; }
+/* Todo un poco más grande (18 px de base) para leerlo bien en el muelle */
+html { font-size: 112.5%; }
 body {
   margin: 0;
   background: #ffffff;
