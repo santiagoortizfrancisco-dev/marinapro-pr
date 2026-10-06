@@ -144,7 +144,11 @@ function RequestForm({ m, onSent, onCancel }: { m: PublicMechanic; onSent: () =>
       p_location: location, p_problem: problem, p_when: when, p_website: website,
     })
     setSaving(false)
-    if (err) return setError(err.message.includes('varias') ? err.message : 'No se pudo enviar. Intenta otra vez o escríbele por WhatsApp.')
+    if (err) {
+      if (err.message.includes('varias')) return setError(err.message)
+      if (err.message.includes('disponible')) return setError('Este mecánico todavía no está recibiendo solicitudes por aquí. Escríbele por WhatsApp.')
+      return setError('No se pudo enviar. Intenta otra vez o escríbele por WhatsApp.')
+    }
     onSent()
   }
 

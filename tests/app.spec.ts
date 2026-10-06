@@ -513,7 +513,12 @@ test('directorio cerrado: el admin lo ve desde el app en la misma ventana y pued
   await expect(page.getByRole('heading', { name: 'Muy pronto' })).toHaveCount(0)
   await page.getByRole('link', { name: /JQR Boat Repair/ }).click()
   await page.getByRole('button', { name: 'Pedir cita' }).click()
-  await expect(page.getByLabel('Tu nombre')).toBeVisible()
+  // Con el directorio cerrado, el admin puede enviar una solicitud de prueba
+  await page.getByLabel('Tu nombre').fill('Prueba Francisco')
+  await page.getByLabel('Tu teléfono (WhatsApp)').fill('787-555-0177')
+  await page.getByLabel('¿Qué le pasa al bote?').fill('Probando el directorio')
+  await page.getByRole('button', { name: 'Enviar solicitud' }).click()
+  await expect(page.getByText('¡Listo! Tu solicitud llegó')).toBeVisible()
   await page.getByRole('link', { name: 'Volver al app' }).click()
   await expect(page.getByRole('heading', { name: 'Más' })).toBeVisible()
 })

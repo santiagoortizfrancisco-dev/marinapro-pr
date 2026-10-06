@@ -236,6 +236,11 @@ test('directorio: cerrado no se ve; el mecánico no se aprueba solo; el admin ap
   assert.equal((await one(null, `select directory_search() j`, 'anon')).j.length, 0)
   assert.equal((await one(null, `select directory_profile('taller-a') j`, 'anon')).j, null)
   assert.equal((await one(A, `select directory_profile('taller-a') j`)).j.name, 'Taller A')
+  // cerrado: el público no puede pedir cita; el mismo mecánico sí (para probar)
+  assert.ok(await fails(() => as(null, `select submit_directory_request('taller-a','Público','7875550001','x','','','hola','') j`, 'anon')), 'cerrado: el público no pide')
+  assert.equal((await one(A, `select submit_directory_request('taller-a','Prueba Mía','7875550002','x','','','probando','') j`)).j.ok, true)
+  assert.ok(await fails(() => as(B, `select submit_directory_request('taller-a','Otro','7875550003','x','','','hola','') j`)), 'cerrado: otro mecánico no pide')
+  await as(A, `delete from service_requests where contact_name = 'Prueba Mía'`)
   assert.ok(await fails(() => as(A, `select admin_set_directory_open(true)`)), 'un mecánico no abre el directorio')
   assert.ok(await fails(() => as(A, `select admin_set_approved('${A}', true)`)))
 

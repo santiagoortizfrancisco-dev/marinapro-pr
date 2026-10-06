@@ -225,7 +225,7 @@ const RPC = {
     if (a.p_website) return { ok: true }
     const phone = String(a.p_phone ?? '').replace(/D/g, '')
     if (String(a.p_name ?? '').trim().length < 2 || phone.length < 7 || String(a.p_problem ?? '').trim().length < 3) throw Object.assign(new Error('Faltan datos'), { status: 400 })
-    const m = db.mechanics.find((x) => (x.slug ?? '').toLowerCase() === String(a.p_slug).toLowerCase() && x.listed && x.approved && db.settings.directory_open)
+    const m = db.mechanics.find((x) => (x.slug ?? '').toLowerCase() === String(a.p_slug).toLowerCase() && ((x.listed && x.approved && db.settings.directory_open) || caller === U || caller === x.profile_id))
     if (!m) throw Object.assign(new Error('Ese mecánico no está disponible'), { status: 400 })
     const digits = (v) => String(v ?? '').replace(/D/g, '')
     let c = db.clients.find((x) => x.mechanic_id === m.profile_id && digits(x.phone) === phone)
