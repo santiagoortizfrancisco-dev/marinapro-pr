@@ -12,8 +12,8 @@ type Row = Pick<WorkOrder, 'id' | 'status' | 'complaint' | 'diagnosis' | 'create
 }
 
 const GROUPS: { title: string; statuses: WorkOrder['status'][] }[] = [
-  { title: 'Abiertos', statuses: ['estimate', 'approved', 'waiting_parts', 'in_progress', 'sea_trial'] },
-  { title: 'Terminados, falta factura', statuses: ['done'] },
+  { title: 'Trabajando ahora', statuses: ['estimate', 'approved', 'waiting_parts', 'in_progress', 'sea_trial'] },
+  { title: 'Terminados, falta facturar', statuses: ['done'] },
   { title: 'Facturados, falta cobrar', statuses: ['invoiced'] },
   { title: 'Pagados', statuses: ['paid'] },
 ]
@@ -39,11 +39,11 @@ export default function Jobs() {
 
   return (
     <>
-      <PageTitle subtitle={porCobrar > 0 ? `Por cobrar: ${formatMoney(porCobrar)}` : undefined}>Trabajos</PageTitle>
+      <PageTitle subtitle={porCobrar > 0 ? `Por cobrar: ${formatMoney(porCobrar)}` : 'Lo que está abierto, lo que falta facturar y lo que falta cobrar'}>Cobros</PageTitle>
       {loading && <Loading />}
       {error && <ErrorBox message={error} onRetry={reload} />}
       {data && data.length === 0 && (
-        <EmptyState icon={Wrench} title="Todavía no hay trabajos" text="Abre una cita y toca “Empezar trabajo”, o toca “Trabajo” abajo." />
+        <EmptyState icon={Wrench} title="Todavía no hay trabajos" text="Cada cita de la Agenda trae su trabajo. Lo que vayas cobrando sale aquí." />
       )}
       {data &&
         GROUPS.map((g) => {
@@ -70,7 +70,7 @@ export default function Jobs() {
             </section>
           )
         })}
-      <Fab to="/trabajos/nuevo" label="Trabajo" />
+      <Fab to="/citas/nueva" label="Cita" />
     </>
   )
 }

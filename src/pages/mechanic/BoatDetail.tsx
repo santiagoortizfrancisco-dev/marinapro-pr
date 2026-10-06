@@ -108,7 +108,7 @@ export default function BoatDetail() {
         ))}
       </div>
 
-      <SectionHeader title="Historial de trabajos" addTo={`/trabajos/nuevo?bote=${b.id}`} addLabel="Trabajo" />
+      <SectionHeader title="Historial de trabajos" />
       {jobs.length === 0 && <p className="text-base text-slate-600">Todavía no hay trabajos en este bote.</p>}
       <div className="space-y-2">
         {jobs.map((j) => (
