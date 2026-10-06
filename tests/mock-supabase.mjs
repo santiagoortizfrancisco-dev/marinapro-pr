@@ -9,6 +9,8 @@ export const TEST_USER = 'jqr'
 export const TEST_PASSWORD = 'prueba-del-bot'
 const EMAIL = 'marinepropr+jqr@gmail.com'
 const U = '11111111-1111-4111-8111-111111111111'
+const NEW_EMAIL = 'nuevo@prueba.test'
+const N = '22222222-2222-4222-8222-222222222222'
 
 const prDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Puerto_Rico' }).format(d)
 const addDays = (day, n) => {
@@ -22,7 +24,10 @@ function reset() {
   const tomorrow = addDays(prDay(), 1)
   const now = new Date().toISOString()
   db = {
-    profiles: [{ id: U, role: 'mechanic', full_name: 'JQR Boat Repair', phone: '787-555-0100', email: EMAIL, town: 'Fajardo', created_at: now }],
+    profiles: [
+      { id: U, role: 'mechanic', full_name: 'JQR Boat Repair', phone: '787-555-0100', email: EMAIL, town: 'Fajardo', created_at: now },
+      { id: N, role: null, full_name: null, phone: null, email: NEW_EMAIL, town: null, created_at: now },
+    ],
     mechanics: [{
       profile_id: U, business_name: 'JQR Boat Repair', ath_movil_number: '787-555-0100', labor_rate_hour: 85, ivu_rate: 0.115,
       ivu_on_labor: true, ivu_on_parts: true, warranty_days: 90, policies_text: 'Garantía de mano de obra: 90 días.', policies_version: 1,
@@ -138,7 +143,15 @@ function publicDoc(token) {
   }
 }
 
+let caller = U
 const RPC = {
+  set_my_role: ({ p_role, p_full_name, p_phone, p_town, p_business_name }) => {
+    const p = db.profiles.find((x) => x.id === caller)
+    if (p.role) throw Object.assign(new Error('El rol ya fue escogido'), { status: 400 })
+    Object.assign(p, { role: p_role, full_name: p_full_name, phone: p_phone, town: p_town })
+    db.mechanics.push({ ...db.mechanics[0], profile_id: caller, business_name: p_business_name ?? p_full_name, ath_movil_number: null, labor_rate_hour: 0, logo_path: null, brand_color: '#0b3b5c', next_invoice_number: 1 })
+    return null
+  },
   get_public_document: ({ p_token }) => publicDoc(p_token),
   approve_estimate: ({ p_token }) => {
     const wo = db.work_orders.find((w) => w.public_token === p_token)
@@ -166,10 +179,11 @@ const RPC = {
 
 // ------------------------------------------------------------------------------------------
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
+const userFor = (id) => ({ ...USER, id, email: id === N ? NEW_EMAIL : EMAIL })
 const USER = { id: U, email: EMAIL, aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: new Date().toISOString() }
-function session() {
+function session(id = U) {
   const exp = Math.floor(Date.now() / 1000) + 3600
-  return { access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: U, exp, role: 'authenticated', aud: 'authenticated' })}.x`, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: randomUUID(), user: USER }
+  return { access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: id, exp, role: 'authenticated', aud: 'authenticated' })}.x`, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: `r-${id}`, user: userFor(id) }
 }
 
 http.createServer((req, res) => {
@@ -189,6 +203,13 @@ http.createServer((req, res) => {
     const json = () => (body ? JSON.parse(body) : {})
     const wantsOne = (req.headers.accept ?? '').includes('vnd.pgrst.object')
     try {
+      const payload = (req.headers.authorization ?? '').split('.')[1]
+      const sub = payload ? JSON.parse(Buffer.from(payload, 'base64url').toString()).sub : null
+      caller = sub === N ? N : U
+    } catch {
+      caller = U
+    }
+    try {
       // --- ayuda para el bot
       if (url.pathname === '/__reset') { reset(); return send(200, { ok: true }) }
       if (url.pathname === '/__state') return send(200, db)
@@ -197,11 +218,13 @@ http.createServer((req, res) => {
       if (url.pathname === '/auth/v1/token') {
         if (url.searchParams.get('grant_type') === 'password') {
           const { email, password } = json()
+          if (email === NEW_EMAIL && password === TEST_PASSWORD) return send(200, session(N))
           return email === EMAIL && password === TEST_PASSWORD ? send(200, session()) : send(400, { code: 'invalid_credentials', error_code: 'invalid_credentials', msg: 'Invalid login credentials' })
         }
-        return send(200, session())
+        const rt = json().refresh_token ?? ''
+        return send(200, session(rt === `r-${N}` ? N : U))
       }
-      if (url.pathname === '/auth/v1/user') return send(200, USER)
+      if (url.pathname === '/auth/v1/user') return send(200, userFor(caller))
       if (url.pathname.startsWith('/auth/v1/')) return send(200, {})
 
       // --- funciones

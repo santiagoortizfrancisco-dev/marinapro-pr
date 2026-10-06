@@ -48,6 +48,22 @@ test('entrar: contraseña mala da error, la buena entra con el logo y nombre del
   await expect(page.locator('header img')).toBeVisible()
 })
 
+test('mecánico nuevo entra por primera vez con su email: pone nombre y compañía y ya está dentro', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Email o usuario').fill('Nuevo@Prueba.test')
+  await page.locator('input[autocomplete=current-password]').fill(PASSWORD)
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page.getByRole('heading', { name: /Bienvenido a Marine Mechanics PR/ })).toBeVisible()
+  await page.getByLabel('Tu nombre completo *').fill('Luis Prueba')
+  await page.getByLabel('Nombre de tu compañía').fill('Luis Marine Service')
+  await page.getByRole('button', { name: 'Empezar' }).click()
+  await expect(page.locator('header').getByText('Luis Marine Service')).toBeVisible()
+  await expect(page.locator('header img')).toHaveAttribute('src', '/logo.svg')
+  await expect(page.getByRole('link', { name: 'Agenda' })).toBeVisible()
+  const s = await state()
+  expect(s.profiles.find((p) => p.email === 'nuevo@prueba.test')?.role).toBe('mechanic')
+})
+
 test('la sesión se mantiene al recargar el app', async ({ page }) => {
   await login(page)
   await page.reload()
