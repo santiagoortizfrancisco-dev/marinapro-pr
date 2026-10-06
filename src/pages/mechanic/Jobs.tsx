@@ -6,7 +6,7 @@ import type { WorkOrder } from '../../lib/types'
 import { must, useLoad } from '../../lib/useLoad'
 import { EmptyState, ErrorBox, Fab, Loading, PageTitle, Pill, RowLink } from '../../components/ui'
 
-type Row = Pick<WorkOrder, 'id' | 'status' | 'complaint' | 'diagnosis' | 'created_at'> & {
+type Row = Pick<WorkOrder, 'id' | 'status' | 'complaint' | 'diagnosis' | 'created_at' | 'estimate_approved_by'> & {
   boats: { name: string; clients: { full_name: string } }
   invoices: { number: string; total: number; paid_at: string | null }[] | { number: string; total: number; paid_at: string | null } | null
 }
@@ -29,7 +29,7 @@ export default function Jobs() {
       must(
         await db()
           .from('work_orders')
-          .select('id, status, complaint, diagnosis, created_at, boats(name, clients(full_name)), invoices(number, total, paid_at)')
+          .select('id, status, complaint, diagnosis, created_at, estimate_approved_by, boats(name, clients(full_name)), invoices(number, total, paid_at)')
           .order('created_at', { ascending: false })
           .limit(200),
       ) as unknown as Row[],
@@ -63,7 +63,7 @@ export default function Jobs() {
                       key={r.id}
                       to={`/trabajos/${r.id}`}
                       title={`${r.boats.name} · ${r.boats.clients.full_name}`}
-                      subtitle={[inv ? `Factura #${inv.number} · ${formatMoney(Number(inv.total))}` : null, r.complaint || r.diagnosis, formatDate(r.created_at)].filter(Boolean).join(' · ')}
+                      subtitle={[r.estimate_approved_by === 'client' ? '✓ Aprobado por el cliente' : null, inv ? `Factura #${inv.number} · ${formatMoney(Number(inv.total))}` : null, r.complaint || r.diagnosis, formatDate(r.created_at)].filter(Boolean).join(' · ')}
                       right={<Pill label={st.label} style={st.style} />}
                     />
                   )

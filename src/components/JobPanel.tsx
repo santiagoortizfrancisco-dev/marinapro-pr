@@ -68,14 +68,6 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
     return { wo, parts: must(parts) as Part[], photos: must(photos) as Photo[], invoice: (invoice.data as Invoice | null) ?? null, mech: must(mech) as Mechanic }
   }, [id])
 
-  // El mecánico ya vio que el cliente aprobó: se quita el aviso de la Agenda
-  useEffect(() => {
-    const w = data?.wo
-    if (w && w.estimate_approved_by === 'client' && !w.approval_seen_at) {
-      db().from('work_orders').update({ approval_seen_at: new Date().toISOString() }).eq('id', w.id).then(() => {})
-    }
-  }, [data?.wo.id, data?.wo.estimate_approved_at]) // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     if (!data) return
     setLaborHours(String(data.wo.labor_hours ?? 0))

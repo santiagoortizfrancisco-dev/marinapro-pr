@@ -16,7 +16,7 @@ const CHECK_EVERY_MS = 60 * 1000
 
 /**
  * Aviso verde arriba de todas las pantallas cuando un cliente aprueba un estimado desde el link.
- * Se quita al abrir la cita (o con la X).
+ * Se queda hasta que el mecánico la quite con la X (abrir la cita no la borra).
  */
 export default function ApprovalAlerts() {
   const navigate = useNavigate()
@@ -46,7 +46,7 @@ export default function ApprovalAlerts() {
     }
   }, [load])
 
-  // Al cambiar de pantalla se revisa otra vez (así se quita el aviso de la cita que se acaba de abrir)
+  // Al cambiar de pantalla se revisa otra vez
   useEffect(() => {
     const t = setTimeout(load, 1500)
     return () => clearTimeout(t)
@@ -72,7 +72,7 @@ export default function ApprovalAlerts() {
             <span className="text-base leading-snug">
               <b>{w.boats.clients.full_name.split(' ')[0]}</b> aprobó el estimado de <b>{w.boats.name}</b>
               <span className="block text-sm text-emerald-100">
-                {formatDate(w.estimate_approved_at)} a las {formatTime(w.estimate_approved_at)} · toca para verlo
+                {formatDate(w.estimate_approved_at)} a las {formatTime(w.estimate_approved_at)} · toca para ver la cita
               </span>
             </span>
           </button>
