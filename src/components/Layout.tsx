@@ -106,13 +106,11 @@ export default function Layout() {
           {brand.logo ? (
             <img src={brand.logo} alt="" className="h-12 w-12 shrink-0 rounded-xl bg-black object-contain" />
           ) : (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
-              {isMechanic ? <Wrench size={22} /> : <Ship size={22} />}
-            </span>
+            <img src="/logo.svg" alt="" className="h-11 w-11 shrink-0 rounded-xl" />
           )}
           <div className="min-w-0 flex-1 leading-tight">
             <div className="text-xs font-semibold uppercase tracking-wide text-white/75">
-              MarinaPro{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-navy-900">DEMO</span>}
+              Marine Mechanics PR{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-navy-900">DEMO</span>}
             </div>
             <div className="truncate text-lg font-bold">{brand.name || (isMechanic ? 'Mecánico' : 'Dueño de bote')}</div>
           </div>

@@ -256,7 +256,7 @@ export default function PublicDoc() {
         <button onClick={() => window.print()} className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl text-lg font-bold text-white print:hidden" style={{ backgroundColor: color }}>
           <Printer /> Guardar PDF / Imprimir
         </button>
-        <p className="mt-3 text-center text-xs text-slate-400 print:hidden">Hecho con MarinaPro PR</p>
+        <p className="mt-3 text-center text-xs text-slate-400 print:hidden">Hecho con Marine Mechanics PR</p>
       </article>
     </div>
   )

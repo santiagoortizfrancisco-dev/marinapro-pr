@@ -19,7 +19,7 @@ function tomorrowPR() {
 
 async function login(page: Page) {
   await page.goto('/')
-  await page.getByLabel('Usuario').fill(USER)
+  await page.getByLabel('Email o usuario').fill(USER)
   await page.locator('input[autocomplete=current-password]').fill(PASSWORD)
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await expect(page.getByText('JQR Boat Repair').first()).toBeVisible()
@@ -38,7 +38,7 @@ test.beforeEach(async () => {
 
 test('entrar: contraseña mala da error, la buena entra con el logo y nombre del negocio', async ({ page }) => {
   await page.goto('/')
-  await page.getByLabel('Usuario').fill(USER)
+  await page.getByLabel('Email o usuario').fill(USER)
   await page.locator('input[autocomplete=current-password]').fill('mala')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await expect(page.getByText('Usuario o contraseña incorrectos.')).toBeVisible()
@@ -52,7 +52,7 @@ test('la sesión se mantiene al recargar el app', async ({ page }) => {
   await login(page)
   await page.reload()
   await expect(page.locator('header').getByText('JQR Boat Repair')).toBeVisible()
-  await expect(page.getByLabel('Usuario')).toHaveCount(0)
+  await expect(page.getByLabel('Email o usuario')).toHaveCount(0)
 })
 
 test('agenda: la semana, la cita de mañana y los huecos libres', async ({ page }) => {
@@ -223,7 +223,7 @@ test('cliente y bote: ficha con WhatsApp, bote con Waze, motores y equipos', asy
 test('Más: versión del app y Mi negocio con ATH Móvil y tarifa', async ({ page }) => {
   await login(page)
   await page.getByRole('link', { name: 'Más' }).click()
-  await expect(page.getByText(/MarinaPro PR · versión \d{4}-\d{2}-\d{2}/)).toBeVisible()
+  await expect(page.getByText(/Marine Mechanics PR · versión \d{4}-\d{2}-\d{2}/)).toBeVisible()
   await page.getByRole('link', { name: /Mi negocio/ }).click()
   await expect(page.getByLabel(/Número de ATH Móvil/)).toHaveValue('787-555-0100')
   await expect(page.getByLabel('Tarifa por hora ($)')).toHaveValue('85')
@@ -233,5 +233,5 @@ test('Salir pide confirmación y vuelve a la pantalla de entrar', async ({ page 
   await login(page)
   await page.locator('header').getByRole('button', { name: /Salir/ }).click()
   await page.getByRole('button', { name: 'Sí, salir' }).click()
-  await expect(page.getByLabel('Usuario')).toBeVisible()
+  await expect(page.getByLabel('Email o usuario')).toBeVisible()
 })

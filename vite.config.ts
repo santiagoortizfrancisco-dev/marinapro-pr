@@ -15,14 +15,14 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
-        name: 'MarinaPro PR',
-        short_name: 'MarinaPro',
+        name: 'Marine Mechanics PR',
+        short_name: 'Marine Mech',
         description: 'Agenda, trabajos y facturas para mecánicos de bote en Puerto Rico',
         lang: 'es-PR',
         start_url: '/',
         display: 'standalone',
         orientation: 'portrait',
-        theme_color: '#0b3b5c',
+        theme_color: '#0c4a6e',
         background_color: '#ffffff',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },

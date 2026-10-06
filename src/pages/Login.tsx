@@ -69,8 +69,8 @@ export default function Login() {
     <div className="flex min-h-full flex-col bg-navy-800">
       <div className="safe-top px-6 pb-8 pt-12 text-center text-white">
         <img src="/logo.svg" alt="" className="mx-auto h-20 w-20 rounded-2xl" />
-        <h1 className="mt-4 text-3xl font-extrabold">MarinaPro PR</h1>
-        <p className="mt-1 text-lg text-navy-100">Tu bote y tu mecánico, en un solo sitio</p>
+        <h1 className="mt-4 text-[1.7rem] font-extrabold leading-tight">Marine Mechanics PR</h1>
+        <p className="mt-1 text-lg text-navy-100">Agenda, trabajos y facturas para tu taller</p>
       </div>
 
       <div className="safe-bottom flex-1 rounded-t-3xl bg-white px-6 py-8">
@@ -92,8 +92,8 @@ export default function Login() {
           {isSupabaseConfigured && step === 'password' && (
             <form onSubmit={signInWithPassword} className="space-y-5">
               <h2 className="text-2xl font-bold text-navy-900">Entrar</h2>
-              <Field label="Usuario">
-                <Input required autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={user} onChange={(e) => setUser(e.target.value)} placeholder="jqr" />
+              <Field label="Email o usuario">
+                <Input required autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={user} onChange={(e) => setUser(e.target.value)} placeholder="nombre@gmail.com" />
               </Field>
               <Field label="Contraseña">
                 <div className="relative">

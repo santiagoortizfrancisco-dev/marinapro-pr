@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 
 /** Colores para la barra del app y la factura (todos oscuros para que el texto blanco se lea al sol). */
 export const BRAND_COLORS = [
+  { value: '#0c4a6e', label: 'Azul océano' },
   { value: '#0b3b5c', label: 'Azul marino' },
   { value: '#0b0b0f', label: 'Negro' },
   { value: '#1d4ed8', label: 'Azul eléctrico' },
@@ -12,7 +13,7 @@ export const BRAND_COLORS = [
   { value: '#334155', label: 'Gris' },
 ]
 
-export const DEFAULT_BRAND = '#0b3b5c'
+export const DEFAULT_BRAND = '#0c4a6e'
 
 export function logoUrl(path: string | null | undefined): string | null {
   if (!path) return null
