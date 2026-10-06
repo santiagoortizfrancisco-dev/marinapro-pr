@@ -7,6 +7,7 @@ import { Sheet, Toast } from './Sheet'
 import { BRAND_EVENT, logoUrl } from '../lib/brand'
 import { db } from '../lib/db'
 import { Button } from './ui'
+import ApprovalAlerts from './ApprovalAlerts'
 
 const ROLE_LABEL: Record<Role, string> = { mechanic: 'Mecánico', client: 'Dueño de bote' }
 
@@ -148,6 +149,8 @@ export default function Layout() {
       </Sheet>
 
       <Toast message={toast} />
+
+      {isMechanic && !demo && <ApprovalAlerts />}
 
       <main className="pb-24">
         <div className="mx-auto max-w-xl px-4 py-5">
