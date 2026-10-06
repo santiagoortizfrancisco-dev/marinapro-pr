@@ -126,6 +126,10 @@ export interface WorkOrder {
   charge_ivu_parts: boolean
   estimate_sent_at: string | null
   estimate_approved_at: string | null
+  /** Quién aprobó: el cliente desde el link, o el mecánico a mano */
+  estimate_approved_by: 'client' | 'mechanic' | null
+  /** Cuándo el mecánico vio el aviso de que el cliente aprobó */
+  approval_seen_at: string | null
   policies_accepted_version: number | null
   sea_trial_required: boolean
   sea_trial_done: boolean

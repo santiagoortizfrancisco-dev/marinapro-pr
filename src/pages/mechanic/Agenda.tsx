@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Calendar, ChevronLeft, ChevronRight, MapPin, Plus } from 'lucide-react'
+import { Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronRight as Go, MapPin, Plus } from 'lucide-react'
 import { LOCATION_TYPES, labelOf } from '../../lib/catalog'
 import { db } from '../../lib/db'
 import { addDays, formatDate, formatLongDate, formatTime, prDay, prRange, prTime, prToISO, todayPR, weekStart } from '../../lib/format'
@@ -50,6 +50,18 @@ export default function Agenda() {
     return must(await db().from('appointments').select(SELECT).gte('starts_at', start).lt('starts_at', end).neq('status', 'cancelled').order('starts_at')) as AppointmentFull[]
   }, [from])
 
+  // Estimados que el cliente aprobó desde el link y el mecánico todavía no ha visto
+  const { data: approvals } = useLoad(async () => {
+    const { data } = await db()
+      .from('work_orders')
+      .select('id, appointment_id, estimate_approved_at, boats(name, clients(full_name))')
+      .eq('estimate_approved_by', 'client')
+      .is('approval_seen_at', null)
+      .order('estimate_approved_at', { ascending: false })
+      .limit(5)
+    return (data ?? []) as unknown as { id: string; appointment_id: string | null; estimate_approved_at: string; boats: { name: string; clients: { full_name: string } } }[]
+  }, [])
+
   const go = (d: string) => setParams({ dia: d }, { replace: true })
   const byDay = (d: string) => (data ?? []).filter((a) => prDay(a.starts_at) === d)
   const list = byDay(day)
@@ -78,6 +90,21 @@ export default function Agenda() {
 
   return (
     <>
+      {approvals && approvals.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {approvals.map((w) => (
+            <Link key={w.id} to={w.appointment_id ? `/citas/${w.appointment_id}` : `/trabajos/${w.id}`} className="flex min-h-14 items-center gap-3 rounded-2xl bg-emerald-700 px-4 py-3 text-white active:bg-emerald-800">
+              <CheckCircle2 size={26} className="shrink-0" />
+              <span className="flex-1 text-base">
+                <b>{w.boats.clients.full_name.split(' ')[0]}</b> aprobó el estimado de <b>{w.boats.name}</b>
+                <span className="block text-sm text-emerald-100">{formatDate(w.estimate_approved_at)} a las {formatTime(w.estimate_approved_at)}</span>
+              </span>
+              <Go size={22} className="shrink-0" />
+            </Link>
+          ))}
+        </div>
+      )}
+
       {/* La semana */}
       <div className="mb-2 flex items-center gap-2">
         <button aria-label="Semana anterior" onClick={() => go(addDays(day, -7))} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-300 text-navy-800 active:bg-slate-100">

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { AlertTriangle, CheckCircle2, ExternalLink, FileText, MessageCircle, Package, Plus, Receipt, Ship, ThumbsUp } from 'lucide-react'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, WORK_ORDER_STATUS, WORK_STEPS, labelOf } from '../lib/catalog'
 import { db } from '../lib/db'
-import { formatDate, formatMoney } from '../lib/format'
+import { formatDate, formatMoney, formatTime } from '../lib/format'
 import { whatsappLink } from '../lib/links'
 import { computeTotals, percent } from '../lib/totals'
 import type { Client, Invoice, Mechanic, Part, Photo, WorkOrder } from '../lib/types'
@@ -66,6 +66,14 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
     ])
     return { wo, parts: must(parts) as Part[], photos: must(photos) as Photo[], invoice: (invoice.data as Invoice | null) ?? null, mech: must(mech) as Mechanic }
   }, [id])
+
+  // El mecánico ya vio que el cliente aprobó: se quita el aviso de la Agenda
+  useEffect(() => {
+    const w = data?.wo
+    if (w && w.estimate_approved_by === 'client' && !w.approval_seen_at) {
+      db().from('work_orders').update({ approval_seen_at: new Date().toISOString() }).eq('id', w.id).then(() => {})
+    }
+  }, [data?.wo.id, data?.wo.estimate_approved_at]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!data) return
@@ -254,7 +262,10 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
       <Section title="Estimado">
         {wo.estimate_approved_at ? (
           <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-base font-semibold text-emerald-900">
-            <CheckCircle2 /> El cliente lo aprobó el {formatDate(wo.estimate_approved_at)}
+            <CheckCircle2 />
+            {wo.estimate_approved_by === 'client'
+              ? `El cliente lo aprobó desde el link el ${formatDate(wo.estimate_approved_at)} a las ${formatTime(wo.estimate_approved_at)}`
+              : `Aprobado el ${formatDate(wo.estimate_approved_at)} (marcado por ti)`}
           </p>
         ) : (
           <div className="space-y-3">
@@ -267,11 +278,11 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
             <Button
               variant="secondary"
               disabled={busy}
-              onClick={() => patch({ estimate_approved_at: new Date().toISOString(), policies_accepted_version: mech.policies_version, status: wo.status === 'estimate' ? 'approved' : wo.status })}
+              onClick={() => patch({ estimate_approved_at: new Date().toISOString(), estimate_approved_by: 'mechanic', approval_seen_at: new Date().toISOString(), policies_accepted_version: mech.policies_version, status: wo.status === 'estimate' ? 'approved' : wo.status })}
             >
-              <ThumbsUp /> El cliente aprobó
+              <ThumbsUp /> El cliente me dijo que sí
             </Button>
-            {<p className="text-sm text-slate-500">Al aprobar, el cliente acepta tus políticas de garantía (versión {mech.policies_version}).</p>}
+            {<p className="text-sm text-slate-500">El cliente puede aprobarlo él mismo con el botón verde del link. Si te dice que sí por teléfono, toca “El cliente me dijo que sí”.</p>}
           </div>
         )}
       </Section>

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
-import { Printer } from 'lucide-react'
+import { CheckCircle2, MessageCircle, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, labelOf } from '../lib/catalog'
-import { formatDate, formatMoney } from '../lib/format'
+import { formatDate, formatMoney, formatTime } from '../lib/format'
+import { whatsappLink } from '../lib/links'
 import { percent } from '../lib/totals'
 import { DEFAULT_BRAND, logoUrl } from '../lib/brand'
 
@@ -47,6 +48,51 @@ function AthBox({ number, total }: { number: string; total: number }) {
         <button onClick={() => copy(total.toFixed(2), 'total')} className="min-h-14 rounded-xl border-2 border-orange-500 bg-white px-3 text-base font-bold text-orange-700">Copiar total</button>
       </div>
       <p className="mt-2 min-h-6 text-sm text-slate-600 print:hidden">{copied ? `✓ Se copió el ${copied}. Ábrelo en tu app de ATH Móvil y pégalo.` : 'Copia el número, abre tu ATH Móvil y pégalo.'}</p>
+    </div>
+  )
+}
+
+/** El cliente aprueba el estimado él mismo (o pregunta por WhatsApp). */
+function ApproveBox({ token, doc, color, onApproved }: { token: string; doc: Doc; color: string; onApproved: (at: string) => void }) {
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function approve() {
+    if (!supabase) return
+    setBusy(true)
+    setError('')
+    const { data, error } = await supabase.rpc('approve_estimate', { p_token: token })
+    setBusy(false)
+    if (error || !data) return setError('No se pudo aprobar. Revisa la señal e intenta otra vez.')
+    onApproved((data as { approved_at: string }).approved_at)
+  }
+
+  const question = `Hola, tengo una pregunta sobre el estimado del bote ${doc.boat.name} (${formatMoney(Number(doc.totals.total))}).`
+  return (
+    <div className="mt-5 space-y-3 rounded-2xl border-2 p-4 print:hidden" style={{ borderColor: color }}>
+      {!confirming ? (
+        <>
+          <p className="text-center text-lg font-bold">¿Estás de acuerdo con este estimado?</p>
+          <button onClick={() => setConfirming(true)} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 text-lg font-bold text-white active:bg-emerald-800">
+            <CheckCircle2 /> Aprobar estimado
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-base">Al aprobar, aceptas el total de <b>{formatMoney(Number(doc.totals.total))}</b> y las políticas de garantía de <b>{doc.business.name}</b> que salen abajo.</p>
+          <button onClick={approve} disabled={busy} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 text-lg font-bold text-white active:bg-emerald-800 disabled:bg-slate-400">
+            <CheckCircle2 /> {busy ? 'Aprobando…' : 'Sí, apruebo'}
+          </button>
+          <button onClick={() => setConfirming(false)} className="min-h-12 w-full text-base font-bold text-slate-600 underline underline-offset-4">Todavía no</button>
+        </>
+      )}
+      {doc.business.phone && (
+        <a href={whatsappLink(doc.business.phone, question)} target="_blank" rel="noreferrer" className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-300 text-lg font-bold text-slate-800">
+          <MessageCircle /> Tengo una pregunta
+        </a>
+      )}
+      {error && <p className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}
     </div>
   )
 }
@@ -169,7 +215,12 @@ export default function PublicDoc() {
           )
         )}
         {!isInvoice && doc.work.approved_at && (
-          <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-center text-base font-semibold text-emerald-800">Aprobado por el cliente el {formatDate(doc.work.approved_at)}</p>
+          <p className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-emerald-50 p-4 text-center text-lg font-bold text-emerald-800">
+            <CheckCircle2 /> Aprobado el {formatDate(doc.work.approved_at)} a las {formatTime(doc.work.approved_at)}
+          </p>
+        )}
+        {!isInvoice && !doc.work.approved_at && token && (
+          <ApproveBox token={token} doc={doc} color={color} onApproved={(at) => setDoc({ ...doc, work: { ...doc.work, approved_at: at } })} />
         )}
 
         {/* Prueba en el agua y garantía */}
