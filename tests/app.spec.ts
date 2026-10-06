@@ -200,6 +200,25 @@ test('el cliente aprueba el estimado desde el link y al mecánico le sale el avi
   await expect(alert).toHaveCount(0)
 })
 
+test('el mecánico abre "Ver el estimado" y puede volver al app (en el iPhone no hay botón de atrás)', async ({ page, browser }) => {
+  await login(page)
+  await openExampleAppointment(page)
+  const cita = page.url()
+  await page.getByRole('link', { name: 'Ver el estimado' }).click()
+  await expect(page.getByText('ESTIMADO', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Volver al app' }).click()
+  await expect(page).toHaveURL(cita)
+  await expect(page.getByRole('heading', { name: 'El trabajo' })).toBeVisible()
+
+  // El cliente (sin cuenta) no ve ese botón
+  const token = (await state()).work_orders[0].public_token as string
+  const client = await browser.newPage()
+  await client.goto(`http://localhost:4321/d/${token}`)
+  await expect(client.getByText('ESTIMADO', { exact: true })).toBeVisible()
+  await expect(client.getByRole('button', { name: 'Volver al app' })).toHaveCount(0)
+  await client.close()
+})
+
 test('Cobros: el estimado sin aprobar no sale; al marcarlo "Trabajando" sí sale', async ({ page }) => {
   await login(page)
   await openExampleAppointment(page)

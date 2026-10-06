@@ -280,7 +280,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                 <MessageCircle size={22} /> Enviar estimado por WhatsApp
               </LinkButton>
             )}
-            <LinkButton href={`/d/${wo.public_token}`} external><FileText size={20} /> Ver el estimado</LinkButton>
+            <LinkButton href={`/d/${wo.public_token}`}><FileText size={20} /> Ver el estimado</LinkButton>
             <Button
               variant="secondary"
               disabled={busy}
@@ -338,7 +338,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                   {client.phone && (
                     <LinkButton href={whatsappLink(client.phone, invoiceMsg)} external variant="primary"><MessageCircle size={22} /> Enviar factura por WhatsApp</LinkButton>
                   )}
-                  <LinkButton href={`/d/${invoice.public_token}?pago=${way}`} external><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
+                  <LinkButton href={`/d/${invoice.public_token}?pago=${way}`}><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
                 </>
               )}
 
@@ -349,7 +349,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
           {invoice?.paid_at && (
             <>
-              <LinkButton href={`/d/${invoice.public_token}`} external><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
+              <LinkButton href={`/d/${invoice.public_token}`}><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
               <Button variant="ghost" disabled={busy} onClick={() => markPaid(false)}>Desmarcar pagada</Button>
             </>
           )}

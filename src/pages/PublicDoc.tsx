@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
-import { CheckCircle2, MessageCircle, Printer } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, MessageCircle, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, labelOf } from '../lib/catalog'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
@@ -103,6 +103,17 @@ export default function PublicDoc() {
   const pago = useSearchParams()[0].get('pago')
   const [doc, setDoc] = useState<Doc | null>(null)
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading')
+  // El mecánico (que tiene sesión) ve un botón para volver: en el app instalada del iPhone no hay "atrás"
+  const [isMechanic, setIsMechanic] = useState(false)
+
+  useEffect(() => {
+    supabase?.auth.getSession().then(({ data }) => setIsMechanic(Boolean(data.session)))
+  }, [])
+
+  function backToApp() {
+    if (window.history.length > 1) window.history.back()
+    else window.location.href = '/agenda'
+  }
 
   useEffect(() => {
     if (!supabase || !token) return setState('missing')
@@ -126,6 +137,14 @@ export default function PublicDoc() {
 
   return (
     <div className="min-h-full bg-slate-100 py-4 print:bg-white print:py-0">
+      {isMechanic && (
+        <div className="safe-top sticky top-0 z-10 mx-auto -mt-4 mb-3 max-w-2xl bg-slate-100 px-3 pt-3 print:hidden">
+          <button onClick={backToApp} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl text-lg font-bold text-white" style={{ backgroundColor: doc.business.brand_color || DEFAULT_BRAND }}>
+            <ArrowLeft /> Volver al app
+          </button>
+          <p className="mt-1 text-center text-xs text-slate-500">Así lo ve tu cliente. Este botón solo lo ves tú.</p>
+        </div>
+      )}
       <article className="mx-auto max-w-2xl bg-white px-5 py-6 text-slate-900 shadow print:max-w-none print:shadow-none">
         {/* Encabezado */}
         <header className="flex flex-col gap-3 border-b-4 pb-4 sm:flex-row sm:items-start sm:justify-between" style={{ borderColor: color }}>
