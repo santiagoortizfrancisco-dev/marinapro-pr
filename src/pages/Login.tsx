@@ -97,7 +97,7 @@ export default function Login() {
               </Field>
               <Field label="Contraseña">
                 <div className="relative">
-                  <Input required type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="pr-14" />
+                  <Input required aria-label="Contraseña" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="pr-14" />
                   <button type="button" aria-label={showPassword ? 'Esconder contraseña' : 'Ver contraseña'} onClick={() => setShowPassword((v) => !v)} className="absolute right-1 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center text-slate-500">
                     {showPassword ? <EyeOff /> : <Eye />}
                   </button>

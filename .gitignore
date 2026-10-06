@@ -10,3 +10,8 @@ supabase/pilotos/
 
 # Documentos privados (cuentas, emails)
 documentos/
+
+# Bot de pruebas
+dist-test/
+test-results/
+playwright-report/

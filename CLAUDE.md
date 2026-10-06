@@ -25,6 +25,7 @@ Todo lo que hace el cliente le llega al mecánico como aviso, y viceversa.
 - Seguridad con **Row Level Security** en todas las tablas: el mecánico solo ve sus clientes; el cliente solo ve sus botes y sus trabajos.
 - Nada de datos inventados en producción. Para desarrollo, un script `seed` con datos de prueba realistas (pueblos de PR, marinas como Puerto del Rey, Villa Marina, Club Náutico de Ponce; motores Yamaha, Mercury, Suzuki).
 - Antes de cada hito: proponer el plan y esperar el OK. Después: explicar cómo probarlo.
+- **Bot de pruebas (obligatorio):** antes de publicar, `npm test` tiene que pasar (base de datos en `tests/db.test.mjs` + pantallas como iPhone en `tests/app.spec.ts`, contra el Supabase de prueba `tests/mock-supabase.mjs`). Cada función nueva o arreglo lleva su prueba. En GitHub corre solo en cada push y Render solo publica si pasa. Francisco lo puede correr con "Probar la app.bat".
 
 ## Roles
 - `mechanic`: dueño del negocio. En el MVP, un mecánico por cuenta.
