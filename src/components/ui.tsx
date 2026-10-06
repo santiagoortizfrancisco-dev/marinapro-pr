@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import { Children, isValidElement, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ChevronLeft, ChevronRight, Loader2, Plus, type LucideIcon } from 'lucide-react'
 
@@ -35,14 +35,22 @@ export function LinkButton({ href, children, variant = 'secondary', external }: 
   )
 }
 
+/**
+ * Etiqueta + campo. Con un solo campo de texto se usa <label> (tocar el título enfoca el campo).
+ * Con botones adentro (opciones, buscador, mapa) se usa <div>: en iPhone un <label> con botones
+ * puede mandar el toque al primer campo en vez de al botón.
+ */
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
-  return (
-    <label className="block">
+  const items = Children.toArray(children)
+  const single = items.length === 1 && isValidElement(items[0]) && [Input, Select, Textarea].includes(items[0].type as never)
+  const body = (
+    <>
       <span className="mb-1 block text-base font-semibold text-slate-800">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-sm text-slate-500">{hint}</span>}
-    </label>
+    </>
   )
+  return single ? <label className="block">{body}</label> : <div role="group" aria-label={label} className="block">{body}</div>
 }
 
 const INPUT = 'block min-h-14 w-full rounded-xl border-2 border-slate-300 bg-white px-4 text-lg focus:border-navy-600 focus:outline-none'
