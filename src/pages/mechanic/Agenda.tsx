@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Calendar, ChevronLeft, ChevronRight, MapPin, Plus } from 'lucide-react'
 import { LOCATION_TYPES, labelOf } from '../../lib/catalog'
@@ -38,17 +38,53 @@ const STYLE = {
 
 type Slot = { kind: 'free'; start: number; end: number } | { kind: 'appt'; start: number; end: number; a: AppointmentFull }
 
+/** El app recuerda si el mecánico prefiere ver el mes o la semana. */
+function savedView(): 'mes' | 'semana' {
+  try {
+    return localStorage.getItem('agenda-vista') === 'semana' ? 'semana' : 'mes'
+  } catch {
+    return 'mes'
+  }
+}
+
+/** Días que se ven en el calendario del mes (de lunes a domingo, semanas completas). */
+function monthGrid(day: string): string[] {
+  const first = `${day.slice(0, 7)}-01`
+  const last = addDays(`${addDays(first, 32).slice(0, 7)}-01`, -1)
+  const start = weekStart(first)
+  const days: string[] = []
+  for (let d = start; d <= last || days.length % 7 !== 0; d = addDays(d, 1)) days.push(d)
+  return days
+}
+
 export default function Agenda() {
   const [params, setParams] = useSearchParams()
   const today = todayPR()
   const day = params.get('dia') ?? today
+  const [view, setView] = useState<'mes' | 'semana'>(savedView)
   const from = weekStart(day)
   const week = Array.from({ length: 7 }, (_, i) => addDays(from, i))
+  const grid = view === 'mes' ? monthGrid(day) : week
 
   const { data, loading, error, reload } = useLoad(async () => {
-    const [start, end] = prRange(from, 7)
+    const [start, end] = prRange(grid[0], grid.length)
     return must(await db().from('appointments').select(SELECT).gte('starts_at', start).lt('starts_at', end).neq('status', 'cancelled').order('starts_at')) as AppointmentFull[]
-  }, [from])
+  }, [grid[0], grid.length])
+
+  function changeView(v: 'mes' | 'semana') {
+    setView(v)
+    try {
+      localStorage.setItem('agenda-vista', v)
+    } catch {
+      /* sin memoria del teléfono: no pasa nada */
+    }
+  }
+
+  /** Mes anterior o siguiente: abre el día 1 (o hoy, si es el mes de hoy). */
+  function shiftMonth(n: number) {
+    const target = `${addDays(`${day.slice(0, 7)}-15`, n * 30).slice(0, 7)}-01`
+    go(target.slice(0, 7) === today.slice(0, 7) ? today : target)
+  }
 
   const go = (d: string) => setParams({ dia: d }, { replace: true })
   const byDay = (d: string) => (data ?? []).filter((a) => prDay(a.starts_at) === d)
@@ -78,21 +114,61 @@ export default function Agenda() {
 
   return (
     <>
-      {/* La semana */}
+      {/* Mes | Semana */}
+      <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+        {(['mes', 'semana'] as const).map((v) => (
+          <button key={v} onClick={() => changeView(v)} className={`min-h-12 rounded-lg text-lg font-bold ${view === v ? 'bg-white text-navy-900 shadow' : 'text-slate-600'}`}>
+            {v === 'mes' ? 'Mes' : 'Semana'}
+          </button>
+        ))}
+      </div>
+
       <div className="mb-2 flex items-center gap-2">
-        <button aria-label="Semana anterior" onClick={() => go(addDays(day, -7))} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-300 text-navy-800 active:bg-slate-100">
+        <button aria-label={view === 'mes' ? 'Mes anterior' : 'Semana anterior'} onClick={() => (view === 'mes' ? shiftMonth(-1) : go(addDays(day, -7)))} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-300 text-navy-800 active:bg-slate-100">
           <ChevronLeft size={28} />
         </button>
         <div className="min-w-0 flex-1 text-center leading-tight">
-          <div className="text-xl font-extrabold capitalize text-navy-900">{MONTHS.at(m - 1)} {y}</div>
-          <div className="text-sm text-slate-600">Semana del {Number(from.slice(8))} al {Number(addDays(from, 6).slice(8))}</div>
+          <div className="text-xl font-extrabold capitalize text-navy-900">{view === 'mes' ? `${MONTHS.at(Number(day.slice(5, 7)) - 1)} ${day.slice(0, 4)}` : `${MONTHS.at(m - 1)} ${y}`}</div>
+          {view === 'semana' && <div className="text-sm text-slate-600">Semana del {Number(from.slice(8))} al {Number(addDays(from, 6).slice(8))}</div>}
         </div>
-        <button aria-label="Semana siguiente" onClick={() => go(addDays(day, 7))} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-300 text-navy-800 active:bg-slate-100">
+        <button aria-label={view === 'mes' ? 'Mes siguiente' : 'Semana siguiente'} onClick={() => (view === 'mes' ? shiftMonth(1) : go(addDays(day, 7)))} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-300 text-navy-800 active:bg-slate-100">
           <ChevronRight size={28} />
         </button>
       </div>
 
-      <div className="mb-3 grid grid-cols-7 gap-1">
+      {view === 'mes' && (
+        <div className="mb-3">
+          <div className="mb-1 grid grid-cols-7 text-center text-xs font-bold text-slate-500">
+            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <span key={i}>{d}</span>)}
+          </div>
+          <div className="grid grid-cols-7 gap-0.5">
+            {grid.map((d) => {
+              const appts = byDay(d)
+              const sel = d === day
+              const otherMonth = d.slice(0, 7) !== day.slice(0, 7)
+              const off = !WORK_DAYS.includes(dow(d))
+              return (
+                <button
+                  key={d}
+                  onClick={() => go(d)}
+                  aria-label={`${formatLongDate(d)}${appts.length ? `, ${appts.length} ${appts.length === 1 ? 'cita' : 'citas'}` : ''}`}
+                  className={`flex h-11 flex-col items-center justify-center rounded-xl ${sel ? 'bg-navy-800 text-white' : d === today ? 'border-2 border-navy-700' : ''} ${otherMonth && !sel ? 'opacity-35' : ''} ${off && !sel ? 'text-slate-400' : ''}`}
+                >
+                  <span className="text-lg font-bold leading-none">{Number(d.slice(8))}</span>
+                  <span className="mt-1 flex h-2 items-center gap-0.5">
+                    {appts.slice(0, 3).map((a) => (
+                      <span key={a.id} className={`h-1.5 w-1.5 rounded-full ${sel ? 'bg-sun-400' : a.status === 'requested' ? 'bg-amber-500' : 'bg-emerald-600'}`} />
+                    ))}
+                    {appts.length > 3 && <span className={`text-[10px] font-bold leading-none ${sel ? 'text-sun-400' : 'text-emerald-700'}`}>+</span>}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {view === 'semana' && <div className="mb-3 grid grid-cols-7 gap-1">
         {week.map((d) => {
           const n = byDay(d).length
           const sel = d === day
@@ -111,7 +187,7 @@ export default function Agenda() {
             </button>
           )
         })}
-      </div>
+      </div>}
 
       {day !== today && (
         <button onClick={() => go(today)} className="mb-3 w-full text-base font-bold text-navy-700 underline underline-offset-4">Volver a hoy</button>
@@ -129,7 +205,7 @@ export default function Agenda() {
       {error && <ErrorBox message={error} onRetry={reload} />}
 
       {data && !workDay && list.length === 0 && (
-        <p className="mb-3 rounded-xl bg-slate-100 p-4 text-base text-slate-700">Día libre. Si igual vas a trabajar, toca “Cita”.</p>
+        <p className="mb-3 rounded-xl bg-slate-100 p-4 text-base text-slate-700">Día libre. Si igual vas a trabajar, toca “Hacer cita”.</p>
       )}
 
       {data && (
@@ -176,7 +252,7 @@ export default function Agenda() {
       </label>
       <p className="mt-2 text-center text-xs text-slate-400">{formatDate(day)}</p>
 
-      <Fab to={`/citas/nueva?dia=${day}`} label="Cita" />
+      <Fab to={`/citas/nueva?dia=${day}`} label="Hacer cita" />
     </>
   )
 }

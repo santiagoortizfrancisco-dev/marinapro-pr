@@ -52,7 +52,7 @@ export default function Clients() {
       {error && <ErrorBox message={error} onRetry={reload} />}
 
       {data && data.length === 0 && (
-        <EmptyState icon={Users} title="Todavía no tienes clientes" text="Toca “Cliente” abajo para añadir el primero, con su bote y sus motores." />
+        <EmptyState icon={Users} title="Todavía no tienes clientes" text="Toca “Añadir cliente” abajo para añadir el primero, con su bote y sus motores." />
       )}
       {data && data.length > 0 && list.length === 0 && <p className="py-6 text-center text-base text-slate-600">Nadie con “{q}”.</p>}
 
@@ -68,7 +68,7 @@ export default function Clients() {
         ))}
       </div>
 
-      <Fab to="/clientes/nuevo" label="Cliente" />
+      <Fab to="/clientes/nuevo" label="Añadir cliente" />
     </>
   )
 }

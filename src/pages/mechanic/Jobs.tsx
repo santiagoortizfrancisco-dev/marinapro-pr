@@ -72,7 +72,7 @@ export default function Jobs() {
             </section>
           )
         })}
-      <Fab to="/citas/nueva" label="Cita" />
+      <Fab to="/citas/nueva" label="Hacer cita" />
     </>
   )
 }

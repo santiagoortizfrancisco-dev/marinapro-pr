@@ -150,7 +150,7 @@ export default function Layout() {
 
       {isMechanic && !demo && <ApprovalAlerts />}
 
-      <main className="pb-24">
+      <main className="pb-44">
         <div className="mx-auto max-w-xl px-4 py-5">
           <Outlet />
         </div>

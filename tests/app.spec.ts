@@ -84,6 +84,33 @@ test('agenda: la semana, la cita de mañana y los huecos libres', async ({ page 
   await expect(page.getByText('7 horas libres')).toBeVisible()
 })
 
+test('agenda: calendario del mes con las citas marcadas; recuerda si prefieres Semana', async ({ page }) => {
+  await login(page)
+  await page.goto(`/agenda?dia=${tomorrowPR()}`)
+  await expect(page.getByRole('button', { name: 'Mes', exact: true })).toBeVisible()
+  // el día de mañana sale marcado con su cita
+  await expect(page.getByRole('button', { name: /1 cita$/ })).toBeVisible()
+  // tocar otro día y volver
+  await page.getByRole('button', { name: /1 cita$/ }).click()
+  await expect(page.getByRole('link', { name: /La Tranquila/ })).toBeVisible()
+  // cambiar a Semana y que se acuerde
+  await page.getByRole('button', { name: 'Semana', exact: true }).click()
+  await expect(page.getByText(/Semana del \d+ al \d+/)).toBeVisible()
+  await page.reload()
+  await expect(page.getByText(/Semana del \d+ al \d+/)).toBeVisible()
+})
+
+test('los botones principales se ven claros: Hacer cita y Añadir cliente', async ({ page }) => {
+  await login(page)
+  await page.getByRole('link', { name: 'Hacer cita' }).click()
+  await expect(page.getByRole('heading', { name: 'Cita nueva' })).toBeVisible()
+  await page.getByRole('link', { name: 'Clientes' }).click()
+  await page.getByRole('link', { name: 'Añadir cliente' }).click()
+  await expect(page.getByRole('heading', { name: 'Cliente nuevo' })).toBeVisible()
+  await page.getByRole('link', { name: 'Cobros' }).click()
+  await expect(page.getByRole('link', { name: 'Hacer cita' })).toBeVisible()
+})
+
 test('cita nueva desde un hueco libre, con cliente nuevo: crea cliente, bote, cita y su trabajo', async ({ page }) => {
   await login(page)
   await page.goto(`/agenda?dia=${tomorrowPR()}`)

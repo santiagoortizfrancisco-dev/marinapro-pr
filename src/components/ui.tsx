@@ -216,14 +216,14 @@ export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () =
   )
 }
 
-/** Botón redondo flotante para añadir (encima de las pestañas). */
+/** El botón principal de cada pantalla: grande, centrado y encima de las pestañas, para que se vea enseguida. */
 export function Fab({ to, label }: { to: string; label: string }) {
   return (
     <Link
       to={to}
-      className="fixed bottom-24 right-4 z-10 flex min-h-14 items-center gap-2 rounded-full bg-sun-400 px-5 text-lg font-extrabold text-navy-900 shadow-lg active:bg-sun-500"
+      className="fixed bottom-[5.5rem] right-4 z-10 flex min-h-16 items-center gap-2 whitespace-nowrap rounded-full bg-sun-400 px-8 text-xl font-extrabold text-navy-900 shadow-xl ring-4 ring-white active:bg-sun-500"
     >
-      <Plus size={24} strokeWidth={3} /> {label}
+      <Plus size={28} strokeWidth={3} /> {label}
     </Link>
   )
 }
