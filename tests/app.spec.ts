@@ -245,6 +245,29 @@ test('Más: versión del app y Mi negocio con ATH Móvil y tarifa', async ({ pag
   await expect(page.getByLabel('Tarifa por hora ($)')).toHaveValue('85')
 })
 
+test('Admin: el dueño ve cuántos mecánicos hay y cuánto usa cada uno (sin los clientes de ellos)', async ({ page }) => {
+  await login(page)
+  await page.getByRole('link', { name: 'Más' }).click()
+  await page.getByRole('link', { name: /Admin/ }).click()
+  await expect(page.getByRole('heading', { name: 'Admin' })).toBeVisible()
+  await expect(page.getByText('Mecánicos', { exact: true })).toBeVisible()
+  await expect(page.getByText('JQR Boat Repair').last()).toBeVisible()
+  await expect(page.getByText('No ha entrado')).toBeVisible() // el mecánico nuevo de prueba
+  await expect(page.getByText('Ana Ejemplo')).toHaveCount(0) // los clientes de los mecánicos no salen
+})
+
+test('Admin: un mecánico normal no ve el enlace de Admin', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Email o usuario').fill('nuevo@prueba.test')
+  await page.locator('input[autocomplete=current-password]').fill(PASSWORD)
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await page.getByLabel('Tu nombre completo *').fill('Mecánico Normal')
+  await page.getByRole('button', { name: 'Empezar' }).click()
+  await page.getByRole('link', { name: 'Más' }).click()
+  await expect(page.getByRole('link', { name: /Mi negocio/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Admin/ })).toHaveCount(0)
+})
+
 test('Salir pide confirmación y vuelve a la pantalla de entrar', async ({ page }) => {
   await login(page)
   await page.locator('header').getByRole('button', { name: /Salir/ }).click()

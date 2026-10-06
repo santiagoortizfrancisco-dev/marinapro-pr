@@ -144,7 +144,28 @@ function publicDoc(token) {
 }
 
 let caller = U
+const count = (list, fn) => list.filter(fn).length
 const RPC = {
+  // En el Supabase de prueba, el admin es el usuario jqr (U); el mecánico nuevo (N) no
+  is_app_admin: () => caller === U,
+  admin_overview: () => {
+    if (caller !== U) throw Object.assign(new Error('Solo para el administrador'), { status: 400 })
+    return db.profiles.map((p) => {
+      const m = db.mechanics.find((x) => x.profile_id === p.id)
+      const myClients = db.clients.filter((c) => c.mechanic_id === p.id).map((c) => c.id)
+      const myBoats = db.boats.filter((b) => myClients.includes(b.client_id)).map((b) => b.id)
+      return {
+        id: p.id, email: p.email, full_name: p.full_name, business_name: m?.business_name ?? null, created_at: p.created_at,
+        last_sign_in_at: p.id === U ? new Date().toISOString() : null,
+        clients: myClients.length, boats: myBoats.length,
+        appointments: count(db.appointments, (a) => a.mechanic_id === p.id),
+        work_orders: count(db.work_orders, (w) => myBoats.includes(w.boat_id)),
+        invoices: count(db.invoices, (i) => i.mechanic_id === p.id),
+        paid_total: db.invoices.filter((i) => i.mechanic_id === p.id && i.paid_at).reduce((t, i) => t + Number(i.total), 0),
+        last_activity: myClients.length ? new Date().toISOString() : null,
+      }
+    })
+  },
   set_my_role: ({ p_role, p_full_name, p_phone, p_town, p_business_name }) => {
     const p = db.profiles.find((x) => x.id === caller)
     if (p.role) throw Object.assign(new Error('El rol ya fue escogido'), { status: 400 })

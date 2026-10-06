@@ -1,5 +1,7 @@
 import { Link } from 'react-router'
-import { Briefcase, ChevronRight } from 'lucide-react'
+import { Briefcase, ChevronRight, ShieldCheck } from 'lucide-react'
+import { db } from '../lib/db'
+import { useLoad } from '../lib/useLoad'
 import { useAuth } from '../auth/AuthProvider'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
 import { PageTitle } from '../components/ui'
@@ -7,6 +9,11 @@ import { PageTitle } from '../components/ui'
 export default function More() {
   const { profile, session } = useAuth()
   const now = new Date()
+  // El enlace de Admin solo le sale al dueño del app
+  const { data: isAdmin } = useLoad(async () => {
+    const { data } = await db().rpc('is_app_admin')
+    return data === true
+  }, [])
 
   const row = (label: string, value: string | null | undefined) => (
     <div className="flex justify-between gap-4 border-b border-slate-200 py-3 last:border-0">
@@ -25,6 +32,17 @@ export default function More() {
           <span className="flex-1">
             <span className="block text-lg font-bold">Mi negocio</span>
             <span className="block text-sm text-navy-100">ATH Móvil, tarifa, IVU, facturas y garantía</span>
+          </span>
+          <ChevronRight />
+        </Link>
+      )}
+
+      {isAdmin && (
+        <Link to="/mas/admin" className="mb-5 flex min-h-16 items-center gap-3 rounded-2xl border-2 border-navy-800 px-4 text-navy-900 active:bg-navy-50">
+          <ShieldCheck size={26} />
+          <span className="flex-1">
+            <span className="block text-lg font-bold">Admin</span>
+            <span className="block text-sm text-slate-600">Quién usa el app y cuánto</span>
           </span>
           <ChevronRight />
         </Link>

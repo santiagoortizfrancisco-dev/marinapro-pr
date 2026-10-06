@@ -33,7 +33,7 @@ before(async () => {
   // Lo que Supabase trae por su cuenta
   await db.exec(`
     create role anon; create role authenticated; create schema auth;
-    create table auth.users (id uuid primary key default gen_random_uuid(), email text);
+    create table auth.users (id uuid primary key default gen_random_uuid(), email text, last_sign_in_at timestamptz);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.uid', true), '')::uuid $$;
     create schema storage; create table storage.buckets (id text primary key, name text, public boolean);
     create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
@@ -169,4 +169,22 @@ test('mecánico invitado: entra y su cuenta ya está lista con su negocio y logo
 test('los datos de prueba (seed) cargan sin errores', async () => {
   await db.exec(sql('seed.sql').replace('CAMBIA-ESTE@email.com', 'a@prueba.test'))
   assert.ok((await one(A, `select count(*)::int n from clients`)).n >= 3)
+})
+
+test('admin: solo el dueño del app ve el resumen, y solo números (no los clientes de los mecánicos)', async () => {
+  assert.ok(await fails(() => as(A, `select admin_overview()`)), 'un mecánico no puede ver el resumen')
+  assert.equal((await one(A, `select is_app_admin() ok`)).ok, false)
+  assert.ok(await fails(() => as(null, `select admin_overview()`, 'anon')))
+  assert.ok(await fails(() => as(A, `insert into app_admins(email) values ('a@prueba.test')`)), 'nadie se hace admin desde el app')
+
+  const F = (await db.query(`insert into auth.users(email) values ('santiagoortizfrancisco@gmail.com') returning id`)).rows[0].id
+  await as(F, `select set_my_role('mechanic','Francisco',null,null,null)`)
+  assert.equal((await one(F, `select is_app_admin() ok`)).ok, true)
+  const list = (await one(F, `select admin_overview() j`)).j
+  const a = list.find((x) => x.email === 'a@prueba.test')
+  assert.equal(a.business_name, 'Taller A')
+  assert.ok(a.clients >= 4 && a.appointments >= 1 && a.invoices === 2)
+  assert.ok(a.last_activity)
+  const text = JSON.stringify(list)
+  assert.ok(!text.includes('Ana Prueba') && !text.includes('787-555-0111'), 'no trae nombres ni teléfonos de clientes')
 })
