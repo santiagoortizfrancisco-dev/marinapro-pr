@@ -52,6 +52,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   const [payOpen, setPayOpen] = useState(false)
   const [payMethod, setPayMethod] = useState<NonNullable<Invoice['payment_method']>>('ath_movil')
   const [saved, setSaved] = useState('')
+  const [payWay, setPayWay] = useState<'any' | 'ath' | 'cash' | null>(null)
   const [busy, setBusy] = useState(false)
   const [laborHours, setLaborHours] = useState('')
   const [laborRate, setLaborRate] = useState('')
@@ -122,9 +123,19 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   }
 
   async function markPaid(paid: boolean) {
-    if (!invoice) return
     setBusy(true)
-    await db().from('invoices').update(paid ? { paid_at: new Date().toISOString(), payment_method: payMethod } : { paid_at: null, payment_method: null }).eq('id', invoice.id)
+    let invoiceId = invoice?.id
+    if (!invoiceId) {
+      // "Ya me pagó" sin haber hecho factura: se hace sola para que quede el récord
+      const { data: newId, error } = await db().rpc('create_invoice', { p_wo: wo.id })
+      if (error) {
+        setBusy(false)
+        setSaved('No se pudo guardar el pago')
+        return
+      }
+      invoiceId = newId as string
+    }
+    await db().from('invoices').update(paid ? { paid_at: new Date().toISOString(), payment_method: payMethod } : { paid_at: null, payment_method: null }).eq('id', invoiceId)
     await db().from('work_orders').update({ status: paid ? 'paid' : 'invoiced' }).eq('id', wo.id)
     setBusy(false)
     setPayOpen(false)
@@ -141,10 +152,13 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   if (parts.some((p) => !p.received_at)) warnings.push('Hay piezas que todavía no han llegado.')
 
   const estimateMsg = `Hola ${firstName}, te envío el estimado para el bote ${boat.name}: total ${formatMoney(totals.total)}. Lo puedes ver aquí: ${link(wo.public_token)} . Si estás de acuerdo, contéstame "aprobado". ${profile?.full_name ?? ''}`.trim()
+  const way = payWay ?? (mech.ath_movil_number ? 'any' : 'cash')
+  const payText =
+    way === 'ath' && mech.ath_movil_number ? ` Puedes pagar por ATH Móvil al ${mech.ath_movil_number}.`
+    : way === 'any' && mech.ath_movil_number ? ` Puedes pagar por ATH Móvil al ${mech.ath_movil_number}, o en efectivo o cheque.`
+    : ' El pago es en efectivo o cheque.'
   const invoiceMsg = invoice
-    ? `Hola ${firstName}, aquí está la factura #${invoice.number} del bote ${boat.name} por ${formatMoney(Number(invoice.total))}: ${link(invoice.public_token)} .` +
-      (mech.ath_movil_number ? ` Puedes pagar por ATH Móvil al ${mech.ath_movil_number}.` : '') +
-      ` ¡Gracias! ${profile?.full_name ?? ''}`
+    ? `Hola ${firstName}, aquí está la factura #${invoice.number} del bote ${boat.name} por ${formatMoney(Number(invoice.total))}: ${link(invoice.public_token)}?pago=${way} .` + payText + ` ¡Gracias! ${profile?.full_name ?? ''}`
     : ''
   const invoiceOutdated = invoice && !invoice.paid_at && Math.abs(Number(invoice.total) - totals.total) > 0.004
 
@@ -287,11 +301,9 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         )}
       </Section>
 
-      <Section title="Factura">
-        {!invoice ? (
-          <Button disabled={busy} onClick={makeInvoice}><Receipt /> {busy ? 'Haciendo factura…' : 'Hacer factura'}</Button>
-        ) : (
-          <div className="space-y-3">
+      <Section title="Cobrar">
+        <div className="space-y-3">
+          {invoice && (
             <div className="rounded-2xl border-2 border-violet-200 bg-violet-50 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-xl font-extrabold text-violet-950">Factura #{invoice.number}</span>
@@ -301,31 +313,61 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                 {invoice.paid_at ? `Pagada el ${formatDate(invoice.paid_at)} · ${labelOf(PAYMENT_METHODS, invoice.payment_method)}` : 'Falta cobrar'}
               </div>
             </div>
-            {invoiceOutdated && (
-              <Button variant="secondary" disabled={busy} onClick={makeInvoice}>Actualizar factura con el total nuevo ({formatMoney(totals.total)})</Button>
-            )}
-            {!mech.ath_movil_number && !invoice.paid_at && (
-              <Link to="/mas/negocio" className="block rounded-xl bg-slate-100 p-3 text-base text-slate-700">
-                La factura no muestra ATH Móvil. Si quieres que salga, ponlo en <b className="text-navy-700 underline">Más → Mi negocio</b>.
-              </Link>
-            )}
-            {client.phone && (
-              <LinkButton href={whatsappLink(client.phone, invoiceMsg)} external variant="primary"><MessageCircle size={22} /> Enviar factura por WhatsApp</LinkButton>
-            )}
-            <LinkButton href={`/d/${invoice.public_token}`} external><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
-            {invoice.paid_at ? (
+          )}
+
+          {!invoice?.paid_at && (
+            <>
+              <Field label="¿Cómo te va a pagar?" hint="Es lo que dice la factura que le envías">
+                {mech.ath_movil_number ? (
+                  <Choice
+                    columns={1}
+                    value={way}
+                    onChange={setPayWay}
+                    options={[
+                      { value: 'any', label: 'ATH Móvil o efectivo' },
+                      { value: 'ath', label: 'Solo ATH Móvil' },
+                      { value: 'cash', label: 'Efectivo o cheque' },
+                    ]}
+                  />
+                ) : (
+                  <Link to="/mas/negocio" className="block rounded-xl bg-slate-100 p-3 text-base text-slate-700">
+                    La factura dice <b>efectivo o cheque</b>. Si también quieres cobrar por ATH Móvil, pon tu número en <b className="text-navy-700 underline">Más → Mi negocio</b>.
+                  </Link>
+                )}
+              </Field>
+
+              {!invoice ? (
+                <Button disabled={busy} onClick={makeInvoice}><Receipt /> {busy ? 'Haciendo factura…' : 'Hacer factura'}</Button>
+              ) : (
+                <>
+                  {invoiceOutdated && (
+                    <Button variant="secondary" disabled={busy} onClick={makeInvoice}>Actualizar factura con el total nuevo ({formatMoney(totals.total)})</Button>
+                  )}
+                  {client.phone && (
+                    <LinkButton href={whatsappLink(client.phone, invoiceMsg)} external variant="primary"><MessageCircle size={22} /> Enviar factura por WhatsApp</LinkButton>
+                  )}
+                  <LinkButton href={`/d/${invoice.public_token}?pago=${way}`} external><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
+                </>
+              )}
+
+              <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700 active:bg-emerald-800"><CheckCircle2 /> Ya me pagó</Button>
+              {!invoice && <p className="text-sm text-slate-500">Si ya te pagaron, toca “Ya me pagó”: la factura se hace sola para que quede el récord.</p>}
+            </>
+          )}
+
+          {invoice?.paid_at && (
+            <>
+              <LinkButton href={`/d/${invoice.public_token}`} external><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
               <Button variant="ghost" disabled={busy} onClick={() => markPaid(false)}>Desmarcar pagada</Button>
-            ) : (
-              <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700 active:bg-emerald-800"><CheckCircle2 /> Marcar pagada</Button>
-            )}
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </Section>
 
       <Sheet open={payOpen} title="¿Cómo te pagó?" onClose={() => setPayOpen(false)}>
         <div className="space-y-3">
           <Choice value={payMethod} onChange={setPayMethod} options={PAYMENT_METHODS} />
-          <Button disabled={busy} onClick={() => markPaid(true)} className="bg-emerald-700 active:bg-emerald-800"><CheckCircle2 /> Marcar pagada</Button>
+          <Button disabled={busy} onClick={() => markPaid(true)} className="bg-emerald-700 active:bg-emerald-800"><CheckCircle2 /> Guardar pago</Button>
           <Button variant="ghost" onClick={() => setPayOpen(false)}>Cancelar</Button>
         </div>
       </Sheet>

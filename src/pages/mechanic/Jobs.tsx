@@ -12,7 +12,8 @@ type Row = Pick<WorkOrder, 'id' | 'status' | 'complaint' | 'diagnosis' | 'create
 }
 
 const GROUPS: { title: string; statuses: WorkOrder['status'][] }[] = [
-  { title: 'Trabajando ahora', statuses: ['estimate', 'approved', 'waiting_parts', 'in_progress', 'sea_trial'] },
+  // Los estimados que el cliente no ha aprobado no son cobros todavía: se quedan en su cita (Agenda)
+  { title: 'Aprobados y trabajando', statuses: ['approved', 'waiting_parts', 'in_progress', 'sea_trial'] },
   { title: 'Terminados, falta facturar', statuses: ['done'] },
   { title: 'Facturados, falta cobrar', statuses: ['invoiced'] },
   { title: 'Pagados', statuses: ['paid'] },
@@ -35,15 +36,16 @@ export default function Jobs() {
     [],
   )
 
+  const cobros = (data ?? []).filter((r) => r.status !== 'estimate')
   const porCobrar = (data ?? []).filter((r) => r.status === 'invoiced').reduce((s, r) => s + Number(invoiceOf(r)?.total ?? 0), 0)
 
   return (
     <>
-      <PageTitle subtitle={porCobrar > 0 ? `Por cobrar: ${formatMoney(porCobrar)}` : 'Lo que está abierto, lo que falta facturar y lo que falta cobrar'}>Cobros</PageTitle>
+      <PageTitle subtitle={porCobrar > 0 ? `Por cobrar: ${formatMoney(porCobrar)}` : 'Trabajos aprobados: lo que estás haciendo, lo que falta facturar y lo que falta cobrar'}>Cobros</PageTitle>
       {loading && <Loading />}
       {error && <ErrorBox message={error} onRetry={reload} />}
-      {data && data.length === 0 && (
-        <EmptyState icon={Wrench} title="Todavía no hay trabajos" text="Cada cita de la Agenda trae su trabajo. Lo que vayas cobrando sale aquí." />
+      {data && cobros.length === 0 && (
+        <EmptyState icon={Wrench} title="Todavía no hay cobros" text="Cuando el cliente aprueba un estimado, o empiezas a trabajar, el trabajo sale aquí hasta que te pagan." />
       )}
       {data &&
         GROUPS.map((g) => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
 import { CheckCircle2, MessageCircle, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, labelOf } from '../lib/catalog'
@@ -100,6 +100,7 @@ function ApproveBox({ token, doc, color, onApproved }: { token: string; doc: Doc
 /** Estimado o factura que ve el cliente desde el link de WhatsApp (no necesita cuenta). */
 export default function PublicDoc() {
   const { token } = useParams()
+  const pago = useSearchParams()[0].get('pago')
   const [doc, setDoc] = useState<Doc | null>(null)
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading')
 
@@ -211,7 +212,16 @@ export default function PublicDoc() {
               PAGADA el {formatDate(doc.paid_at)}{doc.payment_method ? ` · ${labelOf(PAYMENT_METHODS, doc.payment_method)}` : ''}
             </p>
           ) : (
-            doc.business.ath_movil && <AthBox number={doc.business.ath_movil} total={Number(t.total)} />
+            <>
+              {/* ?pago=ath | cash | any (lo escoge el mecánico al enviar la factura) */}
+              {pago !== 'cash' && doc.business.ath_movil && <AthBox number={doc.business.ath_movil} total={Number(t.total)} />}
+              {(pago === 'cash' || !doc.business.ath_movil) && (
+                <p className="mt-4 rounded-xl bg-slate-100 p-4 text-center text-lg">Pago en <b>efectivo o cheque</b> a {doc.business.name}.</p>
+              )}
+              {pago !== 'cash' && pago !== 'ath' && doc.business.ath_movil && (
+                <p className="mt-2 text-center text-base text-slate-600">También puedes pagar en efectivo o cheque.</p>
+              )}
+            </>
           )
         )}
         {!isInvoice && doc.work.approved_at && (
