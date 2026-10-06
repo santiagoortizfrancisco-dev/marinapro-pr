@@ -102,11 +102,15 @@ export const BOAT_MAKES = [
   'Boston Whaler', 'Grady-White', 'Contender', 'Yellowfin', 'Robalo', 'Sea Ray', 'Regal', 'Intrepid', 'Everglades',
   'Mako', 'Key West', 'Sea Hunt', 'Scout', 'Pursuit', 'Bertram', 'Hatteras', 'Sea Fox', 'Wellcraft', 'Fountain',
   'Cigarette', 'Sportsman', 'Pathfinder', 'Bayliner', 'Chaparral', 'Formula', 'Cobia', 'Hydra-Sports', 'SeaVee',
+  'Pro-Line', 'Parker', 'Carolina Skiff', 'Tidewater', 'Sailfish', 'Edgewater', 'Jupiter', 'Invincible', 'Midnight Express',
+  'Cobalt', 'Four Winns', 'Glastron', 'Crownline', 'Monterey', 'Larson', 'Hurricane', 'Bennington', 'Nautique', 'MasterCraft',
+  'Viking', 'Cabo', 'Azimut', 'Sunseeker', 'Sea-Doo', 'Yamaha (bote jet)', 'Beneteau', 'Jeanneau', 'Lagoon', 'Leopard',
 ]
 
 export const ENGINE_MAKES = [
   'Yamaha', 'Mercury', 'Suzuki', 'Honda', 'Evinrude', 'Tohatsu', 'Volvo Penta', 'MerCruiser', 'Yanmar', 'Cummins',
-  'Caterpillar', 'MAN', 'Detroit Diesel',
+  'Caterpillar', 'MAN', 'Detroit Diesel', 'Rotax (Sea-Doo)', 'Kawasaki', 'Indmar', 'PCM', 'Crusader', 'Ilmor', 'Westerbeke',
+  'Perkins', 'John Deere', 'Volvo Penta IPS', 'Seven Marine',
 ]
 
 export const EQUIPMENT_MAKES = [

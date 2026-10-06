@@ -48,6 +48,12 @@ function reset() {
     }],
     work_orders: [],
     work_order_parts: [],
+    catalog_items: [
+      { id: 'cat1', mechanic_id: null, kind: 'service', name: 'Cambio de impeller', category: 'Motor', last_price: null, use_count: 0 },
+      { id: 'cat2', mechanic_id: null, kind: 'service', name: 'Servicio de 100 horas', category: 'Motor', last_price: null, use_count: 0 },
+      { id: 'cat3', mechanic_id: null, kind: 'part', name: 'Impeller', category: 'Motor', last_price: null, use_count: 0 },
+      { id: 'cat4', mechanic_id: null, kind: 'part', name: 'Filtro de aceite', category: 'Motor', last_price: null, use_count: 0 },
+    ],
     photos: [],
     invoices: [],
     maintenance_schedules: [],
@@ -68,7 +74,7 @@ const DEFAULTS = {
     charge_ivu_labor: true, charge_ivu_parts: true, estimate_sent_at: null, estimate_approved_at: null, estimate_approved_by: null, approval_seen_at: null,
     policies_accepted_version: null, sea_trial_required: true, sea_trial_done: false, sea_trial_method: null, sea_trial_notes: null, completed_at: null,
   }),
-  work_order_parts: () => ({ part_number: null, qty: 1, unit_cost: 0, supplied_by: 'mechanic', supplier: null, eta: null, received_at: null }),
+  work_order_parts: () => ({ kind: 'part', part_number: null, qty: 1, unit_cost: 0, supplied_by: 'mechanic', supplier: null, eta: null, received_at: null }),
 }
 
 // Relaciones que el app pide con select(... tabla(...))
@@ -114,8 +120,10 @@ function matches(row, params) {
 const r2 = (n) => Math.round(n * 100) / 100
 function totals(wo) {
   const m = db.mechanics[0]
-  const labor = r2(Number(wo.labor_hours) * Number(wo.labor_rate))
-  const parts = r2(db.work_order_parts.filter((p) => p.work_order_id === wo.id && p.supplied_by === 'mechanic').reduce((s, p) => s + Number(p.qty) * Number(p.unit_cost), 0))
+  const mine = db.work_order_parts.filter((p) => p.work_order_id === wo.id)
+  const services = mine.filter((p) => p.kind === 'service').reduce((s, p) => s + Number(p.qty) * Number(p.unit_cost), 0)
+  const labor = r2(Number(wo.labor_hours) * Number(wo.labor_rate) + services)
+  const parts = r2(mine.filter((p) => p.kind !== 'service' && p.supplied_by === 'mechanic').reduce((s, p) => s + Number(p.qty) * Number(p.unit_cost), 0))
   const ivu = r2(((wo.charge_ivu_labor ? labor : 0) + (wo.charge_ivu_parts ? parts : 0)) * m.ivu_rate)
   return { labor, parts, ivu, total: r2(labor + parts + ivu), ivu_rate: m.ivu_rate }
 }
@@ -181,6 +189,13 @@ const RPC = {
       Object.assign(wo, { estimate_approved_at: new Date().toISOString(), estimate_approved_by: 'client', approval_seen_at: null, policies_accepted_version: 1, status: wo.status === 'estimate' ? 'approved' : wo.status })
     }
     return { approved_at: wo.estimate_approved_at, approved_by: wo.estimate_approved_by }
+  },
+  remember_catalog_item: ({ p_kind, p_name, p_price }) => {
+    const name = String(p_name).trim()
+    const found = db.catalog_items.find((c) => c.mechanic_id === caller && c.kind === p_kind && c.name.toLowerCase() === name.toLowerCase())
+    if (found) Object.assign(found, { last_price: p_price ?? found.last_price, use_count: found.use_count + 1 })
+    else db.catalog_items.push({ id: randomUUID(), mechanic_id: caller, kind: p_kind, name, category: null, last_price: p_price ?? null, use_count: 1 })
+    return null
   },
   create_invoice: ({ p_wo }) => {
     const wo = db.work_orders.find((w) => w.id === p_wo)

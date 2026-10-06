@@ -157,16 +157,61 @@ test('el trabajo: horas y piezas calculan el total con IVU; la pieza del cliente
   await expect(page.getByText('$170.00').first()).toBeVisible()
 
   await page.getByRole('button', { name: 'Pieza', exact: true }).click()
-  await page.getByPlaceholder('Impeller Yamaha F200').fill('Impeller')
+  await page.getByPlaceholder('Impeller', { exact: true }).fill('Impeller')
   await page.getByPlaceholder('45.00').fill('50')
   await page.getByRole('button', { name: 'Guardar pieza' }).click()
   await page.getByRole('button', { name: 'Pieza', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: /El cliente/ }).click()
-  await page.getByPlaceholder('Impeller Yamaha F200').fill('Aceite del cliente')
+  await page.getByPlaceholder('Impeller', { exact: true }).fill('Aceite del cliente')
   await page.getByRole('button', { name: 'Guardar pieza' }).click()
   await expect(page.getByText('No se cobra')).toBeVisible()
   // 170 + 50 = 220; IVU 11.5% = 25.30; total 245.30
   await expect(page.getByText('$245.30').first()).toBeVisible()
+})
+
+test('servicios y piezas: sugerencias de la lista común, el precio se guarda y la próxima vez sale solo', async ({ page }) => {
+  await login(page)
+  await openExampleAppointment(page)
+  // Servicio desde la lista común
+  await page.getByRole('button', { name: 'Servicio', exact: true }).click()
+  await page.getByPlaceholder('Cambio de impeller').fill('imp')
+  await page.getByRole('option', { name: /Cambio de impeller/ }).click()
+  await page.getByPlaceholder('120.00').fill('120')
+  await page.getByRole('button', { name: 'Guardar servicio' }).click()
+  await expect(page.getByText('Mano de obra y servicios')).toBeVisible()
+  // 120 + IVU 11.5% = 133.80
+  await expect(page.getByText('$133.80').first()).toBeVisible()
+  let s = await state()
+  expect(s.work_order_parts.some((p) => p.kind === 'service' && p.description === 'Cambio de impeller')).toBe(true)
+  expect(s.catalog_items.some((c) => c.mechanic_id && c.name === 'Cambio de impeller' && Number(c.last_price) === 120)).toBe(true)
+
+  // La próxima vez: sale con su precio
+  await page.getByRole('button', { name: 'Servicio', exact: true }).click()
+  await page.getByPlaceholder('Cambio de impeller').fill('camb')
+  await expect(page.getByRole('option', { name: /Cambio de impeller.*\$120\.00/ })).toBeVisible()
+  await page.getByRole('option', { name: /Cambio de impeller/ }).click()
+  await expect(page.getByPlaceholder('120.00')).toHaveValue('120')
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click()
+
+  // Una pieza que el mecánico escribe nueva también se guarda
+  await page.getByRole('button', { name: 'Pieza', exact: true }).click()
+  await page.getByPlaceholder('Impeller', { exact: true }).fill('Kit de sellos Lewmar')
+  await page.getByPlaceholder('45.00').fill('38')
+  await page.getByRole('button', { name: 'Guardar pieza' }).click()
+  await expect(page.getByText('Kit de sellos Lewmar')).toBeVisible()
+  s = await state()
+  expect(s.catalog_items.some((c) => c.mechanic_id && c.kind === 'part' && c.name === 'Kit de sellos Lewmar')).toBe(true)
+
+  // Mis piezas y servicios: cambiar el precio y borrar
+  await page.goto('/mas/catalogo')
+  await expect(page.getByText('Cambio de impeller')).toBeVisible()
+  const precio = page.getByLabel('Precio de Cambio de impeller')
+  await precio.fill('135')
+  await precio.blur()
+  await expect.poll(async () => Number((await state()).catalog_items.find((c) => c.mechanic_id && c.name === 'Cambio de impeller')?.last_price)).toBe(135)
+  await page.getByRole('button', { name: 'Piezas', exact: true }).click()
+  await page.getByRole('button', { name: 'Borrar Kit de sellos Lewmar' }).click()
+  await expect(page.getByText('Kit de sellos Lewmar')).toHaveCount(0)
 })
 
 test('el cliente aprueba el estimado desde el link y al mecánico le sale el aviso verde en todas las pantallas', async ({ page, browser }) => {

@@ -21,7 +21,7 @@ interface Doc {
     complaint: string | null; diagnosis: string | null; work_done: string | null; status: string; approved_at: string | null
     sea_trial_required: boolean; sea_trial_done: boolean; sea_trial_method: string | null; sea_trial_notes: string | null
   }
-  parts: { description: string; part_number: string | null; qty: number; unit_cost: number; supplied_by: 'client' | 'mechanic' }[]
+  parts: { kind?: 'part' | 'service'; description: string; part_number: string | null; qty: number; unit_cost: number; supplied_by: 'client' | 'mechanic' }[]
   totals: { labor_hours: number; labor_rate: number; labor: number; parts: number; ivu: number; ivu_rate: number; ivu_on_labor: boolean; ivu_on_parts: boolean; total: number }
   warranty_days: number
   policies: string
@@ -199,10 +199,10 @@ export default function PublicDoc() {
                 <td className="py-2">Mano de obra</td>
                 <td className="whitespace-nowrap py-2 pl-3 text-right">{Number(t.labor_hours)} h</td>
                 <td className="whitespace-nowrap py-2 pl-3 text-right">{formatMoney(Number(t.labor_rate))}</td>
-                <td className="whitespace-nowrap py-2 pl-3 text-right">{formatMoney(Number(t.labor))}</td>
+                <td className="whitespace-nowrap py-2 pl-3 text-right">{formatMoney(Math.round(Number(t.labor_hours) * Number(t.labor_rate) * 100) / 100)}</td>
               </tr>
             )}
-            {doc.parts.map((p, i) => (
+            {[...doc.parts].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'service' ? -1 : 1)).map((p, i) => (
               <tr key={i} className="border-b border-slate-200 align-top">
                 <td className="py-2">
                   {p.description}
@@ -218,7 +218,7 @@ export default function PublicDoc() {
         </table>
 
         <dl className="ml-auto mt-4 max-w-xs text-base">
-          <div className="flex justify-between py-1"><dt>Mano de obra</dt><dd>{formatMoney(Number(t.labor))}</dd></div>
+          <div className="flex justify-between py-1"><dt>{doc.parts.some((p) => p.kind === 'service') ? 'Mano de obra y servicios' : 'Mano de obra'}</dt><dd>{formatMoney(Number(t.labor))}</dd></div>
           <div className="flex justify-between py-1"><dt>Piezas</dt><dd>{formatMoney(Number(t.parts))}</dd></div>
           <div className="flex justify-between py-1"><dt>IVU {percent(t.ivu_rate)}{ivuOn ? ` (${ivuOn})` : ''}</dt><dd>{formatMoney(Number(t.ivu))}</dd></div>
           <div className="mt-1 flex justify-between border-t-2 py-2 text-2xl font-extrabold" style={{ borderColor: color, color }}><dt>TOTAL</dt><dd>{formatMoney(Number(t.total))}</dd></div>

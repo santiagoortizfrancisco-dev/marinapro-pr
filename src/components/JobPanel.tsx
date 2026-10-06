@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { AlertTriangle, CheckCircle2, ExternalLink, FileText, MessageCircle, Package, Plus, Receipt, Ship, ThumbsUp } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ExternalLink, FileText, MessageCircle, Package, Plus, Receipt, Ship, ThumbsUp, Wrench } from 'lucide-react'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, WORK_ORDER_STATUS, WORK_STEPS, labelOf } from '../lib/catalog'
 import { db } from '../lib/db'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
@@ -49,6 +49,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   const { session, profile } = useAuth()
   const [partOpen, setPartOpen] = useState(false)
   const [editPart, setEditPart] = useState<Part | null>(null)
+  const [partKind, setPartKind] = useState<Part['kind']>('part')
   const [payOpen, setPayOpen] = useState(false)
   const [payMethod, setPayMethod] = useState<NonNullable<Invoice['payment_method']>>('ath_movil')
   const [saved, setSaved] = useState('')
@@ -136,12 +137,12 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
   // Avisos (no bloquean)
   const warnings: string[] = []
-  const boughtParts = parts.length > 0
+  const boughtParts = parts.some((p) => p.kind !== 'service')
   if (boughtParts && !photos.some((p) => p.kind === 'old_part')) warnings.push('Falta foto de la pieza vieja.')
   if (boughtParts && !photos.some((p) => p.kind === 'new_part')) warnings.push('Falta foto de la pieza nueva.')
   if (wo.sea_trial_required && wo.sea_trial_method !== 'not_allowed' && !wo.sea_trial_done) warnings.push('Falta la prueba en el agua.')
   if (wo.sea_trial_method === 'not_allowed') warnings.push('Sin prueba en el agua: la garantía queda anulada (sale en la factura).')
-  if (parts.some((p) => !p.received_at)) warnings.push('Hay piezas que todavía no han llegado.')
+  if (parts.some((p) => p.kind !== 'service' && !p.received_at)) warnings.push('Hay piezas que todavía no han llegado.')
 
   const estimateMsg = `Hola ${firstName}, te envío el estimado para el bote ${boat.name}: total ${formatMoney(totals.total)}. Lo puedes ver aquí: ${link(wo.public_token)} . Si estás de acuerdo, contéstame "aprobado". ${profile?.full_name ?? ''}`.trim()
   const way = payWay ?? (mech.ath_movil_number ? 'any' : 'cash')
@@ -205,26 +206,30 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
             <Input inputMode="decimal" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} onBlur={() => patch({ labor_rate: num(laborRate) ?? 0 })} />
           </Field>
         </div>
-        <p className="mt-2 text-right text-lg font-bold text-navy-900">{formatMoney(totals.labor)}</p>
+        <p className="mt-2 text-right text-lg font-bold text-navy-900">{formatMoney(totals.hours)}</p>
+        <p className="text-right text-sm text-slate-500">Si cobras por trabajo y no por hora, déjalo en 0 y usa “+ Servicio”.</p>
       </Section>
 
-      <Section
-        title="Piezas"
-        right={
-          <button onClick={() => { setEditPart(null); setPartOpen(true) }} className="flex min-h-12 items-center gap-1 rounded-xl bg-navy-50 px-3 text-base font-bold text-navy-800">
-            <Plus size={20} /> Pieza
+      <Section title="Servicios y piezas">
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <button onClick={() => { setEditPart(null); setPartKind('service'); setPartOpen(true) }} className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900">
+            <Plus size={22} /> Servicio
           </button>
-        }
-      >
-        {parts.length === 0 && <p className="text-base text-slate-600">Sin piezas todavía.</p>}
+          <button onClick={() => { setEditPart(null); setPartKind('part'); setPartOpen(true) }} className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 text-lg font-bold text-navy-800 active:bg-navy-50">
+            <Plus size={22} /> Pieza
+          </button>
+        </div>
+        {parts.length === 0 && <p className="text-base text-slate-600">Todavía no hay servicios ni piezas.</p>}
         <div className="space-y-2">
-          {parts.map((p) => (
-            <button key={p.id} onClick={() => { setEditPart(p); setPartOpen(true) }} className="flex w-full items-start gap-3 rounded-2xl border-2 border-slate-200 bg-white p-3 text-left active:bg-slate-50">
-              <Package size={22} className="mt-0.5 shrink-0 text-navy-700" />
+          {[...parts].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'service' ? -1 : 1)).map((p) => (
+            <button key={p.id} onClick={() => { setEditPart(p); setPartKind(p.kind); setPartOpen(true) }} className="flex w-full items-start gap-3 rounded-2xl border-2 border-slate-200 bg-white p-3 text-left active:bg-slate-50">
+              {p.kind === 'service' ? <Wrench size={22} className="mt-0.5 shrink-0 text-navy-700" /> : <Package size={22} className="mt-0.5 shrink-0 text-navy-700" />}
               <div className="min-w-0 flex-1">
                 <div className="text-base font-bold text-slate-900">{p.description}</div>
                 <div className="text-sm text-slate-600">
-                  {[p.part_number, `${Number(p.qty)} × ${p.supplied_by === 'client' ? 'del cliente' : formatMoney(Number(p.unit_cost))}`, !p.received_at && (p.eta ? `llega ${formatDate(p.eta)}` : 'falta que llegue')].filter(Boolean).join(' · ')}
+                  {p.kind === 'service'
+                    ? ['Servicio', Number(p.qty) !== 1 && `${Number(p.qty)} × ${formatMoney(Number(p.unit_cost))}`].filter(Boolean).join(' · ')
+                    : [p.part_number, `${Number(p.qty)} × ${p.supplied_by === 'client' ? 'del cliente' : formatMoney(Number(p.unit_cost))}`, !p.received_at && (p.eta ? `llega ${formatDate(p.eta)}` : 'falta que llegue')].filter(Boolean).join(' · ')}
                 </div>
               </div>
               <div className="text-right text-base font-bold text-slate-900">{p.supplied_by === 'client' ? <span className="text-sm text-slate-500">No se cobra</span> : formatMoney(Number(p.qty) * Number(p.unit_cost))}</div>
@@ -258,7 +263,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
           <Toggle checked={wo.charge_ivu_parts} onChange={(v) => patch({ charge_ivu_parts: v })} label="Cobrar IVU en piezas" />
         </div>
         <dl className="mt-3 rounded-2xl border-2 border-slate-200 bg-white px-4 text-lg">
-          <div className="flex justify-between border-b border-slate-200 py-2"><dt>Mano de obra</dt><dd>{formatMoney(totals.labor)}</dd></div>
+          <div className="flex justify-between border-b border-slate-200 py-2"><dt>Mano de obra y servicios</dt><dd>{formatMoney(totals.labor)}</dd></div>
           <div className="flex justify-between border-b border-slate-200 py-2"><dt>Piezas</dt><dd>{formatMoney(totals.parts)}</dd></div>
           <div className="flex justify-between border-b border-slate-200 py-2"><dt>IVU {percent(mech.ivu_rate)}</dt><dd>{formatMoney(totals.ivu)}</dd></div>
           <div className="flex justify-between py-3 text-2xl font-extrabold text-navy-900"><dt>TOTAL</dt><dd>{formatMoney(totals.total)}</dd></div>
@@ -364,7 +369,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </div>
       </Sheet>
 
-      <PartSheet open={partOpen} workOrderId={wo.id} part={editPart} onClose={() => setPartOpen(false)} onSaved={reload} />
+      <PartSheet open={partOpen} kind={partKind} workOrderId={wo.id} part={editPart} onClose={() => setPartOpen(false)} onSaved={reload} />
 
       {!invoice && !embedded && (
         <ConfirmDelete

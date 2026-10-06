@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { Briefcase, ChevronRight, ShieldCheck } from 'lucide-react'
+import { Briefcase, ChevronRight, ListChecks, ShieldCheck } from 'lucide-react'
 import { db } from '../lib/db'
 import { useLoad } from '../lib/useLoad'
 import { useAuth } from '../auth/AuthProvider'
@@ -32,6 +32,17 @@ export default function More() {
           <span className="flex-1">
             <span className="block text-lg font-bold">Mi negocio</span>
             <span className="block text-sm text-navy-100">ATH Móvil, tarifa, IVU, facturas y garantía</span>
+          </span>
+          <ChevronRight />
+        </Link>
+      )}
+
+      {profile?.role === 'mechanic' && (
+        <Link to="/mas/catalogo" className="mb-5 flex min-h-16 items-center gap-3 rounded-2xl border-2 border-navy-800 px-4 text-navy-900 active:bg-navy-50">
+          <ListChecks size={26} />
+          <span className="flex-1">
+            <span className="block text-lg font-bold">Mis piezas y servicios</span>
+            <span className="block text-sm text-slate-600">Tus precios para no escribirlos cada vez</span>
           </span>
           <ChevronRight />
         </Link>

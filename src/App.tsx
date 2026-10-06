@@ -19,6 +19,7 @@ import JobNew from './pages/mechanic/JobNew'
 import JobDetail from './pages/mechanic/JobDetail'
 import BusinessSettings from './pages/mechanic/BusinessSettings'
 import Admin from './pages/mechanic/Admin'
+import Catalog from './pages/mechanic/Catalog'
 import PublicDoc from './pages/PublicDoc'
 import MyBoats from './pages/client/MyBoats'
 import Report from './pages/client/Report'
@@ -72,6 +73,7 @@ export default function App() {
           <Route path="/trabajos/:id" element={<JobDetail />} />
           <Route path="/mas/negocio" element={<BusinessSettings />} />
           <Route path="/mas/admin" element={<Admin />} />
+          <Route path="/mas/catalogo" element={<Catalog />} />
           <Route path="/mas" element={<More />} />
           <Route path="*" element={<Navigate to="/agenda" replace />} />
         </Route>

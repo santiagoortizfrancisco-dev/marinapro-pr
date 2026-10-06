@@ -142,6 +142,8 @@ export interface WorkOrder {
 export interface Part {
   id: string
   work_order_id: string
+  /** pieza o servicio (precio fijo; cuenta como mano de obra) */
+  kind: 'part' | 'service'
   description: string
   part_number: string | null
   qty: number

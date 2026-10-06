@@ -53,7 +53,9 @@ before(async () => {
 })
 
 test('las migraciones se pueden correr dos veces sin romper nada', async () => {
-  for (const f of ['0003_mecanico_completo.sql', '0004_trabajos_factura.sql', '0005_aprobar_estimado.sql']) await db.exec(sql(`migrations/${f}`))
+  // todas otra vez, en orden (como si alguien las pegara de nuevo en Supabase)
+  const files = readdirSync(new URL('../supabase/migrations/', import.meta.url)).filter((f) => f.endsWith('.sql')).sort()
+  for (const f of files.filter((f) => f >= '0003')) await db.exec(sql(`migrations/${f}`))
 })
 
 test('el rol no se puede cambiar después de escogido', async () => {
@@ -187,4 +189,31 @@ test('admin: solo el dueño del app ve el resumen, y solo números (no los clien
   assert.ok(a.last_activity)
   const text = JSON.stringify(list)
   assert.ok(!text.includes('Ana Prueba') && !text.includes('787-555-0111'), 'no trae nombres ni teléfonos de clientes')
+})
+
+test('piezas y servicios: la lista común se ve, lo del mecánico se guarda con su precio y no lo ve otro', async () => {
+  const common = await one(A, "select count(*)::int n from catalog_items where mechanic_id is null")
+  assert.ok(common.n >= 80, 'la lista común tiene piezas y servicios')
+  await as(A, "select remember_catalog_item('part', 'Impeller Yamaha F200', 45)")
+  await as(A, "select remember_catalog_item('part', 'impeller yamaha f200', 48)") // mismo nombre: actualiza, no duplica
+  const mine = await as(A, "select name, last_price, use_count from catalog_items where mechanic_id is not null")
+  assert.equal(mine.length, 1)
+  assert.equal(Number(mine[0].last_price), 48)
+  assert.equal(mine[0].use_count, 2)
+  assert.equal((await one(B, "select count(*)::int n from catalog_items where mechanic_id is not null")).n, 0, 'B no ve la lista de A')
+  assert.ok(await fails(() => as(A, "update catalog_items set last_price = 1 where mechanic_id is null returning id").then((r) => { if (r.length) throw new Error('cambió la común') ; throw new Error('no-op') })))
+  assert.equal((await one(A, "select count(*)::int n from catalog_items where mechanic_id is null and last_price = 1")).n, 0, 'nadie cambia la lista común')
+})
+
+test('servicios: cuentan como mano de obra (IVU de mano de obra) y salen en el estimado', async () => {
+  const wo3 = await one(A, `insert into work_orders(boat_id, labor_hours, labor_rate, charge_ivu_parts) values ('${boat}', 1, 80, false) returning id, public_token`)
+  await as(A, `insert into work_order_parts(work_order_id, description, qty, unit_cost, kind) values ('${wo3.id}','Cambio de impeller',1,120,'service')`)
+  await as(A, `insert into work_order_parts(work_order_id, description, qty, unit_cost, kind, supplied_by) values ('${wo3.id}','Impeller',1,45,'part','mechanic')`)
+  const d = (await one(null, `select get_public_document('${wo3.public_token}') d`, 'anon')).d
+  // mano de obra 80 + servicio 120 = 200 (con IVU); pieza 45 (sin IVU en piezas)
+  assert.equal(Number(d.totals.labor), 200)
+  assert.equal(Number(d.totals.parts), 45)
+  assert.equal(Number(d.totals.ivu), 23)
+  assert.equal(Number(d.totals.total), 268)
+  assert.ok(d.parts.some((p) => p.kind === 'service' && p.description === 'Cambio de impeller'))
 })
