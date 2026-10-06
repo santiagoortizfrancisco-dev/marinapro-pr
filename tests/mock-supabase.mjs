@@ -32,7 +32,10 @@ function reset() {
       profile_id: U, business_name: 'JQR Boat Repair', ath_movil_number: '787-555-0100', labor_rate_hour: 85, ivu_rate: 0.115,
       ivu_on_labor: true, ivu_on_parts: true, warranty_days: 90, policies_text: 'Garantía de mano de obra: 90 días.', policies_version: 1,
       next_invoice_number: 1, logo_path: '/brands/jqr-boat-repair.jpg', brand_color: '#0b0b0f', created_at: now,
+      listed: false, approved: false, slug: null, public_description: null, public_towns: [], public_services: [], public_brands: [], public_locations: [],
     }],
+    settings: { directory_open: false },
+    ads: [],
     clients: [{ id: 'c1', mechanic_id: U, profile_id: null, full_name: 'Ana Ejemplo', phone: '787-555-0111', email: null, town: 'Fajardo', address: null, preferred_contact: 'whatsapp', notes: null, created_at: now }],
     boats: [{
       id: 'b1', client_id: 'c1', name: 'La Tranquila', make: 'Grady-White', model: 'Freedom 255', year: 2018, length_ft: 25, hull_id: null,
@@ -41,7 +44,7 @@ function reset() {
     }],
     engines: [{ id: 'e1', boat_id: 'b1', position: 'port', make: 'Yamaha', model: 'F200', hp: 200, year: 2018, serial_number: '6AW-1', hours: 412.5, fuel: 'gas', drive_type: 'outboard', propeller: null, notes: null, created_at: now }],
     equipment: [{ id: 'q1', boat_id: 'b1', category: 'windlass', make: 'Lewmar', model: 'V700', serial_number: null, location_on_boat: 'Proa', installed_at: null, warranty_until: null, notes: null, created_at: now }],
-    service_requests: [{ id: 'sr1', boat_id: 'b1', client_id: 'c1', description: 'El motor de babor no arranca en frío', urgency: 'normal', status: 'scheduled', media_paths: [], created_at: now }],
+    service_requests: [{ id: 'sr1', boat_id: 'b1', client_id: 'c1', description: 'El motor de babor no arranca en frío', urgency: 'normal', status: 'scheduled', media_paths: [], source: 'app', spam: false, created_at: now }],
     appointments: [{
       id: 'a1', mechanic_id: U, boat_id: 'b1', service_request_id: 'sr1', starts_at: new Date(`${tomorrow}T09:00:00-04:00`).toISOString(),
       duration_min: 180, status: 'confirmed', title: 'Diagnóstico motor', systems: ['engine'], notes: null, created_at: now,
@@ -68,7 +71,8 @@ const DEFAULTS = {
   clients: () => ({ profile_id: null, email: null, town: null, address: null, preferred_contact: 'whatsapp', notes: null }),
   boats: () => ({ make: null, model: null, year: null, length_ft: null, hull_id: null, registration_number: null, marbete_expires: null, hull_color: null, location_type: 'water_slip', marina_name: null, slip_number: null, town: null, lat: null, lng: null, location_notes: null, notes: null }),
   appointments: () => ({ duration_min: 60, status: 'requested', title: null, systems: [], notes: null, service_request_id: null }),
-  service_requests: () => ({ urgency: 'normal', status: 'new', media_paths: [] }),
+  service_requests: () => ({ urgency: 'normal', status: 'new', media_paths: [], source: 'app', spam: false, contact_name: null, contact_phone: null, preferred_when: null, boat_location: null }),
+  ads: () => ({ link_url: null, active: true, clicks: 0, views: 0 }),
   work_orders: () => ({
     appointment_id: null, public_token: randomUUID(), complaint: null, diagnosis: null, work_done: null, status: 'estimate', labor_hours: 0, labor_rate: 0,
     charge_ivu_labor: true, charge_ivu_parts: true, estimate_sent_at: null, estimate_approved_at: null, estimate_approved_by: null, approval_seen_at: null,
@@ -86,6 +90,7 @@ function withRelations(table, row) {
     return b && { ...b, clients: db.clients.find((c) => c.id === b.client_id) ?? null }
   }
   if (table === 'clients') r.boats = db.boats.filter((b) => b.client_id === row.id)
+  if (table === 'service_requests') r.boats = db.boats.find((b) => b.id === row.boat_id) ?? null
   if (table === 'boats') r.clients = db.clients.find((c) => c.id === row.client_id) ?? null
   if (table === 'appointments') {
     r.boats = boat(row.boat_id)
@@ -158,6 +163,12 @@ function publicDoc(token) {
 }
 
 let caller = U
+const adminOnly = () => { if (caller !== U) throw Object.assign(new Error('Solo para el administrador'), { status: 400 }) }
+function publicCard(m) {
+  const p = db.profiles.find((x) => x.id === m.profile_id)
+  return { slug: m.slug, name: m.business_name ?? p.full_name, owner: p.full_name, town: p.town, phone: p.phone, logo_path: m.logo_path, brand_color: m.brand_color,
+    description: m.public_description, towns: m.public_towns, services: m.public_services, brands: m.public_brands, locations: m.public_locations }
+}
 const count = (list, fn) => list.filter(fn).length
 const RPC = {
   // En el Supabase de prueba, el admin es el usuario jqr (U); el mecánico nuevo (N) no
@@ -188,6 +199,44 @@ const RPC = {
     return null
   },
   get_public_document: ({ p_token }) => publicDoc(p_token),
+
+  // --- Directorio (como 0009_directorio.sql)
+  directory_is_open: () => db.settings.directory_open,
+  admin_set_directory_open: ({ p_open }) => { adminOnly(); db.settings.directory_open = p_open; return null },
+  admin_set_approved: ({ p_mechanic, p_approved }) => { adminOnly(); const m = db.mechanics.find((x) => x.profile_id === p_mechanic); if (m) m.approved = p_approved; return null },
+  admin_directory_list: () => {
+    adminOnly()
+    return db.mechanics.filter((m) => m.listed || m.approved).map((m) => {
+      const p = db.profiles.find((x) => x.id === m.profile_id)
+      return { id: m.profile_id, name: m.business_name ?? p.full_name, email: p.email, slug: m.slug, listed: m.listed, approved: m.approved, towns: m.public_towns, services: m.public_services }
+    })
+  },
+  directory_search: ({ p_town, p_service, p_brand }) => {
+    if (!db.settings.directory_open && caller !== U) return []
+    return db.mechanics.filter((m) => m.listed && m.approved && m.slug
+      && (!p_town || m.public_towns.includes(p_town)) && (!p_service || m.public_services.includes(p_service)) && (!p_brand || m.public_brands.includes(p_brand))).map(publicCard)
+  },
+  directory_profile: ({ p_slug }) => {
+    const m = db.mechanics.find((x) => (x.slug ?? '').toLowerCase() === String(p_slug).toLowerCase())
+    if (!m) return null
+    return (db.settings.directory_open && m.listed && m.approved) || caller === m.profile_id || caller === U ? publicCard(m) : null
+  },
+  submit_directory_request: (a) => {
+    if (a.p_website) return { ok: true }
+    const phone = String(a.p_phone ?? '').replace(/D/g, '')
+    if (String(a.p_name ?? '').trim().length < 2 || phone.length < 7 || String(a.p_problem ?? '').trim().length < 3) throw Object.assign(new Error('Faltan datos'), { status: 400 })
+    const m = db.mechanics.find((x) => (x.slug ?? '').toLowerCase() === String(a.p_slug).toLowerCase() && x.listed && x.approved && db.settings.directory_open)
+    if (!m) throw Object.assign(new Error('Ese mecánico no está disponible'), { status: 400 })
+    const digits = (v) => String(v ?? '').replace(/D/g, '')
+    let c = db.clients.find((x) => x.mechanic_id === m.profile_id && digits(x.phone) === phone)
+    if (!c) { c = { ...DEFAULTS.clients(), id: randomUUID(), mechanic_id: m.profile_id, full_name: a.p_name.trim(), phone: a.p_phone.trim(), notes: 'Llegó por el directorio', created_at: new Date().toISOString() }; db.clients.push(c) }
+    let b = db.boats.find((x) => x.client_id === c.id && x.name.toLowerCase() === String(a.p_boat ?? '').trim().toLowerCase())
+    if (!b) { b = { ...DEFAULTS.boats(), id: randomUUID(), client_id: c.id, name: String(a.p_boat ?? '').trim() || 'Bote', make: a.p_boat_make || null, location_notes: a.p_location || null, created_at: new Date().toISOString() }; db.boats.push(b) }
+    db.service_requests.push({ ...DEFAULTS.service_requests(), id: randomUUID(), boat_id: b.id, client_id: c.id, description: a.p_problem.trim(), status: 'new', source: 'directory', contact_name: a.p_name.trim(), contact_phone: a.p_phone.trim(), preferred_when: a.p_when, boat_location: a.p_location || null, created_at: new Date().toISOString() })
+    return { ok: true }
+  },
+  ads_active: () => (db.settings.directory_open || caller === U ? db.ads.filter((x) => x.active).map(({ id, advertiser, image_path, link_url }) => ({ id, advertiser, image_path, link_url })) : []),
+  ad_click: ({ p_id }) => { const ad = db.ads.find((x) => x.id === p_id); if (ad) ad.clicks++; return null },
   approve_estimate: ({ p_token }) => {
     const wo = db.work_orders.find((w) => w.public_token === p_token)
     if (!wo) throw Object.assign(new Error('No existe ese estimado'), { status: 400 })
@@ -247,9 +296,9 @@ http.createServer((req, res) => {
     try {
       const payload = (req.headers.authorization ?? '').split('.')[1]
       const sub = payload ? JSON.parse(Buffer.from(payload, 'base64url').toString()).sub : null
-      caller = sub === N ? N : U
+      caller = sub === N ? N : sub === U ? U : 'anon' // sin sesión = visitante del directorio
     } catch {
-      caller = U
+      caller = 'anon'
     }
     try {
       // --- ayuda para el bot
@@ -277,7 +326,7 @@ http.createServer((req, res) => {
 
       // --- tablas
       const table = url.pathname.replace('/rest/v1/', '')
-      const rows = db[table]
+      const rows = Array.isArray(db[table]) ? db[table] : null
       if (!rows) return send(404, { message: `tabla ${table}` })
       const params = [...url.searchParams.entries()]
       const found = rows.filter((r) => matches(r, params))

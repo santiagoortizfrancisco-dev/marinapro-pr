@@ -412,3 +412,84 @@ test('Salir pide confirmación y vuelve a la pantalla de entrar', async ({ page 
   await page.getByRole('button', { name: 'Sí, salir' }).click()
   await expect(page.getByLabel('Email o usuario')).toBeVisible()
 })
+
+test('directorio cerrado: el público ve "Muy pronto" y no ve mecánicos', async ({ browser }) => {
+  const visitor = await browser.newPage()
+  await visitor.goto('http://localhost:4321/mecanicos')
+  await expect(visitor.getByRole('heading', { name: 'Muy pronto' })).toBeVisible()
+  await visitor.goto('http://localhost:4321/mecanicos/jqr-boat-repair')
+  await expect(visitor.getByText('No encontramos ese mecánico')).toBeVisible()
+  await visitor.close()
+})
+
+test('directorio: el mecánico pide salir, el admin lo aprueba y abre; un dueño de bote pide cita y al mecánico le llega', async ({ page, browser }) => {
+  await login(page)
+
+  // 1) El mecánico llena su perfil público
+  await page.getByRole('link', { name: 'Más' }).click()
+  await page.getByRole('link', { name: /Mi perfil público/ }).click()
+  await expect(page.getByText('No sales en el directorio.')).toBeVisible()
+  await page.getByRole('switch', { name: /Quiero salir en el directorio/ }).click()
+  await expect(page.getByLabel('Dirección de tu página')).toHaveValue('jqr-boat-repair')
+  await page.getByLabel('Sobre tu negocio').fill('Mecánico Yamaha con 15 años de experiencia.')
+  await page.getByLabel('Añadir pueblo').selectOption('Ceiba')
+  await page.getByRole('button', { name: 'Motores' }).click()
+  await page.getByRole('button', { name: 'Yamaha' }).click()
+  await page.getByRole('button', { name: 'Guardar' }).click()
+  await expect(page.getByRole('heading', { name: 'Más' })).toBeVisible()
+  const m = (await state()).mechanics[0]
+  expect(m).toMatchObject({ listed: true, approved: false, slug: 'jqr-boat-repair', public_services: ['engine'], public_brands: ['Yamaha'] })
+  expect(m.public_towns).toEqual(['Fajardo', 'Ceiba'])
+
+  // 2) El admin lo aprueba y abre el directorio
+  await page.getByRole('link', { name: /Admin/ }).click()
+  await expect(page.getByText('Por aprobar')).toBeVisible()
+  await page.getByRole('button', { name: 'Aprobar' }).click()
+  await expect(page.getByText('Sale', { exact: true })).toBeVisible()
+  await page.getByRole('switch', { name: /Cerrado/ }).click()
+  await expect(page.getByRole('switch', { name: /Abierto al público/ })).toBeVisible()
+
+  // 3) Un dueño de bote, sin cuenta, busca y pide cita
+  const visitor = await browser.newPage()
+  await visitor.goto('http://localhost:4321/mecanicos')
+  await expect(visitor.getByRole('heading', { name: /Encuentra un mecánico/ })).toBeVisible()
+  await visitor.getByLabel(/Dónde está tu bote/).selectOption('Ceiba')
+  await expect(visitor.getByText('1 mecánico')).toBeVisible()
+  await visitor.getByLabel(/Dónde está tu bote/).selectOption('Ponce')
+  await expect(visitor.getByText('No encontramos mecánicos')).toBeVisible()
+  await visitor.getByLabel(/Dónde está tu bote/).selectOption('Fajardo')
+  await visitor.getByRole('link', { name: /JQR Boat Repair/ }).click()
+  await expect(visitor.getByRole('heading', { name: 'JQR Boat Repair' })).toBeVisible()
+  await expect(visitor.getByText('Mecánico Yamaha con 15 años de experiencia.')).toBeVisible()
+  await expect(visitor.getByText('Ana Ejemplo')).toHaveCount(0) // nunca los clientes del mecánico
+  await visitor.getByRole('button', { name: 'Pedir cita' }).click()
+  await visitor.getByRole('button', { name: 'Enviar solicitud' }).click()
+  await expect(visitor.getByRole('alert')).toHaveText('Escribe tu nombre.')
+  await visitor.getByLabel('Tu nombre').fill('Pedro Boricua')
+  await visitor.getByLabel('Tu teléfono (WhatsApp)').fill('787-555-0199')
+  await visitor.getByLabel('¿Qué le pasa al bote?').fill('El Yamaha 150 no sube de revoluciones')
+  await visitor.getByLabel('Nombre del bote (si tiene)').fill('Mi Sueño')
+  await visitor.getByLabel('¿Dónde está el bote?').fill('Villa Marina, muelle 7')
+  await visitor.getByRole('button', { name: 'Enviar solicitud' }).click()
+  await expect(visitor.getByText('¡Listo! Tu solicitud llegó')).toBeVisible()
+  await visitor.close()
+
+  const sr = (await state()).service_requests.find((r) => r.source === 'directory')!
+  expect(sr).toMatchObject({ status: 'new', contact_name: 'Pedro Boricua', preferred_when: 'Esta semana' })
+
+  // 4) Al mecánico le sale el aviso; abre la solicitud y hace la cita
+  await page.goto('/clientes')
+  const alert = page.getByRole('status').filter({ hasText: 'pidió cita' })
+  await expect(alert).toBeVisible()
+  await alert.click()
+  await expect(page.getByRole('heading', { name: /Pedro Boricua pidió cita/ })).toBeVisible()
+  await expect(page.getByText('Villa Marina, muelle 7')).toBeVisible()
+  await page.getByRole('link', { name: 'Hacer cita' }).click()
+  await expect(page.getByText('Mi Sueño').first()).toBeVisible()
+  await expect(page.getByLabel(/problema/i).first()).toHaveValue('El Yamaha 150 no sube de revoluciones')
+  await page.getByRole('button', { name: /Guardar/ }).click()
+  await expect(page.getByRole('heading', { name: 'El trabajo' })).toBeVisible()
+  const after = (await state()).service_requests.find((r) => r.id === sr.id)!
+  expect(after.status).toBe('scheduled')
+  await expect(page.getByRole('status').filter({ hasText: 'pidió cita' })).toHaveCount(0)
+})

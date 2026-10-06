@@ -3,6 +3,7 @@ import { db } from '../../lib/db'
 import { formatDate, formatMoney } from '../../lib/format'
 import { must, useLoad } from '../../lib/useLoad'
 import { BackTitle, ErrorBox, Loading } from '../../components/ui'
+import AdminDirectory from '../../components/AdminDirectory'
 
 interface Row {
   id: string
@@ -59,6 +60,8 @@ export default function Admin() {
           </div>
         ))}
       </div>
+
+      <AdminDirectory />
 
       <div className="space-y-3">
         {data.map((r) => {

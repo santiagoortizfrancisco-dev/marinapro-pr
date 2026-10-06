@@ -107,6 +107,15 @@ export interface Mechanic {
   next_invoice_number: number
   logo_path: string | null
   brand_color: string
+  // Directorio público
+  listed?: boolean
+  approved?: boolean
+  slug?: string | null
+  public_description?: string | null
+  public_towns?: string[]
+  public_services?: string[]
+  public_brands?: string[]
+  public_locations?: string[]
 }
 
 export type WorkOrderStatus = 'estimate' | 'approved' | 'waiting_parts' | 'in_progress' | 'sea_trial' | 'done' | 'invoiced' | 'paid'

@@ -81,8 +81,20 @@ export default function AppointmentForm() {
           if (a.title || a.systems.length || a.notes) setMoreOpen(true)
         }
       }
+      // Viene de una solicitud del directorio: ya trae el bote y el problema
+      const sol = params.get('solicitud')
+      if (!id && sol) {
+        const { data: r } = await db().from('service_requests').select('id, boat_id, description').eq('id', sol).single()
+        const req = r as { id: string; boat_id: string; description: string } | null
+        if (req) {
+          setPick({ kind: 'boat', boatId: req.boat_id })
+          setProblem(req.description)
+          setRequestId(req.id)
+        }
+      }
       setClients((data ?? []) as unknown as ClientRow[])
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   // Lo que ya hay ese día, para no montar dos citas a la misma hora
@@ -152,7 +164,7 @@ export default function AppointmentForm() {
       let srId = requestId
       const text = problem.trim()
       if (text && srId) {
-        await db().from('service_requests').update({ description: text, boat_id: boatId, client_id: clientId }).eq('id', srId)
+        await db().from('service_requests').update({ description: text, boat_id: boatId, client_id: clientId, status: 'scheduled' }).eq('id', srId)
       } else if (text && clientId) {
         const sr = await db().from('service_requests').insert({ boat_id: boatId, client_id: clientId, description: text, status: 'scheduled' }).select('id').single()
         if (sr.error) throw sr.error

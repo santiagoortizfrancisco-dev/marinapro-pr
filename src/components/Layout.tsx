@@ -8,6 +8,7 @@ import { BRAND_EVENT, logoUrl } from '../lib/brand'
 import { db } from '../lib/db'
 import { Button } from './ui'
 import ApprovalAlerts from './ApprovalAlerts'
+import RequestAlerts from './RequestAlerts'
 
 const ROLE_LABEL: Record<Role, string> = { mechanic: 'Mecánico', client: 'Dueño de bote' }
 
@@ -149,6 +150,7 @@ export default function Layout() {
       <Toast message={toast} />
 
       {isMechanic && !demo && <ApprovalAlerts />}
+      {isMechanic && !demo && <RequestAlerts />}
 
       <main className="pb-44">
         <div className="mx-auto max-w-xl px-4 py-5">

@@ -21,6 +21,10 @@ import BusinessSettings from './pages/mechanic/BusinessSettings'
 import Admin from './pages/mechanic/Admin'
 import Catalog from './pages/mechanic/Catalog'
 import PublicDoc from './pages/PublicDoc'
+import Directory from './pages/public/Directory'
+import MechanicProfile from './pages/public/MechanicProfile'
+import PublicProfileSettings from './pages/mechanic/PublicProfileSettings'
+import RequestDetail from './pages/mechanic/RequestDetail'
 import MyBoats from './pages/client/MyBoats'
 import Report from './pages/client/Report'
 import Alerts from './pages/client/Alerts'
@@ -29,11 +33,13 @@ export default function App() {
   const { loading, session, profile, demo } = useAuth()
   const { pathname } = useLocation()
 
-  // Estimado / factura para el cliente: se abre sin cuenta
-  if (pathname.startsWith('/d/')) {
+  // Estimado / factura y directorio de mecánicos: se abren sin cuenta
+  if (pathname.startsWith('/d/') || pathname === '/mecanicos' || pathname.startsWith('/mecanicos/')) {
     return (
       <Routes>
         <Route path="/d/:token" element={<PublicDoc />} />
+        <Route path="/mecanicos" element={<Directory />} />
+        <Route path="/mecanicos/:slug" element={<MechanicProfile />} />
       </Routes>
     )
   }
@@ -74,6 +80,8 @@ export default function App() {
           <Route path="/mas/negocio" element={<BusinessSettings />} />
           <Route path="/mas/admin" element={<Admin />} />
           <Route path="/mas/catalogo" element={<Catalog />} />
+          <Route path="/mas/perfil-publico" element={<PublicProfileSettings />} />
+          <Route path="/solicitudes/:id" element={<RequestDetail />} />
           <Route path="/mas" element={<More />} />
           <Route path="*" element={<Navigate to="/agenda" replace />} />
         </Route>

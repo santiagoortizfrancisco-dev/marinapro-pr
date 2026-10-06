@@ -227,3 +227,61 @@ test('mantenimiento: el mecánico guarda "le toca en 6 meses" y otro mecánico n
   assert.equal((await one(B, "select count(*)::int n from maintenance_schedules")).n, 0)
   assert.ok(await fails(() => as(B, `insert into maintenance_schedules(boat_id, service_type, due_date) values ('${boat}', 'x', current_date)`)))
 })
+
+test('directorio: cerrado no se ve; el mecánico no se aprueba solo; el admin aprueba y abre', async () => {
+  await as(A, `update mechanics set listed = true, slug = 'taller-a', public_towns = '{Fajardo}', public_services = '{engine}', public_brands = '{Yamaha}', public_description = 'Fuera de borda' where profile_id = '${A}'`)
+  await as(A, `update mechanics set approved = true where profile_id = '${A}'`) // no debe poder
+  assert.equal((await one(A, `select approved from mechanics where profile_id = '${A}'`)).approved, false, 'el mecánico no se aprueba solo')
+  // cerrado: nadie ve la lista; el mecánico sí ve su vista previa
+  assert.equal((await one(null, `select directory_search() j`, 'anon')).j.length, 0)
+  assert.equal((await one(null, `select directory_profile('taller-a') j`, 'anon')).j, null)
+  assert.equal((await one(A, `select directory_profile('taller-a') j`)).j.name, 'Taller A')
+  assert.ok(await fails(() => as(A, `select admin_set_directory_open(true)`)), 'un mecánico no abre el directorio')
+  assert.ok(await fails(() => as(A, `select admin_set_approved('${A}', true)`)))
+
+  const admin = (await db.query(`select id from profiles where email = 'santiagoortizfrancisco@gmail.com'`)).rows[0].id
+  await as(admin, `select admin_set_approved('${A}', true)`)
+  await as(admin, `select admin_set_directory_open(true)`)
+  const list = (await one(null, `select directory_search('Fajardo', 'engine', 'Yamaha') j`, 'anon')).j
+  assert.equal(list.length, 1)
+  assert.equal(list[0].name, 'Taller A')
+  const text = JSON.stringify(list)
+  assert.ok(!text.includes('Ana Prueba') && !text.includes('labor_rate') && !text.includes('ath_movil'), 'en público no salen clientes ni precios')
+  assert.equal((await one(null, `select directory_search('Ponce') j`, 'anon')).j.length, 0, 'otro pueblo no sale')
+  const adminList = (await one(admin, `select admin_directory_list() j`)).j
+  assert.ok(adminList.some((x) => x.slug === 'taller-a' && x.approved))
+})
+
+test('directorio: un dueño de bote pide cita sin cuenta → al mecánico le llega con cliente y bote; límite contra spam', async () => {
+  const r = (await one(null, `select submit_directory_request('taller-a','Pedro Nuevo','787-555-0999','Sea Ray Azul','Sea Ray','Marina Puerto Chico','No arranca','Esta semana') j`, 'anon')).j
+  assert.equal(r.ok, true)
+  const sr = await one(A, `select s.source, s.status, s.contact_phone, c.full_name, b.name boat from service_requests s join clients c on c.id = s.client_id join boats b on b.id = s.boat_id where s.source = 'directory'`)
+  assert.equal(sr.status, 'new')
+  assert.equal(sr.full_name, 'Pedro Nuevo')
+  assert.equal(sr.boat, 'Sea Ray Azul')
+  assert.equal((await one(B, `select count(*)::int n from service_requests`)).n, 0, 'otro mecánico no la ve')
+  // el mismo teléfono reusa el cliente
+  await as(null, `select submit_directory_request('taller-a','Pedro Nuevo','(787) 555-0999','Sea Ray Azul','Sea Ray','','Otra cosa','') j`, 'anon')
+  assert.equal((await one(A, `select count(*)::int n from clients where full_name = 'Pedro Nuevo'`)).n, 1)
+  await as(null, `select submit_directory_request('taller-a','Pedro Nuevo','7875550999','Sea Ray Azul','','','Tercera','') j`, 'anon')
+  assert.ok(await fails(() => as(null, `select submit_directory_request('taller-a','Pedro Nuevo','787-555-0999','x','','','Cuarta','') j`, 'anon')), 'más de 3 en un día se bloquea')
+  // robot (llena el campo escondido): no crea nada
+  const before = (await one(A, `select count(*)::int n from service_requests`)).n
+  await as(null, `select submit_directory_request('taller-a','Robot','7870000000','x','','','spam spam','', 'http://spam') j`, 'anon')
+  assert.equal((await one(A, `select count(*)::int n from service_requests`)).n, before)
+  // a un mecánico que no está en el directorio no se le puede pedir
+  assert.ok(await fails(() => as(null, `select submit_directory_request('no-existe','Ana','7875551234','x','','','hola','') j`, 'anon')))
+})
+
+test('anuncios: solo el admin los crea; el público los ve y los clics se cuentan', async () => {
+  assert.ok(await fails(() => as(A, `insert into ads(advertiser, image_path) values ('X', 'x.jpg')`)))
+  const admin = (await db.query(`select id from profiles where email = 'santiagoortizfrancisco@gmail.com'`)).rows[0].id
+  const ad = (await one(admin, `insert into ads(advertiser, image_path, link_url) values ('Marine Max', 'ads/mm.jpg', 'https://example.com') returning id`)).id
+  const shown = (await one(null, `select ads_active() j`, 'anon')).j
+  assert.equal(shown[0].advertiser, 'Marine Max')
+  await as(null, `select ad_click('${ad}')`, 'anon')
+  const row = await one(admin, `select clicks, views from ads where id = '${ad}'`)
+  assert.equal(row.clicks, 1)
+  assert.ok(row.views >= 1)
+  assert.equal((await as(null, `select * from ads`, 'anon').catch(() => [])).length, 0, 'el público no lee la tabla')
+})
