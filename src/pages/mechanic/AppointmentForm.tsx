@@ -54,7 +54,7 @@ export default function AppointmentForm() {
   const [systems, setSystems] = useState<string[]>([])
   const [status, setStatus] = useState<'confirmed' | 'requested'>('confirmed')
   const [notes, setNotes] = useState('')
-  const [problem, setProblem] = useState('')
+  const [problem, setProblem] = useState(params.get('problema') ?? '')
   const [requestId, setRequestId] = useState<string | null>(null)
   const [moreOpen, setMoreOpen] = useState(false)
   const [sameDay, setSameDay] = useState<{ id: string; starts_at: string; duration_min: number; boats: { name: string } }[]>([])

@@ -7,6 +7,7 @@ import { addDays, formatDate, formatLongDate, formatTime, prDay, prRange, prTime
 import type { AppointmentFull } from '../../lib/types'
 import { must, useLoad } from '../../lib/useLoad'
 import { ErrorBox, Fab, Loading } from '../../components/ui'
+import DueServices from '../../components/DueServices'
 
 const SELECT = '*, service_requests(description), boats(id, name, location_type, marina_name, slip_number, town, lat, lng, location_notes, clients(id, full_name, phone))'
 
@@ -114,6 +115,8 @@ export default function Agenda() {
 
   return (
     <>
+      {day === today && <DueServices />}
+
       {/* Mes | Semana */}
       <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
         {(['mes', 'semana'] as const).map((v) => (

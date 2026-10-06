@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { AlertTriangle, CheckCircle2, ExternalLink, FileText, MessageCircle, Package, Plus, Receipt, Ship, ThumbsUp, Wrench } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ExternalLink, FileText, MessageCircle, Package, Plus, Receipt, Ship, ThumbsUp, Wrench, CalendarClock } from 'lucide-react'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, WORK_ORDER_STATUS, WORK_STEPS, labelOf } from '../lib/catalog'
 import { db } from '../lib/db'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
@@ -10,6 +10,7 @@ import type { Client, Invoice, Mechanic, Part, Photo, WorkOrder } from '../lib/t
 import { must, num, useLoad } from '../lib/useLoad'
 import { useAuth } from '../auth/AuthProvider'
 import ConfirmDelete from './ConfirmDelete'
+import NextService from './NextService'
 import PartSheet from './PartSheet'
 import PhotoSection from './PhotoSection'
 import { Sheet } from './Sheet'
@@ -50,6 +51,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   const [partOpen, setPartOpen] = useState(false)
   const [editPart, setEditPart] = useState<Part | null>(null)
   const [partKind, setPartKind] = useState<Part['kind']>('part')
+  const [skipNext, setSkipNext] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [payMethod, setPayMethod] = useState<NonNullable<Invoice['payment_method']>>('ath_movil')
   const [saved, setSaved] = useState('')
@@ -60,13 +62,14 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
   const { data, loading, error, reload, setData } = useLoad(async () => {
     const wo = must(await db().from('work_orders').select('*, boats(id, name, clients(id, full_name, phone))').eq('id', id!).single()) as WorkOrder & { boats: Boat }
-    const [parts, photos, invoice, mech] = await Promise.all([
+    const [parts, photos, invoice, mech, next] = await Promise.all([
       db().from('work_order_parts').select('*').eq('work_order_id', id!).order('created_at'),
       db().from('photos').select('*').eq('work_order_id', id!).order('taken_at'),
       db().from('invoices').select('*').eq('work_order_id', id!).maybeSingle(),
       db().from('mechanics').select('*').eq('profile_id', session!.user.id).single(),
+      db().from('maintenance_schedules').select('service_type, due_date').eq('work_order_id', id).limit(1),
     ])
-    return { wo, parts: must(parts) as Part[], photos: must(photos) as Photo[], invoice: (invoice.data as Invoice | null) ?? null, mech: must(mech) as Mechanic }
+    return { wo, parts: must(parts) as Part[], photos: must(photos) as Photo[], invoice: (invoice.data as Invoice | null) ?? null, mech: must(mech) as Mechanic, next: ((next.data ?? [])[0] as { service_type: string; due_date: string } | undefined) ?? null }
   }, [id])
 
   useEffect(() => {
@@ -176,6 +179,25 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </>
       )}
       {saved && <div className="fixed left-1/2 top-20 z-30 -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white">{saved}</div>}
+
+      {/* Al terminar: ¿cuándo le toca el próximo servicio? (se puede saltar) */}
+      {['done', 'invoiced', 'paid'].includes(wo.status) && (
+        data.next ? (
+          <p className="mb-3 flex items-center gap-2 rounded-xl bg-sun-400/15 p-3 text-base font-semibold text-navy-900">
+            <CalendarClock size={20} className="shrink-0" /> Próximo servicio: {data.next.service_type} · {formatDate(data.next.due_date)}
+          </p>
+        ) : !skipNext && (
+          <div className="mb-3">
+            <NextService
+              boatId={boat.id}
+              workOrderId={wo.id}
+              defaultService={parts.find((p) => p.kind === 'service')?.description ?? 'Mantenimiento'}
+              onSaved={reload}
+              onSkip={() => setSkipNext(true)}
+            />
+          </div>
+        )
+      )}
 
       {warnings.length > 0 && (
         <div className="mb-2 rounded-xl bg-amber-50 p-3 text-base text-amber-900">

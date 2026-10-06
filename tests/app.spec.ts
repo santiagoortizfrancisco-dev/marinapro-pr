@@ -214,6 +214,53 @@ test('servicios y piezas: sugerencias de la lista común, el precio se guarda y 
   await expect(page.getByText('Kit de sellos Lewmar')).toHaveCount(0)
 })
 
+test('mantenimiento: al terminar el trabajo pregunta cuándo le toca, y el bote muestra historial y próximo servicio', async ({ page }) => {
+  await login(page)
+  await openExampleAppointment(page)
+  await page.getByRole('button', { name: 'Servicio', exact: true }).click()
+  await page.getByPlaceholder('Cambio de impeller').fill('Cambio de impeller')
+  await page.getByPlaceholder('120.00').fill('120')
+  await page.getByRole('button', { name: 'Guardar servicio' }).click()
+  await page.getByRole('button', { name: 'Terminado', exact: true }).click()
+  // El recuadro sale y se puede saltar o guardar
+  await expect(page.getByText('¿Cuándo le toca el próximo servicio?')).toBeVisible()
+  await expect(page.getByPlaceholder('Cambio de aceite e impeller')).toHaveValue('Cambio de impeller')
+  await page.getByRole('button', { name: '6 meses' }).click()
+  await page.getByRole('button', { name: 'Guardar recordatorio' }).click()
+  await expect(page.getByText(/Próximo servicio: Cambio de impeller/)).toBeVisible()
+  const m = (await state()).maintenance_schedules[0]
+  expect(m.interval_months).toBe(6)
+
+  // Ficha del bote: último servicio, historial con lo que se hizo, próximo servicio
+  await page.getByRole('link', { name: /La Tranquila · Ana Ejemplo/ }).first().click()
+  await expect(page.getByText(/Último servicio:/)).toBeVisible()
+  await expect(page.getByText(/Servicios:.*Cambio de impeller/)).toBeVisible()
+  await expect(page.getByText(/cada 6 meses/)).toBeVisible()
+})
+
+test('Le toca servicio: sale en la Agenda de hoy con Avisarle por WhatsApp y Hacer cita', async ({ page }) => {
+  await login(page)
+  // recordatorio para dentro de 5 días, desde la ficha del bote
+  await page.goto('/botes/b1')
+  await page.getByRole('button', { name: 'Recordatorio' }).click()
+  await page.getByPlaceholder('Cambio de aceite e impeller').fill('Cambio de aceite')
+  await page.getByRole('button', { name: 'Otra fecha' }).click()
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Puerto_Rico' }).format(new Date())
+  const d = new Date(`${today}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 5)
+  await page.getByLabel('Fecha').fill(d.toISOString().slice(0, 10))
+  await page.getByRole('button', { name: 'Guardar recordatorio' }).click()
+  await expect(page.getByText('Cambio de aceite').first()).toBeVisible()
+
+  await page.goto('/agenda')
+  await expect(page.getByRole('heading', { name: /Le toca servicio \(1\)/ })).toBeVisible()
+  await expect(page.getByText('En 5 días', { exact: false })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Avisarle' })).toHaveAttribute('href', /wa\.me\/17875550111\?text=.*Cambio%20de%20aceite/)
+  await page.getByRole('link', { name: 'Hacer cita', exact: true }).first().click()
+  await expect(page.getByRole('heading', { name: 'Cita nueva' })).toBeVisible()
+  await expect(page.getByPlaceholder('El motor de babor no arranca en frío')).toHaveValue('Cambio de aceite')
+})
+
 test('el cliente aprueba el estimado desde el link y al mecánico le sale el aviso verde en todas las pantallas', async ({ page, browser }) => {
   await login(page)
   await openExampleAppointment(page)

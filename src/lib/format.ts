@@ -83,3 +83,28 @@ export function weekStart(day: string): string {
 export function prRange(fromDay: string, days: number): [string, string] {
   return [new Date(`${fromDay}T00:00:00${PR_OFFSET}`).toISOString(), new Date(`${addDays(fromDay, days)}T00:00:00${PR_OFFSET}`).toISOString()]
 }
+
+/** Sumar meses a un día "YYYY-MM-DD" (si el mes no tiene ese día, queda en el último del mes). */
+export function addMonths(day: string, n: number): string {
+  const [y, m, d] = day.split('-').map(Number)
+  const target = new Date(Date.UTC(y, m - 1 + n, 1))
+  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate()
+  target.setUTCDate(Math.min(d, last))
+  return target.toISOString().slice(0, 10)
+}
+
+/** Días desde hoy (PR) hasta ese día: negativo si ya pasó. */
+export function daysUntil(day: string): number {
+  return Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${todayPR()}T00:00:00Z`)) / 86400000)
+}
+
+/** "hoy", "hace 12 días", "hace 5 meses", "hace 2 años" */
+export function ago(date: string): string {
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000)
+  if (days < 1) return 'hoy'
+  if (days < 30) return `hace ${days} ${days === 1 ? 'día' : 'días'}`
+  const months = Math.floor(days / 30.4)
+  if (months < 12) return `hace ${months} ${months === 1 ? 'mes' : 'meses'}`
+  const years = Math.floor(days / 365)
+  return `hace ${years} ${years === 1 ? 'año' : 'años'}`
+}

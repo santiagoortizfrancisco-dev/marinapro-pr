@@ -217,3 +217,13 @@ test('servicios: cuentan como mano de obra (IVU de mano de obra) y salen en el e
   assert.equal(Number(d.totals.total), 268)
   assert.ok(d.parts.some((p) => p.kind === 'service' && p.description === 'Cambio de impeller'))
 })
+
+test('mantenimiento: el mecánico guarda "le toca en 6 meses" y otro mecánico no lo ve', async () => {
+  const w = (await one(A, "select id from work_orders limit 1")).id
+  await as(A, `insert into maintenance_schedules(boat_id, service_type, due_date, interval_months, work_order_id) values ('${boat}', 'Cambio de aceite e impeller', current_date + 180, 6, '${w}')`)
+  const m = await one(A, `select interval_months, status from maintenance_schedules where work_order_id = '${w}'`)
+  assert.equal(m.interval_months, 6)
+  assert.equal(m.status, 'pending')
+  assert.equal((await one(B, "select count(*)::int n from maintenance_schedules")).n, 0)
+  assert.ok(await fails(() => as(B, `insert into maintenance_schedules(boat_id, service_type, due_date) values ('${boat}', 'x', current_date)`)))
+})

@@ -74,6 +74,7 @@ const DEFAULTS = {
     charge_ivu_labor: true, charge_ivu_parts: true, estimate_sent_at: null, estimate_approved_at: null, estimate_approved_by: null, approval_seen_at: null,
     policies_accepted_version: null, sea_trial_required: true, sea_trial_done: false, sea_trial_method: null, sea_trial_notes: null, completed_at: null,
   }),
+  maintenance_schedules: () => ({ engine_id: null, due_hours: null, last_notified_at: null, status: 'pending', interval_months: null, work_order_id: null, notes: null }),
   work_order_parts: () => ({ kind: 'part', part_number: null, qty: 1, unit_cost: 0, supplied_by: 'mechanic', supplier: null, eta: null, received_at: null }),
 }
 
@@ -90,7 +91,9 @@ function withRelations(table, row) {
     r.boats = boat(row.boat_id)
     r.service_requests = db.service_requests.find((s) => s.id === row.service_request_id) ?? null
   }
+  if (table === 'maintenance_schedules') r.boats = boat(row.boat_id)
   if (table === 'work_orders') {
+    r.work_order_parts = db.work_order_parts.filter((p) => p.work_order_id === row.id)
     r.boats = boat(row.boat_id)
     r.invoices = db.invoices.filter((i) => i.work_order_id === row.id)
   }
@@ -110,6 +113,9 @@ function matches(row, params) {
     if (op === 'is' && !(arg === 'null' ? v == null : String(v) === arg)) return false
     if (op === 'in' && !list().includes(String(v))) return false
     if (op === 'not' && rest[0] === 'in' && rest.slice(1).join('.').replace(/^\(|\)$/g, '').split(',').includes(String(v))) return false
+    if (op === 'not' && rest[0] === 'is' && rest[1] === 'null' && v == null) return false
+    if (op === 'ilike' && String(v ?? '').toLowerCase() !== arg.replace(/%/g, '').toLowerCase()) return false
+    if (op === 'lte' && !(v != null && String(v) <= arg)) return false
     if (op === 'gte' && !(String(v) >= arg)) return false
     if (op === 'lt' && !(String(v) < arg)) return false
   }
