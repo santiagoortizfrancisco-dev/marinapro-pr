@@ -115,7 +115,7 @@ export default function PublicProfileSettings() {
         </Field>
 
         {s && (
-          <a href={`/mecanicos/${s}`} target="_blank" rel="noreferrer" className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 text-base font-bold text-navy-800">
+          <a href={`/mecanicos/${s}`} className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 text-base font-bold text-navy-800">
             <ExternalLink size={20} /> Ver cómo se ve mi página
           </a>
         )}

@@ -41,6 +41,9 @@ export default function Directory() {
     setParams(next, { replace: true })
   }
 
+  // Primero saber si está abierto (sin enseñar el buscador y después quitarlo)
+  if (open === null || (results === null && !town && !service && !brand)) return <PublicShell><Loading /></PublicShell>
+
   // Cerrado y sin resultados (solo el admin ve resultados con el directorio cerrado)
   if (open === false && results !== null && results.length === 0 && !town && !service && !brand) {
     return (

@@ -1,9 +1,16 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { Mail } from 'lucide-react'
+import { ArrowLeft, Mail } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 
 /** Marco de las páginas públicas: barra arriba, contenido y pie con "¿Eres mecánico?". */
 export default function PublicShell({ children }: { children: ReactNode }) {
+  // El mecánico (con sesión) lo abre desde el app: en el iPhone no hay botón de atrás
+  const [inApp, setInApp] = useState(false)
+  useEffect(() => {
+    supabase?.auth.getSession().then(({ data }) => setInApp(Boolean(data.session)))
+  }, [])
+
   return (
     <div className="min-h-full bg-slate-50">
       <header className="safe-top bg-navy-800 text-white">
@@ -12,6 +19,11 @@ export default function PublicShell({ children }: { children: ReactNode }) {
             <img src="/logo.svg" alt="" className="h-10 w-10 rounded-xl" />
             <span className="text-lg font-extrabold leading-tight">Marine Mechanics PR</span>
           </Link>
+          {inApp && (
+            <a href="/mas" className="ml-auto flex min-h-11 items-center gap-1 rounded-xl bg-white px-3 text-sm font-bold text-navy-800">
+              <ArrowLeft size={18} /> Volver al app
+            </a>
+          )}
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 pb-10">{children}</main>

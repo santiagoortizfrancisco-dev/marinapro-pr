@@ -35,7 +35,7 @@ export default function AdminDirectory() {
         label={open ? 'Abierto al público' : 'Cerrado (solo tú lo ves)'}
         hint="Los dueños de bote buscan mecánicos y piden cita en /mecanicos"
       />
-      <a href="/mecanicos" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 text-base font-bold text-navy-800">
+      <a href="/mecanicos" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 text-base font-bold text-navy-800">
         <ExternalLink size={18} /> Ver el directorio
       </a>
 
@@ -55,7 +55,7 @@ export default function AdminDirectory() {
                 </span>
               </div>
               <div className="mt-2 flex gap-2">
-                {r.slug && <a href={`/mecanicos/${r.slug}`} target="_blank" rel="noreferrer" className="flex min-h-12 flex-1 items-center justify-center rounded-xl border-2 border-slate-300 bg-white text-sm font-bold text-slate-700">Ver página</a>}
+                {r.slug && <a href={`/mecanicos/${r.slug}`} className="flex min-h-12 flex-1 items-center justify-center rounded-xl border-2 border-slate-300 bg-white text-sm font-bold text-slate-700">Ver página</a>}
                 {r.approved
                   ? <button onClick={() => approve(r.id, false)} className="min-h-12 flex-1 rounded-xl border-2 border-red-700 bg-white text-sm font-bold text-red-700">Quitar</button>
                   : <button onClick={() => approve(r.id, true)} className="min-h-12 flex-1 rounded-xl bg-emerald-700 text-sm font-bold text-white">Aprobar</button>}
