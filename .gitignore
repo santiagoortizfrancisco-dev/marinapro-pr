@@ -7,3 +7,6 @@ dev-dist
 
 # Datos de pilotos (tienen telefonos/emails reales; el repo es publico)
 supabase/pilotos/
+
+# Documentos privados (cuentas, emails)
+documentos/
