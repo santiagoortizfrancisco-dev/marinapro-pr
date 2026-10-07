@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Briefcase, ChevronRight, Globe, LifeBuoy, ListChecks, ShieldCheck } from 'lucide-react'
+import { Briefcase, ChevronRight, Globe, KeyRound, LifeBuoy, ListChecks, ShieldCheck } from 'lucide-react'
 import ContactSheet from '../components/ContactSheet'
 import { db } from '../lib/db'
 import { useLoad } from '../lib/useLoad'
@@ -74,6 +74,15 @@ export default function More() {
           <ChevronRight />
         </Link>
       )}
+
+      <Link to="/mas/clave" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+        <IconBadge icon={KeyRound} tone="slate" />
+        <span className="flex-1">
+          <span className="block text-lg font-bold">Mi contraseña o PIN</span>
+          <span className="block text-sm text-slate-600">Cambia cómo entras al app</span>
+        </span>
+        <ChevronRight />
+      </Link>
 
       <button onClick={() => setContactOpen(true)} className={`${CARD} mb-3 flex min-h-16 w-full items-center gap-3 px-3 py-2 text-left text-navy-900 transition active:scale-[0.99]`}>
         <IconBadge icon={LifeBuoy} tone="blue" />

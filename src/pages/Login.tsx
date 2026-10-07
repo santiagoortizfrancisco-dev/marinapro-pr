@@ -25,6 +25,24 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [contactOpen, setContactOpen] = useState(false)
+  // PIN de 6 números: teclado de números grande. El teléfono recuerda si este mecánico usa PIN.
+  const [usePin, setUsePin] = useState(() => {
+    try {
+      return localStorage.getItem('entrar-con-pin') === '1'
+    } catch {
+      return false
+    }
+  })
+  function changePin(v: boolean) {
+    setUsePin(v)
+    setPassword('')
+    setError('')
+    try {
+      localStorage.setItem('entrar-con-pin', v ? '1' : '0')
+    } catch {
+      /* sin memoria del teléfono: no pasa nada */
+    }
+  }
 
   async function signInWithPassword(e: FormEvent) {
     e.preventDefault()
@@ -35,7 +53,7 @@ export default function Login() {
     setBusy(false)
     if (!error) return
     if (error.status === 429) setError('Muchos intentos seguidos. Espera unos minutos.')
-    else if (error.status === 400 || error.code === 'invalid_credentials') setError('Usuario o contraseña incorrectos.')
+    else if (error.status === 400 || error.code === 'invalid_credentials') setError(usePin ? 'Usuario o PIN incorrectos.' : 'Usuario o contraseña incorrectos.')
     else setError('No se pudo entrar. Revisa la señal e intenta otra vez.')
   }
 
@@ -98,9 +116,19 @@ export default function Login() {
               <Field label="Email o usuario">
                 <Input required autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={user} onChange={(e) => setUser(e.target.value)} placeholder="nombre@gmail.com" />
               </Field>
-              <Field label="Contraseña">
+              <Field label={usePin ? 'PIN (6 números)' : 'Contraseña'}>
                 <div className="relative">
-                  <Input required aria-label="Contraseña" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="pr-14" />
+                  <Input
+                    required
+                    aria-label={usePin ? 'PIN' : 'Contraseña'}
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(usePin ? e.target.value.replace(/\D/g, '').slice(0, 6) : e.target.value)}
+                    inputMode={usePin ? 'numeric' : undefined}
+                    pattern={usePin ? '[0-9]*' : undefined}
+                    className={`pr-14 ${usePin ? 'text-center text-3xl tracking-[0.5em]' : ''}`}
+                  />
                   <button type="button" aria-label={showPassword ? 'Esconder contraseña' : 'Ver contraseña'} onClick={() => setShowPassword((v) => !v)} className="absolute right-1 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center text-slate-500">
                     {showPassword ? <EyeOff /> : <Eye />}
                   </button>
@@ -109,7 +137,10 @@ export default function Login() {
               <Button type="submit" disabled={busy}>
                 <LogIn /> {busy ? 'Entrando…' : 'Entrar'}
               </Button>
-              <p className="text-center text-sm text-slate-500">¿Se te olvidó la contraseña? Pide que te la cambien.</p>
+              <button type="button" onClick={() => changePin(!usePin)} className="mx-auto block text-base font-bold text-navy-700 underline underline-offset-4">
+                {usePin ? 'Entrar con contraseña' : 'Entrar con PIN'}
+              </button>
+              <p className="text-center text-sm text-slate-500">¿Se te olvidó? Toca “¿Problemas para entrar?” abajo.</p>
               <Button type="button" variant="ghost" onClick={() => { setStep('email'); setError('') }}>
                 Entrar con código por email
               </Button>

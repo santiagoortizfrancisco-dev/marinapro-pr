@@ -20,7 +20,9 @@ const addDays = (day, n) => {
 }
 
 let db
+let passwords = {}
 function reset() {
+  passwords = {}
   const tomorrow = addDays(prDay(), 1)
   const now = new Date().toISOString()
   db = {
@@ -328,13 +330,16 @@ http.createServer((req, res) => {
       if (url.pathname === '/auth/v1/token') {
         if (url.searchParams.get('grant_type') === 'password') {
           const { email, password } = json()
-          if (email === NEW_EMAIL && password === TEST_PASSWORD) return send(200, session(N))
-          return email === EMAIL && password === TEST_PASSWORD ? send(200, session()) : send(400, { code: 'invalid_credentials', error_code: 'invalid_credentials', msg: 'Invalid login credentials' })
+          if (email === NEW_EMAIL && password === (passwords[N] ?? TEST_PASSWORD)) return send(200, session(N))
+          return email === EMAIL && password === (passwords[U] ?? TEST_PASSWORD) ? send(200, session()) : send(400, { code: 'invalid_credentials', error_code: 'invalid_credentials', msg: 'Invalid login credentials' })
         }
         const rt = json().refresh_token ?? ''
         return send(200, session(rt === `r-${N}` ? N : U))
       }
-      if (url.pathname === '/auth/v1/user') return send(200, userFor(caller))
+      if (url.pathname === '/auth/v1/user') {
+        if (req.method === 'PUT' && json().password) passwords[caller] = json().password
+        return send(200, userFor(caller))
+      }
       if (url.pathname.startsWith('/auth/v1/')) return send(200, {})
 
       // --- funciones

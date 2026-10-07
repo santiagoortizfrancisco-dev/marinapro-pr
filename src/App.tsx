@@ -25,6 +25,7 @@ import Directory from './pages/public/Directory'
 import MechanicProfile from './pages/public/MechanicProfile'
 import PublicProfileSettings from './pages/mechanic/PublicProfileSettings'
 import RequestDetail from './pages/mechanic/RequestDetail'
+import PasswordSettings from './pages/mechanic/PasswordSettings'
 import MyBoats from './pages/client/MyBoats'
 import Report from './pages/client/Report'
 import Alerts from './pages/client/Alerts'
@@ -81,6 +82,7 @@ export default function App() {
           <Route path="/mas/admin" element={<Admin />} />
           <Route path="/mas/catalogo" element={<Catalog />} />
           <Route path="/mas/perfil-publico" element={<PublicProfileSettings />} />
+          <Route path="/mas/clave" element={<PasswordSettings />} />
           <Route path="/solicitudes/:id" element={<RequestDetail />} />
           <Route path="/mas" element={<More />} />
           <Route path="*" element={<Navigate to="/agenda" replace />} />
