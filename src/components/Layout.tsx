@@ -6,7 +6,7 @@ import type { Role } from '../lib/types'
 import { Sheet, Toast } from './Sheet'
 import { BRAND_EVENT, logoUrl } from '../lib/brand'
 import { db } from '../lib/db'
-import { Button } from './ui'
+import { Button, PoweredBy } from './ui'
 import ApprovalAlerts from './ApprovalAlerts'
 import RequestAlerts from './RequestAlerts'
 
@@ -103,14 +103,14 @@ export default function Layout() {
     <div className="min-h-full">
       {/* Cabecera y pestañas fijas; la página baja con el dedo normal (más confiable en iPhone) */}
       <header className={`safe-top sticky top-0 z-10 text-white ${brand.color ? '' : style.bg}`} style={brand.color ? { backgroundColor: brand.color } : undefined}>
-        <div className="mx-auto flex max-w-xl items-center gap-2 px-4 py-2">
+        <div className="mx-auto flex max-w-xl items-center gap-3 px-4 pb-3 pt-3">
           {brand.logo ? (
             <img src={brand.logo} alt="" className="h-12 w-12 shrink-0 rounded-xl bg-black object-contain" />
           ) : (
             <img src="/logo.svg" alt="" className="h-11 w-11 shrink-0 rounded-xl" />
           )}
           <div className="min-w-0 flex-1 leading-tight">
-            <div className="text-xs font-semibold uppercase tracking-wide text-white/75">
+            <div className="text-sm font-bold uppercase tracking-wide text-white/85">
               Salt Boat Repair{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-white">DEMO</span>}
             </div>
             <div className="truncate text-lg font-bold">{brand.name || (isMechanic ? 'Mecánico' : 'Dueño de bote')}</div>
@@ -155,6 +155,7 @@ export default function Layout() {
       <main className="pb-44">
         <div className="mx-auto max-w-xl px-4 py-5">
           <Outlet />
+          <PoweredBy />
         </div>
       </main>
 

@@ -2,6 +2,15 @@ import { Children, isValidElement, type ButtonHTMLAttributes, type InputHTMLAttr
 import { Link, useNavigate } from 'react-router'
 import { ChevronLeft, ChevronRight, Loader2, Plus, type LucideIcon } from 'lucide-react'
 
+/** "Powered by" del creador del app: abajo en todas las pantallas. */
+export function PoweredBy({ dark = false }: { dark?: boolean }) {
+  return (
+    <p className={`py-4 text-center text-xs ${dark ? 'text-white/60' : 'text-slate-400'}`}>
+      Powered by <span className="font-semibold">Francisco Santiago (Joy)</span>
+    </p>
+  )
+}
+
 /** Colores de los circulitos de íconos (para reconocer las cosas de un vistazo). */
 export const TONES = {
   whatsapp: 'bg-[#25D366] text-white',

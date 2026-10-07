@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Eye, EyeOff, LogIn, Mail, Ship, Wrench } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
-import { Button, Field, Input } from '../components/ui'
+import { Button, Field, Input, PoweredBy } from '../components/ui'
 
 /**
  * Usuario sin @ -> email interno (alias del Gmail del app). Ej.: "jqr" -> marinepropr+jqr@gmail.com
@@ -156,6 +156,7 @@ export default function Login() {
 
           {error && <p className="rounded-xl bg-red-100 p-4 text-base font-semibold text-red-800">{error}</p>}
         </div>
+        <PoweredBy />
       </div>
     </div>
   )

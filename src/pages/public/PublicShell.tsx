@@ -35,6 +35,7 @@ export default function PublicShell({ children }: { children: ReactNode }) {
             <Mail size={18} /> Escríbenos
           </a>
           <p className="mt-5 text-xs text-slate-400">© {new Date().getFullYear()} Salt Boat Repair · Puerto Rico</p>
+          <p className="mt-1 text-xs text-slate-400">Powered by <span className="font-semibold">Francisco Santiago (Joy)</span></p>
         </div>
       </footer>
     </div>
