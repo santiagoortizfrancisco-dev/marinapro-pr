@@ -29,7 +29,7 @@ export default function PublicShell({ children }: { children: ReactNode }) {
       <main className="mx-auto max-w-3xl px-4 pb-10">{children}</main>
       <footer className="safe-bottom border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-3xl px-4 py-6 text-center">
-          <p className="text-base font-bold text-navy-900">¿Eres mecánico de botes?</p>
+          <p className="text-base font-bold text-navy-900">¿Eres mecánico marino?</p>
           <p className="mt-1 text-sm text-slate-600">Maneja tus citas, trabajos y facturas en un solo app, y sal en este directorio.</p>
           <a href="mailto:marinepropr@gmail.com?subject=Quiero%20unirme%20a%20Salt%20Boat%20Repair" className="mt-3 inline-flex min-h-12 items-center gap-2 rounded-xl border-2 border-navy-800 px-5 text-base font-bold text-navy-800">
             <Mail size={18} /> Escríbenos

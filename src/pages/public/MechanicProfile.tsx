@@ -24,7 +24,7 @@ export default function MechanicProfile() {
   }, [slug])
 
   useEffect(() => {
-    if (m) document.title = `${m.name} · Mecánico de bote en ${m.town ?? 'Puerto Rico'}`
+    if (m) document.title = `${m.name} · Mecánico marino en ${m.town ?? 'Puerto Rico'}`
   }, [m])
 
   if (m === undefined) return <PublicShell><Loading /></PublicShell>

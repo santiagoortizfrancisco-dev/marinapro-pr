@@ -63,7 +63,7 @@ export default function Signup({ onBack, onWaitEmail }: { onBack: () => void; on
   return (
     <form onSubmit={submit} className="space-y-4">
       <h2 className="flex items-center gap-2 text-2xl font-bold text-navy-900"><UserPlus /> Crear mi cuenta</h2>
-      <p className="text-base text-slate-600">Para mecánicos de bote. Cuando la apruebemos, te avisamos y ya puedes usar el app.</p>
+      <p className="text-base text-slate-600">Para mecánicos marinos (botes y jet skis). Cuando la apruebemos, te avisamos y ya puedes usar el app.</p>
       <Field label="Tu nombre completo *" icon={User}>
         <Input autoComplete="name" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} />
       </Field>

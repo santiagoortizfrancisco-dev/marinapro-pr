@@ -22,7 +22,7 @@ export default function Directory() {
   const [results, setResults] = useState<PublicMechanic[] | null>(null)
 
   useEffect(() => {
-    document.title = 'Mecánicos de bote en Puerto Rico · Salt Boat Repair'
+    document.title = 'Mecánicos marinos en Puerto Rico (botes y jet skis) · Salt Boat Repair'
     supabase?.rpc('directory_is_open').then(({ data }) => setOpen(data === true))
   }, [])
 
@@ -51,7 +51,7 @@ export default function Directory() {
         <section className="py-16 text-center">
           <Anchor size={48} className="mx-auto text-navy-700" />
           <h1 className="mt-4 text-3xl font-extrabold text-navy-900">Muy pronto</h1>
-          <p className="mx-auto mt-2 max-w-md text-lg text-slate-600">Estamos preparando el directorio de mecánicos de bote de Puerto Rico. ¡Vuelve pronto!</p>
+          <p className="mx-auto mt-2 max-w-md text-lg text-slate-600">Estamos preparando el directorio de mecánicos marinos de Puerto Rico. ¡Vuelve pronto!</p>
         </section>
       </PublicShell>
     )
@@ -60,8 +60,8 @@ export default function Directory() {
   return (
     <PublicShell>
       <section className="-mx-4 bg-navy-800 px-4 pb-8 pt-6 text-white">
-        <h1 className="text-3xl font-extrabold leading-tight">Encuentra un mecánico de bote en Puerto Rico</h1>
-        <p className="mt-2 text-lg text-navy-100">Motores, electrónica, electricidad y más. Pide tu cita directo con el mecánico.</p>
+        <h1 className="text-3xl font-extrabold leading-tight">Encuentra un mecánico marino en Puerto Rico</h1>
+        <p className="mt-2 text-lg text-navy-100">Para tu bote o tu jet ski: motores, electrónica, electricidad y más. Pide tu cita directo con el mecánico.</p>
       </section>
 
       {open === false && (

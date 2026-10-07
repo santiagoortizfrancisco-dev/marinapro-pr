@@ -17,7 +17,7 @@ export default defineConfig({
       manifest: {
         name: 'Salt Boat Repair',
         short_name: 'Salt Boat',
-        description: 'Agenda, trabajos y facturas para mecánicos de bote en Puerto Rico',
+        description: 'Agenda, trabajos y facturas para mecánicos marinos (botes y jet skis) en Puerto Rico',
         lang: 'es-PR',
         start_url: '/',
         display: 'standalone',
