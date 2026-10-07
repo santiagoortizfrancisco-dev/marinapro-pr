@@ -311,3 +311,10 @@ test('paquetes: todos ven los 3 de ejemplo; cada mecánico guarda los suyos y ot
   assert.equal((await as(B, `delete from service_packages where id = '${pkg}' returning id`)).length, 0, 'B no lo borra')
   assert.equal((await as(null, `select * from service_packages`, 'anon').catch(() => [])).length, 0, 'sin cuenta no se ve nada')
 })
+
+test('color de la barra: los mecánicos nuevos salen en negro; el que escogió otro color se queda con el suyo', async () => {
+  assert.equal((await one(A, `select brand_color from mechanics where profile_id = '${A}'`)).brand_color, '#0b1220')
+  await as(B, `update mechanics set brand_color = '#b91c1c' where profile_id = '${B}'`)
+  await db.exec(readFileSync(new URL('../supabase/migrations/0012_color_negro.sql', import.meta.url), 'utf8'))
+  assert.equal((await one(B, `select brand_color from mechanics where profile_id = '${B}'`)).brand_color, '#b91c1c', 'el rojo que escogió se queda')
+})
