@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Search, User, Users } from 'lucide-react'
+import { Search, Users } from 'lucide-react'
 import { db } from '../../lib/db'
 import { must, useLoad } from '../../lib/useLoad'
-import { EmptyState, ErrorBox, Fab, Input, Loading, PageTitle, RowLink } from '../../components/ui'
+import { EmptyState, ErrorBox, Fab, Initials, Input, Loading, PageTitle, RowLink } from '../../components/ui'
 
 interface Row {
   id: string
@@ -61,7 +61,7 @@ export default function Clients() {
           <RowLink
             key={c.id}
             to={`/clientes/${c.id}`}
-            icon={User}
+            lead={<Initials name={c.full_name} />}
             title={c.full_name}
             subtitle={[c.boats.map((b) => b.name).join(', ') || 'Sin bote todavía', c.town].filter(Boolean).join(' · ')}
           />

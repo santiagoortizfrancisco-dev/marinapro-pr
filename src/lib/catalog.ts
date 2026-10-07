@@ -157,5 +157,5 @@ export const PAYMENT_METHODS = [
   { value: 'ath_movil', label: 'ATH Móvil' },
   { value: 'cash', label: 'Efectivo' },
   { value: 'check', label: 'Cheque' },
-  { value: 'other', label: 'Otro' },
+  { value: 'other', label: 'Tarjeta u otro' },
 ] as const

@@ -4,7 +4,7 @@ import { db } from '../lib/db'
 import { useLoad } from '../lib/useLoad'
 import { useAuth } from '../auth/AuthProvider'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
-import { PageTitle } from '../components/ui'
+import { CARD, IconBadge, PageTitle } from '../components/ui'
 
 export default function More() {
   const { profile, session } = useAuth()
@@ -27,8 +27,8 @@ export default function More() {
       <PageTitle>Más</PageTitle>
 
       {profile?.role === 'mechanic' && (
-        <Link to="/mas/negocio" className="mb-5 flex min-h-16 items-center gap-3 rounded-2xl bg-navy-800 px-4 text-white active:bg-navy-900">
-          <Briefcase size={26} />
+        <Link to="/mas/negocio" className="mb-3 flex min-h-16 items-center gap-3 rounded-2xl bg-navy-800 px-3 py-2 text-white shadow-lg shadow-navy-900/20 transition active:scale-[0.99]">
+          <IconBadge icon={Briefcase} tone="teal" />
           <span className="flex-1">
             <span className="block text-lg font-bold">Mi negocio</span>
             <span className="block text-sm text-navy-100">ATH Móvil, tarifa, IVU, facturas y garantía</span>
@@ -38,8 +38,8 @@ export default function More() {
       )}
 
       {profile?.role === 'mechanic' && (
-        <Link to="/mas/catalogo" className="mb-5 flex min-h-16 items-center gap-3 rounded-2xl border-2 border-navy-800 px-4 text-navy-900 active:bg-navy-50">
-          <ListChecks size={26} />
+        <Link to="/mas/catalogo" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+          <IconBadge icon={ListChecks} tone="amber" />
           <span className="flex-1">
             <span className="block text-lg font-bold">Mis piezas y servicios</span>
             <span className="block text-sm text-slate-600">Tus precios para no escribirlos cada vez</span>
@@ -49,8 +49,8 @@ export default function More() {
       )}
 
       {profile?.role === 'mechanic' && (
-        <Link to="/mas/perfil-publico" className="mb-5 flex min-h-16 items-center gap-3 rounded-2xl border-2 border-navy-800 px-4 text-navy-900 active:bg-navy-50">
-          <Globe size={26} />
+        <Link to="/mas/perfil-publico" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+          <IconBadge icon={Globe} tone="blue" />
           <span className="flex-1">
             <span className="block text-lg font-bold">Mi perfil público</span>
             <span className="block text-sm text-slate-600">Sal en el directorio y recibe citas nuevas</span>
@@ -60,8 +60,8 @@ export default function More() {
       )}
 
       {isAdmin && (
-        <Link to="/mas/admin" className="mb-5 flex min-h-16 items-center gap-3 rounded-2xl border-2 border-navy-800 px-4 text-navy-900 active:bg-navy-50">
-          <ShieldCheck size={26} />
+        <Link to="/mas/admin" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+          <IconBadge icon={ShieldCheck} tone="violet" />
           <span className="flex-1">
             <span className="block text-lg font-bold">Admin</span>
             <span className="block text-sm text-slate-600">Quién usa el app y cuánto</span>
@@ -70,7 +70,7 @@ export default function More() {
         </Link>
       )}
 
-      <section className="rounded-2xl border-2 border-slate-200 px-4">
+      <section className={`${CARD} mt-5 px-4`}>
         {row('Nombre', profile?.full_name)}
         {row('Email', profile?.email ?? session?.user.email)}
         {row('Teléfono', profile?.phone)}
@@ -79,7 +79,7 @@ export default function More() {
       </section>
 
       <h2 className="mb-2 mt-6 text-lg font-bold text-navy-900">Formatos</h2>
-      <section className="rounded-2xl border-2 border-slate-200 px-4">
+      <section className={`${CARD} mt-5 px-4`}>
         {row('Fecha de hoy', formatDate(now))}
         {row('Hora (Puerto Rico)', formatTime(now))}
         {row('Ejemplo de dinero', formatMoney(1234.56))}

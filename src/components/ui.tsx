@@ -2,6 +2,41 @@ import { Children, isValidElement, type ButtonHTMLAttributes, type InputHTMLAttr
 import { Link, useNavigate } from 'react-router'
 import { ChevronLeft, ChevronRight, Loader2, Plus, type LucideIcon } from 'lucide-react'
 
+/** Colores de los circulitos de íconos (para reconocer las cosas de un vistazo). */
+export const TONES = {
+  navy: 'bg-navy-100 text-navy-800',
+  green: 'bg-emerald-100 text-emerald-700',
+  orange: 'bg-orange-100 text-orange-700',
+  blue: 'bg-sky-100 text-sky-700',
+  amber: 'bg-amber-100 text-amber-700',
+  violet: 'bg-violet-100 text-violet-700',
+  teal: 'bg-teal-100 text-teal-700',
+  slate: 'bg-slate-100 text-slate-600',
+} as const
+export type Tone = keyof typeof TONES
+
+/** Ícono dentro de un circulito de color. */
+export function IconBadge({ icon: Icon, tone = 'navy', size = 'md' }: { icon: LucideIcon; tone?: Tone; size?: 'sm' | 'md' | 'lg' }) {
+  const box = size === 'sm' ? 'h-7 w-7' : size === 'lg' ? 'h-16 w-16' : 'h-11 w-11'
+  const px = size === 'sm' ? 16 : size === 'lg' ? 32 : 22
+  return (
+    <span className={`flex shrink-0 items-center justify-center rounded-full ${box} ${TONES[tone]}`}>
+      <Icon size={px} />
+    </span>
+  )
+}
+
+/** Circulito con las iniciales (ej. "AE" para Ana Ejemplo). */
+export function Initials({ name }: { name: string }) {
+  const letters = name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')
+  const tones: Tone[] = ['navy', 'teal', 'violet', 'orange', 'blue', 'green']
+  const tone = tones[[...name].reduce((t, c) => t + c.charCodeAt(0), 0) % tones.length]
+  return <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-extrabold ${TONES[tone]}`}>{letters || '?'}</span>
+}
+
+/** Tarjeta blanca con sombra suave. */
+export const CARD = 'rounded-2xl bg-white shadow-[0_6px_24px_-14px_rgba(8,47,73,0.35)] ring-1 ring-slate-200/80'
+
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 
 const BUTTON_STYLES: Record<ButtonVariant, string> = {
@@ -15,7 +50,7 @@ const BUTTON_STYLES: Record<ButtonVariant, string> = {
 export function Button({ variant = 'primary', className = '', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
   return (
     <button
-      className={`flex min-h-14 w-full items-center justify-center gap-2 rounded-xl px-5 text-lg font-bold ${BUTTON_STYLES[variant]} ${className}`}
+      className={`flex min-h-14 w-full items-center justify-center gap-2 rounded-xl px-5 text-lg font-bold transition active:scale-[0.98] ${BUTTON_STYLES[variant]} ${className}`}
       {...props}
     />
   )
@@ -40,12 +75,15 @@ export function LinkButton({ href, children, variant = 'secondary', external }: 
  * Con botones adentro (opciones, buscador, mapa) se usa <div>: en iPhone un <label> con botones
  * puede mandar el toque al primer campo en vez de al botón.
  */
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Field({ label, hint, icon, tone = 'navy', children }: { label: string; hint?: string; icon?: LucideIcon; tone?: Tone; children: ReactNode }) {
   const items = Children.toArray(children)
   const single = items.length === 1 && isValidElement(items[0]) && [Input, Select, Textarea].includes(items[0].type as never)
   const body = (
     <>
-      <span className="mb-1 block text-base font-semibold text-slate-800">{label}</span>
+      <span className="mb-1.5 flex items-center gap-2 text-base font-semibold text-slate-800">
+        {icon && <IconBadge icon={icon} tone={tone} size="sm" />}
+        {label}
+      </span>
       {children}
       {hint && <span className="mt-1 block text-sm text-slate-500">{hint}</span>}
     </>
@@ -80,7 +118,7 @@ export function Suggestions({ id, values }: { id: string; values: readonly strin
 export function Choice<T extends string | number>({ value, onChange, options, columns = 2 }: {
   value: T | null
   onChange: (v: T) => void
-  options: readonly { value: T; label: string; hint?: string }[]
+  options: readonly { value: T; label: string; hint?: string; icon?: LucideIcon; tone?: Tone }[]
   columns?: 1 | 2 | 3
 }) {
   const cols = columns === 1 ? 'grid-cols-1' : columns === 3 ? 'grid-cols-3' : 'grid-cols-2'
@@ -91,12 +129,15 @@ export function Choice<T extends string | number>({ value, onChange, options, co
           key={String(o.value)}
           type="button"
           onClick={() => onChange(o.value)}
-          className={`min-h-14 rounded-xl border-2 px-3 py-2 text-left text-base font-semibold ${
+          className={`flex min-h-14 items-center gap-3 rounded-xl border-2 px-3 py-2 text-left text-base font-semibold transition active:scale-[0.98] ${
             value === o.value ? 'border-navy-800 bg-navy-800 text-white' : 'border-slate-300 bg-white text-slate-800'
-          }`}
+          } ${o.icon && columns === 3 ? 'flex-col justify-center gap-1 text-center' : ''}`}
         >
-          {o.label}
-          {o.hint && <span className={`block text-sm font-normal ${value === o.value ? 'text-navy-100' : 'text-slate-500'}`}>{o.hint}</span>}
+          {o.icon && <IconBadge icon={o.icon} tone={o.tone} size="sm" />}
+          <span className="min-w-0">
+            {o.label}
+            {o.hint && <span className={`block text-sm font-normal ${value === o.value ? 'text-navy-100' : 'text-slate-500'}`}>{o.hint}</span>}
+          </span>
         </button>
       ))}
     </div>
@@ -127,7 +168,7 @@ export function MultiChoice({ value, onChange, options }: { value: string[]; onC
 export function PageTitle({ children, subtitle }: { children: ReactNode; subtitle?: string }) {
   return (
     <div className="mb-5">
-      <h1 className="text-2xl font-extrabold text-navy-900">{children}</h1>
+      <h1 className="text-3xl font-extrabold tracking-tight text-navy-900">{children}</h1>
       {subtitle && <p className="mt-1 text-base text-slate-600">{subtitle}</p>}
     </div>
   )
@@ -155,10 +196,10 @@ export function BackTitle({ children, subtitle, to }: { children: ReactNode; sub
 }
 
 /** Tarjeta que lleva a otra pantalla. */
-export function RowLink({ to, title, subtitle, right, icon: Icon }: { to: string; title: ReactNode; subtitle?: ReactNode; right?: ReactNode; icon?: LucideIcon }) {
+export function RowLink({ to, title, subtitle, right, icon, tone = 'navy', lead }: { to: string; title: ReactNode; subtitle?: ReactNode; right?: ReactNode; icon?: LucideIcon; tone?: Tone; lead?: ReactNode }) {
   return (
-    <Link to={to} className="flex min-h-16 items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 active:bg-slate-50">
-      {Icon && <Icon size={26} className="shrink-0 text-navy-700" />}
+    <Link to={to} className={`${CARD} flex min-h-16 items-center gap-3 px-3 py-3 transition active:scale-[0.99] active:bg-slate-50`}>
+      {lead ?? (icon && <IconBadge icon={icon} tone={tone} />)}
       <div className="min-w-0 flex-1">
         <div className="truncate text-lg font-bold text-slate-900">{title}</div>
         {subtitle && <div className="truncate text-base text-slate-600">{subtitle}</div>}
@@ -229,10 +270,10 @@ export function Fab({ to, label }: { to: string; label: string }) {
 }
 
 /** Pantalla vacía. */
-export function EmptyState({ icon: Icon, title, text, milestone }: { icon: LucideIcon; title: string; text: string; milestone?: string }) {
+export function EmptyState({ icon, title, text, milestone }: { icon: LucideIcon; title: string; text: string; milestone?: string }) {
   return (
-    <div className="rounded-2xl border-2 border-dashed border-slate-300 px-6 py-10 text-center">
-      <Icon size={48} className="mx-auto text-navy-600" />
+    <div className="flex flex-col items-center rounded-3xl border-2 border-dashed border-slate-300 bg-white/60 px-6 py-10 text-center">
+      <IconBadge icon={icon} tone="teal" size="lg" />
       <h2 className="mt-3 text-xl font-bold text-slate-900">{title}</h2>
       <p className="mt-2 text-base text-slate-600">{text}</p>
       {milestone && <p className="mt-4 inline-block rounded-full bg-sun-400 px-3 py-1 text-sm font-bold text-navy-900">{milestone}</p>}

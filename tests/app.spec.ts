@@ -324,7 +324,7 @@ test('Cobros: el estimado sin aprobar no sale; al marcarlo "Trabajando" sí sale
   await page.getByRole('button', { name: 'Trabajando', exact: true }).click()
   await page.getByRole('link', { name: 'Cobros' }).click()
   await expect(page.getByText('Aprobados y trabajando')).toBeVisible()
-  await expect(page.getByText(/La Tranquila · Ana Ejemplo/)).toBeVisible()
+  await expect(page.getByRole('link', { name: /La Tranquila.*Ana Ejemplo/ })).toBeVisible()
 })
 
 test('"Ya me pagó" sin hacer factura: la hace sola y queda pagada', async ({ page }) => {

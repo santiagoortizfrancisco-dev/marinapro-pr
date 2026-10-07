@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { AlertTriangle, Boxes, CheckCircle2, ExternalLink, FileText, MessageCircle, Package, Plus, Receipt, Ship, ThumbsUp, Wrench, CalendarClock } from 'lucide-react'
+import { AlertTriangle, Banknote, Boxes, Calculator, Camera, CheckCircle2, Clock, CreditCard, ExternalLink, FileText, HandCoins, ListChecks, MessageCircle, Package, Plus, Receipt, Ship, Smartphone, ThumbsUp, Waves, Wrench, CalendarClock, ScrollText, type LucideIcon } from 'lucide-react'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, WORK_ORDER_STATUS, WORK_STEPS, labelOf } from '../lib/catalog'
 import { db } from '../lib/db'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
@@ -16,15 +16,23 @@ import { PackagePicker, SavePackageSheet } from './PackageSheets'
 import { PACKAGES_ENABLED, itemsFromJob } from '../lib/packages'
 import PhotoSection from './PhotoSection'
 import { Sheet } from './Sheet'
-import { BackTitle, Button, Choice, ErrorBox, Field, Input, LinkButton, Loading, Pill, Textarea, Toggle } from './ui'
+import { BackTitle, Button, Choice, ErrorBox, Field, IconBadge, Input, LinkButton, Loading, Pill, Textarea, Toggle, type Tone } from './ui'
 
 type Boat = { id: string; name: string; clients: Pick<Client, 'id' | 'full_name' | 'phone'> }
 
-function Section({ title, children, right }: { title: string; children: React.ReactNode; right?: React.ReactNode }) {
+/** Cómo paga el cliente: cada forma con su ícono y color para reconocerla rápido. */
+const PAY_ICONS: Record<string, { icon: LucideIcon; tone: Tone }> = {
+  ath_movil: { icon: Smartphone, tone: 'orange' },
+  cash: { icon: Banknote, tone: 'green' },
+  check: { icon: ScrollText, tone: 'blue' },
+  other: { icon: CreditCard, tone: 'violet' },
+}
+
+function Section({ title, icon, tone = 'navy', children, right }: { title: string; icon?: LucideIcon; tone?: Tone; children: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <section className="mt-6">
+    <section className="mt-7">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="text-xl font-extrabold text-navy-900">{title}</h2>
+        <h2 className="flex items-center gap-2 text-xl font-extrabold text-navy-900">{icon && <IconBadge icon={icon} tone={tone} size="sm" />}{title}</h2>
         {right}
       </div>
       {children}
@@ -215,12 +223,12 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
       )}
 
       {!locked && wo.status !== 'invoiced' && (
-        <Section title="¿En qué va?">
+        <Section title="¿En qué va?" icon={ListChecks} tone="navy">
           <Choice value={wo.status} onChange={setStatus} options={WORK_STEPS} />
         </Section>
       )}
 
-      <Section title="El problema">
+      <Section title="El problema" icon={Wrench} tone="amber">
         <div className="space-y-4">
           <AutoText label="Lo que dice el cliente" value={wo.complaint} onSave={(v) => patch({ complaint: v })} />
           <AutoText label="Diagnóstico (lo que encontraste)" value={wo.diagnosis} onSave={(v) => patch({ diagnosis: v })} rows={4} />
@@ -228,7 +236,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </div>
       </Section>
 
-      <Section title="Mano de obra">
+      <Section title="Mano de obra" icon={Clock} tone="blue">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Horas">
             <Input inputMode="decimal" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} onBlur={() => patch({ labor_hours: num(laborHours) ?? 0 })} />
@@ -241,7 +249,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         <p className="text-right text-sm text-slate-500">Si cobras por trabajo y no por hora, déjalo en 0 y usa “+ Servicio”.</p>
       </Section>
 
-      <Section title="Servicios y piezas">
+      <Section title="Servicios y piezas" icon={Package} tone="teal">
         <div className="mb-3 grid grid-cols-2 gap-2">
           <button onClick={() => { setEditPart(null); setPartKind('service'); setPartOpen(true) }} className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900">
             <Plus size={22} /> Servicio
@@ -277,11 +285,11 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         )}
       </Section>
 
-      <Section title="Fotos">
+      <Section title="Fotos" icon={Camera} tone="violet">
         <PhotoSection workOrderId={wo.id} photos={photos} onChange={reload} />
       </Section>
 
-      <Section title="Prueba en el agua">
+      <Section title="Prueba en el agua" icon={Waves} tone="blue">
         <div className="space-y-3">
           <Toggle checked={wo.sea_trial_required} onChange={(v) => patch({ sea_trial_required: v })} label="Este trabajo necesita prueba en el agua" hint="Motor, propulsión o electricidad" />
           {wo.sea_trial_required && (
@@ -296,7 +304,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </div>
       </Section>
 
-      <Section title="Total">
+      <Section title="Total" icon={Calculator} tone="navy">
         <div className="space-y-2">
           <Toggle checked={wo.charge_ivu_labor} onChange={(v) => patch({ charge_ivu_labor: v })} label="Cobrar IVU en mano de obra" />
           <Toggle checked={wo.charge_ivu_parts} onChange={(v) => patch({ charge_ivu_parts: v })} label="Cobrar IVU en piezas" />
@@ -309,7 +317,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </dl>
       </Section>
 
-      <Section title="Estimado">
+      <Section title="Estimado" icon={FileText} tone="amber">
         {wo.estimate_approved_at ? (
           <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-base font-semibold text-emerald-900">
             <CheckCircle2 />
@@ -337,7 +345,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         )}
       </Section>
 
-      <Section title="Cobrar">
+      <Section title="Cobrar" icon={HandCoins} tone="green">
         <div className="space-y-3">
           {invoice && (
             <div className="rounded-2xl border-2 border-violet-200 bg-violet-50 p-4">
@@ -346,7 +354,12 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                 <span className="text-xl font-extrabold text-violet-950">{formatMoney(Number(invoice.total))}</span>
               </div>
               <div className="mt-1 text-base text-violet-900">
-                {invoice.paid_at ? `Pagada el ${formatDate(invoice.paid_at)} · ${labelOf(PAYMENT_METHODS, invoice.payment_method)}` : 'Falta cobrar'}
+                {invoice.paid_at ? (
+                  <span className="flex items-center gap-2">
+                    {invoice.payment_method && <IconBadge icon={PAY_ICONS[invoice.payment_method].icon} tone={PAY_ICONS[invoice.payment_method].tone} size="sm" />}
+                    Pagada el {formatDate(invoice.paid_at)} · {labelOf(PAYMENT_METHODS, invoice.payment_method)}
+                  </span>
+                ) : 'Falta cobrar'}
               </div>
             </div>
           )}
@@ -360,9 +373,9 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                     value={way}
                     onChange={setPayWay}
                     options={[
-                      { value: 'any', label: 'ATH Móvil o efectivo' },
-                      { value: 'ath', label: 'Solo ATH Móvil' },
-                      { value: 'cash', label: 'Efectivo o cheque' },
+                      { value: 'any', label: 'ATH Móvil o efectivo', icon: HandCoins, tone: 'teal' },
+                      { value: 'ath', label: 'Solo ATH Móvil', icon: Smartphone, tone: 'orange' },
+                      { value: 'cash', label: 'Efectivo o cheque', icon: Banknote, tone: 'green' },
                     ]}
                   />
                 ) : (
@@ -386,7 +399,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                 </>
               )}
 
-              <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700 active:bg-emerald-800"><CheckCircle2 /> Ya me pagó</Button>
+              <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700! active:bg-emerald-800!"><CheckCircle2 /> Ya me pagó</Button>
               {!invoice && <p className="text-sm text-slate-500">Si ya te pagaron, toca “Ya me pagó”: la factura se hace sola para que quede el récord.</p>}
             </>
           )}
@@ -402,8 +415,8 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
       <Sheet open={payOpen} title="¿Cómo te pagó?" onClose={() => setPayOpen(false)}>
         <div className="space-y-3">
-          <Choice value={payMethod} onChange={setPayMethod} options={PAYMENT_METHODS} />
-          <Button disabled={busy} onClick={() => markPaid(true)} className="bg-emerald-700 active:bg-emerald-800"><CheckCircle2 /> Guardar pago</Button>
+          <Choice value={payMethod} onChange={setPayMethod} options={PAYMENT_METHODS.map((m) => ({ ...m, ...PAY_ICONS[m.value] }))} />
+          <Button disabled={busy} onClick={() => markPaid(true)} className="bg-emerald-700! active:bg-emerald-800!"><CheckCircle2 /> Guardar pago</Button>
           <Button variant="ghost" onClick={() => setPayOpen(false)}>Cancelar</Button>
         </div>
       </Sheet>
