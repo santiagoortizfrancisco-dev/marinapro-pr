@@ -596,3 +596,39 @@ test.skip('paquetes: + Paquete añade todo de un toque; Guardar como paquete; ca
   expect(parts).toHaveLength(6)
   expect(parts.filter((p) => p.description === 'Filtro de aceite').map((p) => Number(p.unit_cost)).sort()).toEqual([0, 18])
 })
+
+test('Contactar al desarrollador: el mecánico escribe desde Más y al admin le llega a Mensajes (sin ver ningún email)', async ({ page, browser }) => {
+  // Alguien que no puede entrar escribe desde la pantalla de entrar
+  const visitor = await browser.newPage()
+  await visitor.goto('http://localhost:4321/')
+  await visitor.getByRole('button', { name: '¿Problemas para entrar? Escríbenos' }).click()
+  const sheet = visitor.getByRole('dialog', { name: 'Contactar al desarrollador' })
+  await sheet.getByLabel('Tu mensaje').fill('No me acuerdo de la contraseña')
+  await sheet.getByRole('button', { name: /Enviar mensaje/ }).click()
+  await expect(sheet.getByRole('alert')).toContainText('email o teléfono')
+  await sheet.getByLabel('Tu email o teléfono').fill('787-555-0177')
+  await sheet.getByRole('button', { name: /Enviar mensaje/ }).click()
+  await expect(sheet.getByText('¡Recibido!')).toBeVisible()
+  await expect(visitor.getByText(/@gmail\.com/)).toHaveCount(0) // el email del desarrollador no se ve
+  await visitor.close()
+
+  // El mecánico escribe desde Más
+  await login(page)
+  await page.getByRole('link', { name: 'Más' }).click()
+  await page.getByRole('button', { name: /Contactar al desarrollador/ }).click()
+  const s2 = page.getByRole('dialog', { name: 'Contactar al desarrollador' })
+  await s2.getByLabel('Tu mensaje').fill('La factura no sale por WhatsApp')
+  await s2.getByRole('button', { name: /Enviar mensaje/ }).click()
+  await expect(s2.getByText('¡Recibido!')).toBeVisible()
+  await s2.getByRole('button', { name: 'Cerrar' }).click()
+  expect((await state()).support_messages).toHaveLength(2)
+
+  // El admin lo ve en Admin → Mensajes
+  await page.reload()
+  await expect(page.getByRole('link', { name: /Admin/ })).toContainText('2 mensajes')
+  await page.getByRole('link', { name: /Admin/ }).click()
+  await expect(page.getByText('La factura no sale por WhatsApp')).toBeVisible()
+  await expect(page.getByText('No me acuerdo de la contraseña')).toBeVisible()
+  await page.getByRole('button', { name: 'Leído' }).first().click()
+  await expect(page.getByText('1 nuevos')).toBeVisible()
+})

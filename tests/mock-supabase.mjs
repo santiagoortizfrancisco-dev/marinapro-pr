@@ -64,6 +64,7 @@ function reset() {
         { kind: 'part', name: 'Filtro de aceite', qty: 1, price: null },
       ] },
     ],
+    support_messages: [],
     photos: [],
     invoices: [],
     maintenance_schedules: [],
@@ -243,6 +244,16 @@ const RPC = {
     db.service_requests.push({ ...DEFAULTS.service_requests(), id: randomUUID(), boat_id: b.id, client_id: c.id, description: a.p_problem.trim(), status: 'new', source: 'directory', contact_name: a.p_name.trim(), contact_phone: a.p_phone.trim(), preferred_when: a.p_when, boat_location: a.p_location || null, created_at: new Date().toISOString() })
     return { ok: true }
   },
+  send_support_message: ({ p_message, p_contact, p_version, p_page }) => {
+    if (String(p_message ?? '').trim().length < 3) throw Object.assign(new Error('Escribe tu mensaje'), { status: 400 })
+    if (caller === 'anon' && String(p_contact ?? '').trim().length < 5) throw Object.assign(new Error('Escribe tu email o teléfono'), { status: 400 })
+    const prof = db.profiles.find((x) => x.id === caller)
+    const mech = db.mechanics.find((x) => x.profile_id === caller)
+    db.support_messages.push({ id: randomUUID(), user_id: prof?.id ?? null, name: prof?.full_name ?? null, business: mech?.business_name ?? null, email: prof?.email ?? null, phone: prof?.phone ?? null,
+      contact: p_contact || null, message: String(p_message).trim(), app_version: p_version, page: p_page, created_at: new Date().toISOString(), read_at: null })
+    return { ok: true }
+  },
+  admin_unread_messages: () => (caller === U ? db.support_messages.filter((m) => !m.read_at).length : 0),
   ads_active: () => (db.settings.directory_open || caller === U ? db.ads.filter((x) => x.active).map(({ id, advertiser, image_path, link_url }) => ({ id, advertiser, image_path, link_url })) : []),
   ad_click: ({ p_id }) => { const ad = db.ads.find((x) => x.id === p_id); if (ad) ad.clicks++; return null },
   approve_estimate: ({ p_token }) => {

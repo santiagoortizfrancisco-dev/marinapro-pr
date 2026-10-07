@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
-import { Briefcase, ChevronRight, Globe, ListChecks, ShieldCheck } from 'lucide-react'
+import { Briefcase, ChevronRight, Globe, LifeBuoy, ListChecks, ShieldCheck } from 'lucide-react'
+import ContactSheet from '../components/ContactSheet'
 import { db } from '../lib/db'
 import { useLoad } from '../lib/useLoad'
 import { useAuth } from '../auth/AuthProvider'
@@ -14,6 +16,8 @@ export default function More() {
     const { data } = await db().rpc('is_app_admin')
     return data === true
   }, [])
+  const { data: unread } = useLoad(async () => (isAdmin ? Number((await db().rpc('admin_unread_messages')).data ?? 0) : 0), [isAdmin])
+  const [contactOpen, setContactOpen] = useState(false)
 
   const row = (label: string, value: string | null | undefined) => (
     <div className="flex justify-between gap-4 border-b border-slate-200 py-3 last:border-0">
@@ -64,11 +68,22 @@ export default function More() {
           <IconBadge icon={ShieldCheck} tone="violet" />
           <span className="flex-1">
             <span className="block text-lg font-bold">Admin</span>
-            <span className="block text-sm text-slate-600">Quién usa el app y cuánto</span>
+            <span className="block text-sm text-slate-600">Quién usa el app, directorio y mensajes</span>
           </span>
+          {!!unread && <span className="rounded-full bg-red-600 px-2.5 py-1 text-sm font-extrabold text-white">{unread} {unread === 1 ? 'mensaje' : 'mensajes'}</span>}
           <ChevronRight />
         </Link>
       )}
+
+      <button onClick={() => setContactOpen(true)} className={`${CARD} mb-3 flex min-h-16 w-full items-center gap-3 px-3 py-2 text-left text-navy-900 transition active:scale-[0.99]`}>
+        <IconBadge icon={LifeBuoy} tone="blue" />
+        <span className="flex-1">
+          <span className="block text-lg font-bold">Contactar al desarrollador</span>
+          <span className="block text-sm text-slate-600">¿Algo no funciona o tienes una idea? Escríbenos</span>
+        </span>
+        <ChevronRight />
+      </button>
+      <ContactSheet open={contactOpen} onClose={() => setContactOpen(false)} />
 
       <section className={`${CARD} mt-5 px-4`}>
         {row('Nombre', profile?.full_name)}

@@ -318,3 +318,23 @@ test('color de la barra: los mecánicos nuevos salen en negro; el que escogió o
   await db.exec(readFileSync(new URL('../supabase/migrations/0012_color_negro.sql', import.meta.url), 'utf8'))
   assert.equal((await one(B, `select brand_color from mechanics where profile_id = '${B}'`)).brand_color, '#b91c1c', 'el rojo que escogió se queda')
 })
+
+test('mensajes al desarrollador: el mecánico y alguien sin cuenta escriben; solo el admin los lee', async () => {
+  assert.equal((await one(A, `select send_support_message('No me sale la factura', null, '2026-10-07', '/trabajos') j`)).j.ok, true)
+  assert.ok(await fails(() => as(null, `select send_support_message('No puedo entrar', null) j`, 'anon')), 'sin cuenta tiene que dejar email o teléfono')
+  assert.equal((await one(null, `select send_support_message('No puedo entrar', '787-555-0199') j`, 'anon')).j.ok, true)
+  assert.ok(await fails(() => as(A, `insert into support_messages(message) values ('directo')`)), 'nadie escribe directo en la tabla')
+  assert.equal((await as(A, `select * from support_messages`)).length, 0, 'un mecánico no lee los mensajes')
+  assert.equal((await as(null, `select * from support_messages`, 'anon').catch(() => [])).length, 0)
+  const admin = (await db.query(`select id from profiles where email = 'santiagoortizfrancisco@gmail.com'`)).rows[0].id
+  const msgs = await as(admin, `select * from support_messages order by created_at`)
+  assert.equal(msgs.length, 2)
+  assert.equal(msgs[0].business, 'Taller A', 'trae el negocio del mecánico')
+  assert.equal(msgs[1].contact, '787-555-0199')
+  assert.equal((await one(admin, `select admin_unread_messages() n`)).n, 2)
+  await as(admin, `update support_messages set read_at = now() where id = '${msgs[0].id}'`)
+  assert.equal((await one(admin, `select admin_unread_messages() n`)).n, 1)
+  assert.equal((await one(A, `select admin_unread_messages() n`)).n, 0, 'un mecánico ve 0')
+  for (let i = 0; i < 4; i++) await as(A, `select send_support_message('mensaje ${i}')`)
+  assert.ok(await fails(() => as(A, `select send_support_message('uno más')`)), 'máximo 5 por hora')
+})
