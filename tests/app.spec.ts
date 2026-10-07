@@ -523,6 +523,15 @@ test('directorio cerrado: el admin lo ve desde el app en la misma ventana y pued
   await expect(page.getByRole('heading', { name: 'Más' })).toBeVisible()
 })
 
+test('paquetes escondidos: el trabajo solo tiene + Servicio y + Pieza', async ({ page }) => {
+  await login(page)
+  await openExampleAppointment(page)
+  await expect(page.getByRole('button', { name: 'Servicio', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Paquete/ })).toHaveCount(0)
+  await page.goto('/mas/catalogo')
+  await expect(page.getByRole('button', { name: 'Paquetes' })).toHaveCount(0)
+})
+
 test('Admin: Quitar saca al mecánico del directorio', async ({ page }) => {
   await login(page)
   await page.getByRole('link', { name: 'Más' }).click()
@@ -537,7 +546,8 @@ test('Admin: Quitar saca al mecánico del directorio', async ({ page }) => {
   expect((await state()).mechanics[0].approved).toBe(false)
 })
 
-test('paquetes: + Paquete añade todo de un toque; Guardar como paquete; cambiar precio en Mis piezas y servicios y usarlo otra vez', async ({ page }) => {
+// Paquetes escondidos por ahora (PACKAGES_ENABLED = false en src/lib/packages.ts)
+test.skip('paquetes: + Paquete añade todo de un toque; Guardar como paquete; cambiar precio en Mis piezas y servicios y usarlo otra vez', async ({ page }) => {
   await login(page)
   await openExampleAppointment(page)
 

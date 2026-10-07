@@ -1,6 +1,12 @@
 import { db } from './db'
 import type { Part } from './types'
 
+/**
+ * Paquetes de un toque: escondidos por ahora (Francisco, 2026-10-07: "muy complicado, no lo van a usar").
+ * La tabla y el código se quedan; para volver a enseñarlos, cambiar a true.
+ */
+export const PACKAGES_ENABLED = false
+
 /** Una línea de un paquete. price null = usar el último precio de "Mis piezas y servicios". */
 export interface PackageItem {
   kind: 'service' | 'part'

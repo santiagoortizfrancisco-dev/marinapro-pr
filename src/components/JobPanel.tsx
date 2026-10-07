@@ -13,7 +13,7 @@ import ConfirmDelete from './ConfirmDelete'
 import NextService from './NextService'
 import PartSheet from './PartSheet'
 import { PackagePicker, SavePackageSheet } from './PackageSheets'
-import { itemsFromJob } from '../lib/packages'
+import { PACKAGES_ENABLED, itemsFromJob } from '../lib/packages'
 import PhotoSection from './PhotoSection'
 import { Sheet } from './Sheet'
 import { BackTitle, Button, Choice, ErrorBox, Field, Input, LinkButton, Loading, Pill, Textarea, Toggle } from './ui'
@@ -249,9 +249,9 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
           <button onClick={() => { setEditPart(null); setPartKind('part'); setPartOpen(true) }} className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 text-lg font-bold text-navy-800 active:bg-navy-50">
             <Plus size={22} /> Pieza
           </button>
-          <button onClick={() => setPkgOpen(true)} className="col-span-2 flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-800 text-lg font-bold text-navy-800 active:bg-navy-50">
+          {PACKAGES_ENABLED && <button onClick={() => setPkgOpen(true)} className="col-span-2 flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-800 text-lg font-bold text-navy-800 active:bg-navy-50">
             <Boxes size={22} /> Paquete (todo de un toque)
-          </button>
+          </button>}
         </div>
         {parts.length === 0 && <p className="text-base text-slate-600">Todavía no hay servicios ni piezas.</p>}
         <div className="space-y-2">
@@ -270,7 +270,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
             </button>
           ))}
         </div>
-        {itemsFromJob(parts).length >= 2 && (
+        {PACKAGES_ENABLED && itemsFromJob(parts).length >= 2 && (
           <button onClick={() => setSavePkgOpen(true)} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 text-base font-bold text-navy-700 underline underline-offset-4">
             <Boxes size={18} /> Guardar como paquete
           </button>

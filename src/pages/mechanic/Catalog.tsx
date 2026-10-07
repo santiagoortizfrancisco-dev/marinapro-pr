@@ -5,7 +5,7 @@ import { db } from '../../lib/db'
 import { blank, must, num, useLoad } from '../../lib/useLoad'
 import type { CatalogItem } from '../../components/PartSheet'
 import { formatMoney } from '../../lib/format'
-import type { PackageItem, ServicePackage } from '../../lib/packages'
+import { PACKAGES_ENABLED, type PackageItem, type ServicePackage } from '../../lib/packages'
 import { BackTitle, Button, ErrorBox, Input, Loading } from '../../components/ui'
 
 /** Las piezas y servicios del mecánico, con su precio. Se llenan solas al usarlas en un trabajo. */
@@ -51,14 +51,14 @@ export default function Catalog() {
   if (loading && !data) return <Loading />
   if (error || !data) return <ErrorBox message={error || 'No se pudo cargar.'} onRetry={reload} />
   const list = data.filter((c) => c.kind === tab)
-  const tabs = [['service', 'Servicios'], ['part', 'Piezas'], ['package', 'Paquetes']] as const
+  const tabs = ([['service', 'Servicios'], ['part', 'Piezas'], ['package', 'Paquetes']] as const).filter(([k]) => PACKAGES_ENABLED || k !== 'package')
 
   return (
     <>
       <BackTitle to="/mas" subtitle="Se llenan solas cuando las usas en un trabajo, con el último precio que cobraste">Mis piezas y servicios</BackTitle>
       {saved && <div className="fixed left-1/2 top-20 z-30 -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white">{saved}</div>}
 
-      <div className="mb-4 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+      <div className={`mb-4 grid ${tabs.length === 3 ? 'grid-cols-3' : 'grid-cols-2'} gap-1 rounded-xl bg-slate-100 p-1`}>
         {tabs.map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)} className={`min-h-12 rounded-lg text-lg font-bold ${tab === k ? 'bg-white text-navy-900 shadow' : 'text-slate-600'}`}>
             {label}

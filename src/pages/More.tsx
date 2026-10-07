@@ -42,7 +42,7 @@ export default function More() {
           <ListChecks size={26} />
           <span className="flex-1">
             <span className="block text-lg font-bold">Mis piezas y servicios</span>
-            <span className="block text-sm text-slate-600">Tus precios y paquetes, para no escribirlos cada vez</span>
+            <span className="block text-sm text-slate-600">Tus precios para no escribirlos cada vez</span>
           </span>
           <ChevronRight />
         </Link>
