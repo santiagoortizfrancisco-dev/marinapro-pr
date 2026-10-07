@@ -85,7 +85,7 @@ export default function More() {
         {row('Ejemplo de dinero', formatMoney(1234.56))}
       </section>
 
-      <p className="mt-8 text-center text-sm text-slate-500">Salt Boat · versión {__APP_VERSION__}</p>
+      <p className="mt-8 text-center text-sm text-slate-500">Salt Boat Repair · versión {__APP_VERSION__}</p>
     </>
   )
 }

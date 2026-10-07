@@ -15,7 +15,7 @@ export interface PackageItem {
   price: number | null
 }
 
-/** Paquete de un toque. mechanic_id null = paquete de ejemplo de Salt Boat. */
+/** Paquete de un toque. mechanic_id null = paquete de ejemplo de Salt Boat Repair. */
 export interface ServicePackage {
   id: string
   mechanic_id: string | null
