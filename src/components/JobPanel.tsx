@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { AlertTriangle, CheckCircle2, ExternalLink, FileText, MessageCircle, Package, Plus, Receipt, Ship, ThumbsUp, Wrench, CalendarClock } from 'lucide-react'
+import { AlertTriangle, Boxes, CheckCircle2, ExternalLink, FileText, MessageCircle, Package, Plus, Receipt, Ship, ThumbsUp, Wrench, CalendarClock } from 'lucide-react'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, WORK_ORDER_STATUS, WORK_STEPS, labelOf } from '../lib/catalog'
 import { db } from '../lib/db'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
@@ -12,6 +12,8 @@ import { useAuth } from '../auth/AuthProvider'
 import ConfirmDelete from './ConfirmDelete'
 import NextService from './NextService'
 import PartSheet from './PartSheet'
+import { PackagePicker, SavePackageSheet } from './PackageSheets'
+import { itemsFromJob } from '../lib/packages'
 import PhotoSection from './PhotoSection'
 import { Sheet } from './Sheet'
 import { BackTitle, Button, Choice, ErrorBox, Field, Input, LinkButton, Loading, Pill, Textarea, Toggle } from './ui'
@@ -52,6 +54,8 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   const [editPart, setEditPart] = useState<Part | null>(null)
   const [partKind, setPartKind] = useState<Part['kind']>('part')
   const [skipNext, setSkipNext] = useState(false)
+  const [pkgOpen, setPkgOpen] = useState(false)
+  const [savePkgOpen, setSavePkgOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [payMethod, setPayMethod] = useState<NonNullable<Invoice['payment_method']>>('ath_movil')
   const [saved, setSaved] = useState('')
@@ -97,6 +101,11 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
     setData({ ...data!, wo: { ...wo, ...fields } })
     setSaved('Guardado ✓')
     setTimeout(() => setSaved(''), 2000)
+  }
+
+  function flash(msg: string) {
+    setSaved(msg)
+    setTimeout(() => setSaved(''), 2500)
   }
 
   function setStatus(status: WorkOrder['status']) {
@@ -240,6 +249,9 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
           <button onClick={() => { setEditPart(null); setPartKind('part'); setPartOpen(true) }} className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 text-lg font-bold text-navy-800 active:bg-navy-50">
             <Plus size={22} /> Pieza
           </button>
+          <button onClick={() => setPkgOpen(true)} className="col-span-2 flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-800 text-lg font-bold text-navy-800 active:bg-navy-50">
+            <Boxes size={22} /> Paquete (todo de un toque)
+          </button>
         </div>
         {parts.length === 0 && <p className="text-base text-slate-600">Todavía no hay servicios ni piezas.</p>}
         <div className="space-y-2">
@@ -258,6 +270,11 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
             </button>
           ))}
         </div>
+        {itemsFromJob(parts).length >= 2 && (
+          <button onClick={() => setSavePkgOpen(true)} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 text-base font-bold text-navy-700 underline underline-offset-4">
+            <Boxes size={18} /> Guardar como paquete
+          </button>
+        )}
       </Section>
 
       <Section title="Fotos">
@@ -391,6 +408,8 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </div>
       </Sheet>
 
+      <PackagePicker open={pkgOpen} workOrderId={wo.id} onClose={() => setPkgOpen(false)} onAdded={(n) => { reload(); flash(`Añadido: ${n} ✓`) }} />
+      <SavePackageSheet open={savePkgOpen} items={itemsFromJob(parts)} onClose={() => setSavePkgOpen(false)} onSaved={(n) => flash(`Paquete guardado: ${n} ✓`)} />
       <PartSheet open={partOpen} kind={partKind} workOrderId={wo.id} part={editPart} onClose={() => setPartOpen(false)} onSaved={reload} />
 
       {!invoice && !embedded && (

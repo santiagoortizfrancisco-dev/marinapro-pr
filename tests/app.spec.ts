@@ -536,3 +536,50 @@ test('Admin: Quitar saca al mecánico del directorio', async ({ page }) => {
   await expect(page.getByText('Por aprobar')).toBeVisible()
   expect((await state()).mechanics[0].approved).toBe(false)
 })
+
+test('paquetes: + Paquete añade todo de un toque; Guardar como paquete; cambiar precio en Mis piezas y servicios y usarlo otra vez', async ({ page }) => {
+  await login(page)
+  await openExampleAppointment(page)
+
+  // 1) Paquete de ejemplo: se añaden las 3 líneas de un toque
+  await page.getByRole('button', { name: /Paquete \(todo de un toque\)/ }).click()
+  const picker = page.getByRole('dialog', { name: 'Añadir un paquete' })
+  await picker.getByRole('button', { name: /Cambio de aceite/ }).click()
+  await expect(page.getByText('Añadido: Cambio de aceite ✓')).toBeVisible()
+  await expect(page.getByText('Aceite de motor (cuarto)')).toBeVisible()
+  let parts = (await state()).work_order_parts
+  expect(parts).toHaveLength(3)
+  expect(parts.filter((p) => p.kind === 'part').every((p) => p.received_at)).toBe(true) // ya las tiene: no sale "falta que llegue"
+
+  // 2) Guardarlo como mi paquete
+  await page.getByRole('button', { name: 'Guardar como paquete' }).click()
+  const save = page.getByRole('dialog', { name: 'Guardar como paquete' })
+  await expect(save.getByLabel('Nombre del paquete')).toHaveValue('Cambio de aceite y filtro')
+  await save.getByLabel('Nombre del paquete').fill('Aceite Yamaha F200')
+  await save.getByRole('button', { name: 'Guardar paquete' }).click()
+  await expect(page.getByText('Paquete guardado: Aceite Yamaha F200 ✓')).toBeVisible()
+  const mine = (await state()).service_packages.find((p) => p.name === 'Aceite Yamaha F200')!
+  expect(mine.mechanic_id).toBeTruthy()
+  expect(mine.items).toHaveLength(3)
+
+  // 3) Ponerle precio en Mis piezas y servicios → Paquetes
+  await page.goto('/mas/catalogo')
+  await page.getByRole('button', { name: 'Paquetes' }).click()
+  await expect(page.getByLabel('Nombre del paquete')).toHaveValue('Aceite Yamaha F200')
+  await page.getByLabel('Precio de Filtro de aceite').fill('18')
+  await page.getByLabel('Precio de Cambio de aceite y filtro').fill('80')
+  await page.getByLabel('Precio de Cambio de aceite y filtro').blur()
+  await expect(page.getByText('$98.00')).toBeVisible()
+
+  // 4) Usarlo otra vez: sale primero (★) y con su total
+  await openExampleAppointment(page)
+  await page.getByRole('button', { name: /Paquete \(todo de un toque\)/ }).click()
+  const first = page.getByRole('dialog', { name: 'Añadir un paquete' }).getByRole('button').first()
+  await expect(first).toContainText('Aceite Yamaha F200')
+  await expect(first).toContainText('$98.00')
+  await first.click()
+  await expect(page.getByText('Añadido: Aceite Yamaha F200 ✓')).toBeVisible()
+  parts = (await state()).work_order_parts
+  expect(parts).toHaveLength(6)
+  expect(parts.filter((p) => p.description === 'Filtro de aceite').map((p) => Number(p.unit_cost)).sort()).toEqual([0, 18])
+})

@@ -296,3 +296,18 @@ test('anuncios: solo el admin los crea; el público los ve y los clics se cuenta
   assert.ok(row.views >= 1)
   assert.equal((await as(null, `select * from ads`, 'anon').catch(() => [])).length, 0, 'el público no lee la tabla')
 })
+
+test('paquetes: todos ven los 3 de ejemplo; cada mecánico guarda los suyos y otro no los ve ni los toca', async () => {
+  const examples = await as(A, `select name, items from service_packages where mechanic_id is null order by name`)
+  assert.equal(examples.length, 3, 'los ejemplos no se duplican al correr la migración otra vez')
+  assert.ok(examples.every((p) => p.items.every((i) => i.price === null)), 'los ejemplos no traen precios')
+  assert.ok(await fails(() => as(A, `update service_packages set name = 'x' where mechanic_id is null returning id`).then((r) => { if (!r.length) throw new Error('no cambió') })) , 'nadie cambia los ejemplos')
+
+  const items = JSON.stringify([{ kind: 'service', name: 'Servicio de 100 horas', qty: 1, price: 250 }, { kind: 'part', name: 'Bujía', qty: 4, price: 9 }])
+  const pkg = (await one(A, `insert into service_packages(mechanic_id, name, items) values ('${A}', '100 horas F150', '${items}') returning id`)).id
+  assert.equal((await one(A, `select count(*)::int n from service_packages where mechanic_id = '${A}'`)).n, 1)
+  assert.equal((await one(B, `select count(*)::int n from service_packages where id = '${pkg}'`)).n, 0, 'B no lo ve')
+  assert.ok(await fails(() => as(B, `insert into service_packages(mechanic_id, name) values ('${A}', 'falso')`)), 'B no crea paquetes a nombre de A')
+  assert.equal((await as(B, `delete from service_packages where id = '${pkg}' returning id`)).length, 0, 'B no lo borra')
+  assert.equal((await as(null, `select * from service_packages`, 'anon').catch(() => [])).length, 0, 'sin cuenta no se ve nada')
+})

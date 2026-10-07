@@ -57,6 +57,13 @@ function reset() {
       { id: 'cat3', mechanic_id: null, kind: 'part', name: 'Impeller', category: 'Motor', last_price: null, use_count: 0 },
       { id: 'cat4', mechanic_id: null, kind: 'part', name: 'Filtro de aceite', category: 'Motor', last_price: null, use_count: 0 },
     ],
+    service_packages: [
+      { id: 'pk1', mechanic_id: null, name: 'Cambio de aceite', use_count: 0, created_at: now, items: [
+        { kind: 'service', name: 'Cambio de aceite y filtro', qty: 1, price: null },
+        { kind: 'part', name: 'Aceite de motor (cuarto)', qty: 6, price: null },
+        { kind: 'part', name: 'Filtro de aceite', qty: 1, price: null },
+      ] },
+    ],
     photos: [],
     invoices: [],
     maintenance_schedules: [],
@@ -79,6 +86,7 @@ const DEFAULTS = {
     policies_accepted_version: null, sea_trial_required: true, sea_trial_done: false, sea_trial_method: null, sea_trial_notes: null, completed_at: null,
   }),
   maintenance_schedules: () => ({ engine_id: null, due_hours: null, last_notified_at: null, status: 'pending', interval_months: null, work_order_id: null, notes: null }),
+  service_packages: () => ({ items: [], use_count: 0 }),
   work_order_parts: () => ({ kind: 'part', part_number: null, qty: 1, unit_cost: 0, supplied_by: 'mechanic', supplier: null, eta: null, received_at: null }),
 }
 
