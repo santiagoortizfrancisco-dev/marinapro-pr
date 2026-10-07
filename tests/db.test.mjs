@@ -359,3 +359,13 @@ test('registro con aprobación: el nuevo queda por aprobar, no se aprueba solo, 
   assert.equal((await one(C, `select access from profiles where id = '${C}'`)).access, 'approved')
   assert.equal((await one(admin, `select admin_pending_count() n`)).n, before - 1)
 })
+
+test('avisos al teléfono: sin pg_net ni canal no frenan nada (registro, directorio y mensajes siguen funcionando)', async () => {
+  await db.exec(`insert into app_settings (key, value) values ('ntfy_topic', '"canal-de-prueba"') on conflict (key) do update set value = excluded.value`)
+  const D = (await db.query(`insert into auth.users(email) values ('otro@registro.test') returning id`)).rows[0].id
+  await as(D, `select set_my_role('mechanic','Otro Nuevo',null,null,'Otro Marine')`)
+  await as(D, `update mechanics set listed = true, slug = 'otro-marine' where profile_id = '${D}'`)
+  assert.equal((await one(D, `select send_support_message('Hola, una prueba') j`)).j.ok, true)
+  assert.ok(await fails(() => as(D, `select notify_admin('x', 'y')`)), 'nadie llama los avisos desde el app')
+  await db.exec(`delete from app_settings where key = 'ntfy_topic'`)
+})
