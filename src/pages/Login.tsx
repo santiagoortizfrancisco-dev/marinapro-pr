@@ -66,7 +66,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-navy-800">
+    <div className="flex min-h-full flex-col bg-navy-900">
       <div className="safe-top px-6 pb-8 pt-12 text-center text-white">
         <img src="/logo.svg" alt="" className="mx-auto h-20 w-20 rounded-2xl" />
         <h1 className="mt-4 text-[1.7rem] font-extrabold leading-tight">Salt Boat Repair</h1>

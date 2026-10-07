@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Search, Users } from 'lucide-react'
+import { Search, UserPlus, Users } from 'lucide-react'
 import { db } from '../../lib/db'
 import { must, useLoad } from '../../lib/useLoad'
 import { EmptyState, ErrorBox, Fab, Initials, Input, Loading, PageTitle, RowLink } from '../../components/ui'
@@ -68,7 +68,7 @@ export default function Clients() {
         ))}
       </div>
 
-      <Fab to="/clientes/nuevo" label="Añadir cliente" />
+      <Fab to="/clientes/nuevo" label="Añadir cliente" icon={UserPlus} />
     </>
   )
 }

@@ -111,14 +111,14 @@ export default function Layout() {
           )}
           <div className="min-w-0 flex-1 leading-tight">
             <div className="text-xs font-semibold uppercase tracking-wide text-white/75">
-              Salt Boat Repair{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-navy-900">DEMO</span>}
+              Salt Boat Repair{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-white">DEMO</span>}
             </div>
             <div className="truncate text-lg font-bold">{brand.name || (isMechanic ? 'Mecánico' : 'Dueño de bote')}</div>
           </div>
           {demo && (
             <button
               onClick={() => setSheet('switch')}
-              className="flex min-h-12 flex-col items-center justify-center rounded-xl bg-sun-400 px-2 text-xs font-bold text-navy-900 active:bg-sun-500"
+              className="flex min-h-12 flex-col items-center justify-center rounded-xl bg-sun-400 px-2 text-xs font-bold text-white active:bg-sun-500"
             >
               <Repeat size={20} /> Cambiar
             </button>

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
-import { Anchor, CheckCircle2, MapPin, MessageCircle, Phone, Ship, Wrench } from 'lucide-react'
+import { Anchor, CheckCircle2, MapPin, Phone, Ship, Wrench } from 'lucide-react'
+import { WhatsAppIcon } from '../../components/BrandIcons'
 import { supabase } from '../../lib/supabase'
 import { DEFAULT_BRAND, logoUrl } from '../../lib/brand'
 import { BOAT_MAKES, LOCATION_TYPES, WORK_AREAS, labelOf } from '../../lib/catalog'
@@ -70,13 +71,13 @@ export default function MechanicProfile() {
         <>
           {/* Acciones */}
           <section className="mt-5 space-y-3">
-            <Button onClick={() => setAsking(true)} className="min-h-16 bg-sun-400 text-xl font-extrabold text-navy-900 active:bg-sun-500">
+            <Button onClick={() => setAsking(true)} className="min-h-16 bg-sun-400 text-xl font-extrabold text-white active:bg-sun-500">
               Pedir cita
             </Button>
             <div className="flex gap-3">
               {wa && (
-                <a href={wa} target="_blank" rel="noreferrer" className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-base font-bold text-white">
-                  <MessageCircle size={20} /> WhatsApp
+                <a href={wa} target="_blank" rel="noreferrer" className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 text-base font-bold text-white">
+                  <WhatsAppIcon size={22} /> WhatsApp
                 </a>
               )}
               {m.phone && (
@@ -188,7 +189,7 @@ function RequestForm({ m, onSent, onCancel }: { m: PublicMechanic; onSent: () =>
 
       {error && <p role="alert" className="rounded-xl bg-red-100 p-3 text-base font-semibold text-red-800">{error}</p>}
 
-      <Button type="submit" disabled={saving} className="min-h-16 bg-sun-400 text-xl font-extrabold text-navy-900 active:bg-sun-500">
+      <Button type="submit" disabled={saving} className="min-h-16 bg-sun-400 text-xl font-extrabold text-white active:bg-sun-500">
         {saving ? 'Enviando…' : 'Enviar solicitud'}
       </Button>
       <Button type="button" variant="ghost" onClick={onCancel}>Volver</Button>

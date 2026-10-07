@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { CalendarPlus, MessageCircle, Phone, Trash2 } from 'lucide-react'
+import { CalendarPlus, Phone, Trash2 } from 'lucide-react'
+import { WhatsAppIcon } from '../../components/BrandIcons'
 import { db } from '../../lib/db'
 import { formatDate, formatTime } from '../../lib/format'
 import { telLink, whatsappLink } from '../../lib/links'
@@ -71,8 +72,8 @@ export default function RequestDetail() {
       {r.contact_phone && (
         <div className="mt-4 flex gap-3">
           {wa && (
-            <a href={wa} target="_blank" rel="noreferrer" className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-base font-bold text-white">
-              <MessageCircle size={20} /> WhatsApp
+            <a href={wa} target="_blank" rel="noreferrer" className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 text-base font-bold text-white">
+              <WhatsAppIcon size={22} /> WhatsApp
             </a>
           )}
           <a href={telLink(r.contact_phone)} className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 bg-white px-3 text-base font-bold text-navy-800">
@@ -83,7 +84,7 @@ export default function RequestDetail() {
 
       {open ? (
         <div className="mt-6 space-y-3">
-          <Link to={`/citas/nueva?solicitud=${r.id}`} className="flex min-h-16 items-center justify-center gap-2 rounded-xl bg-sun-400 text-xl font-extrabold text-navy-900 active:bg-sun-500">
+          <Link to={`/citas/nueva?solicitud=${r.id}`} className="flex min-h-16 items-center justify-center gap-2 rounded-xl bg-sun-400 text-xl font-extrabold text-white active:bg-sun-500">
             <CalendarPlus size={26} /> Hacer cita
           </Link>
           <p className="text-center text-sm text-slate-500">El cliente y el bote ya quedaron guardados en Clientes.</p>

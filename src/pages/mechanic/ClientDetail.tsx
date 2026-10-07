@@ -1,5 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router'
-import { Calendar, Mail, MessageCircle, Pencil, Phone, Ship } from 'lucide-react'
+import { Calendar, Mail, Pencil, Phone, Ship } from 'lucide-react'
+import { WhatsAppIcon } from '../../components/BrandIcons'
 import { CONTACT_PREFS, LOCATION_TYPES, labelOf } from '../../lib/catalog'
 import { db } from '../../lib/db'
 import { formatLongDate, formatTime } from '../../lib/format'
@@ -34,10 +35,12 @@ export default function ClientDetail() {
       <BackTitle to="/clientes" subtitle={c.town ?? undefined}>{c.full_name}</BackTitle>
 
       {(c.phone || c.email) && (
-        <div className="mb-4 flex gap-2">
-          {c.phone && <LinkButton href={whatsappLink(c.phone)} external variant="primary"><MessageCircle size={22} /> WhatsApp</LinkButton>}
-          {c.phone && <LinkButton href={telLink(c.phone)}><Phone size={22} /> Llamar</LinkButton>}
-          {!c.phone && c.email && <LinkButton href={mailLink(c.email)}><Mail size={22} /> Email</LinkButton>}
+        <div className="mb-4 space-y-2">
+          {c.phone && <div className="flex"><LinkButton href={whatsappLink(c.phone)} external variant="whatsapp"><WhatsAppIcon size={26} /> WhatsApp</LinkButton></div>}
+          <div className="flex gap-2">
+            {c.phone && <LinkButton href={telLink(c.phone)}><Phone size={22} /> Llamar</LinkButton>}
+            {c.email && <LinkButton href={mailLink(c.email)}><Mail size={22} /> Email</LinkButton>}
+          </div>
         </div>
       )}
 

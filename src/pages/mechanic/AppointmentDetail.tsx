@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { CalendarClock, Check, MapPin, MessageCircle, Navigation, Phone, Ship, XCircle } from 'lucide-react'
+import { CalendarClock, Check, MapPin, Navigation, Phone, Ship, XCircle } from 'lucide-react'
+import { WhatsAppIcon } from '../../components/BrandIcons'
 import { useAuth } from '../../auth/AuthProvider'
 import { APPOINTMENT_STATUS, DURATIONS, LOCATION_TYPES, WORK_AREAS, labelOf } from '../../lib/catalog'
 import { db } from '../../lib/db'
@@ -109,7 +110,7 @@ export default function AppointmentDetail() {
         )}
         {c.phone && (
           <div className="mt-2 flex gap-2">
-            <LinkButton href={whatsappLink(c.phone, message)} external variant="primary"><MessageCircle size={22} /> Enviar cita por WhatsApp</LinkButton>
+            <LinkButton href={whatsappLink(c.phone, message)} external variant="whatsapp"><WhatsAppIcon size={24} /> Enviar cita por WhatsApp</LinkButton>
             <a href={telLink(c.phone)} aria-label="Llamar" className="flex min-h-14 w-16 items-center justify-center rounded-xl border-2 border-navy-800 text-navy-800"><Phone size={24} /></a>
           </div>
         )}

@@ -4,13 +4,13 @@ import { ChevronLeft, ChevronRight, Loader2, Plus, type LucideIcon } from 'lucid
 
 /** Colores de los circulitos de íconos (para reconocer las cosas de un vistazo). */
 export const TONES = {
-  navy: 'bg-navy-100 text-navy-800',
+  navy: 'bg-blue-50 text-blue-700',
   green: 'bg-emerald-100 text-emerald-700',
   orange: 'bg-orange-100 text-orange-700',
-  blue: 'bg-sky-100 text-sky-700',
+  blue: 'bg-blue-50 text-blue-700',
   amber: 'bg-amber-100 text-amber-700',
-  violet: 'bg-violet-100 text-violet-700',
-  teal: 'bg-teal-100 text-teal-700',
+  violet: 'bg-indigo-50 text-indigo-700',
+  teal: 'bg-sky-50 text-sky-700',
   slate: 'bg-slate-100 text-slate-600',
 } as const
 export type Tone = keyof typeof TONES
@@ -29,7 +29,7 @@ export function IconBadge({ icon: Icon, tone = 'navy', size = 'md' }: { icon: Lu
 /** Circulito con las iniciales (ej. "AE" para Ana Ejemplo). */
 export function Initials({ name }: { name: string }) {
   const letters = name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')
-  const tones: Tone[] = ['navy', 'teal', 'violet', 'orange', 'blue', 'green']
+  const tones: Tone[] = ['navy', 'teal', 'violet', 'slate']
   const tone = tones[[...name].reduce((t, c) => t + c.charCodeAt(0), 0) % tones.length]
   return <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-extrabold ${TONES[tone]}`}>{letters || '?'}</span>
 }
@@ -37,9 +37,10 @@ export function Initials({ name }: { name: string }) {
 /** Tarjeta blanca con sombra suave. */
 export const CARD = 'rounded-2xl bg-white shadow-[0_6px_24px_-14px_rgba(8,47,73,0.35)] ring-1 ring-slate-200/80'
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'whatsapp'
 
 const BUTTON_STYLES: Record<ButtonVariant, string> = {
+  whatsapp: 'bg-[#25D366] text-white active:bg-[#1ebe5b]',
   primary: 'bg-navy-800 text-white active:bg-navy-900 disabled:bg-slate-400',
   secondary: 'border-2 border-navy-800 bg-white text-navy-800 active:bg-navy-50',
   ghost: 'text-navy-700 underline underline-offset-4',
@@ -258,25 +259,42 @@ export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () =
 }
 
 /** El botón principal de cada pantalla: grande, centrado y encima de las pestañas, para que se vea enseguida. */
-export function Fab({ to, label }: { to: string; label: string }) {
+export function Fab({ to, label, icon: Icon = Plus }: { to: string; label: string; icon?: LucideIcon }) {
   return (
     <Link
       to={to}
-      className="fixed bottom-[5.5rem] right-4 z-10 flex min-h-16 items-center gap-2 whitespace-nowrap rounded-full bg-sun-400 px-8 text-xl font-extrabold text-navy-900 shadow-xl ring-4 ring-white active:bg-sun-500"
+      className="fixed bottom-[5.5rem] right-4 z-10 flex min-h-16 items-center gap-2 whitespace-nowrap rounded-full bg-sun-400 px-7 text-xl font-extrabold text-white shadow-xl shadow-blue-900/30 ring-4 ring-white active:bg-sun-500"
     >
-      <Plus size={28} strokeWidth={3} /> {label}
+      <Icon size={28} strokeWidth={2.5} /> {label}
     </Link>
   )
 }
 
 /** Pantalla vacía. */
+/** Dibujito para pantallas vacías: el ícono en un círculo azul flotando sobre unas olas. */
+function EmptyDrawing({ icon: Icon }: { icon: LucideIcon }) {
+  return (
+    <div className="relative h-32 w-48" aria-hidden="true">
+      <svg viewBox="0 0 192 128" className="absolute inset-0 h-full w-full">
+        <circle cx="96" cy="56" r="52" fill="#dbeafe" />
+        <path d="M150 22 l4 12 12 4 -12 4 -4 12 -4 -12 -12 -4 12 -4z" fill="#2563eb" />
+        <path d="M8 104 C32 90 56 90 80 104 S128 118 152 104 S176 96 184 100" fill="none" stroke="#2563eb" strokeWidth="7" strokeLinecap="round" />
+        <path d="M32 120 C52 110 72 110 92 120 S132 128 160 118" fill="none" stroke="#93c5fd" strokeWidth="5" strokeLinecap="round" />
+      </svg>
+      <span className="absolute left-1/2 top-[22px] flex h-[68px] w-[68px] -translate-x-1/2 items-center justify-center rounded-full bg-white text-blue-700 shadow-md">
+        <Icon size={34} />
+      </span>
+    </div>
+  )
+}
+
 export function EmptyState({ icon, title, text, milestone }: { icon: LucideIcon; title: string; text: string; milestone?: string }) {
   return (
-    <div className="flex flex-col items-center rounded-3xl border-2 border-dashed border-slate-300 bg-white/60 px-6 py-10 text-center">
-      <IconBadge icon={icon} tone="teal" size="lg" />
+    <div className="flex flex-col items-center rounded-3xl bg-blue-50/60 px-6 py-10 text-center ring-1 ring-blue-100">
+      <EmptyDrawing icon={icon} />
       <h2 className="mt-3 text-xl font-bold text-slate-900">{title}</h2>
       <p className="mt-2 text-base text-slate-600">{text}</p>
-      {milestone && <p className="mt-4 inline-block rounded-full bg-sun-400 px-3 py-1 text-sm font-bold text-navy-900">{milestone}</p>}
+      {milestone && <p className="mt-4 inline-block rounded-full bg-sun-400 px-3 py-1 text-sm font-bold text-white">{milestone}</p>}
     </div>
   )
 }

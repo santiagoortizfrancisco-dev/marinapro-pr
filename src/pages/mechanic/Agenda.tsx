@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Calendar, ChevronLeft, ChevronRight, MapPin, Plus, User, Wrench } from 'lucide-react'
+import { Calendar, CalendarPlus, ChevronLeft, ChevronRight, MapPin, Plus, User, Wrench } from 'lucide-react'
 import { LOCATION_TYPES, labelOf } from '../../lib/catalog'
 import { db } from '../../lib/db'
 import { addDays, formatDate, formatLongDate, formatTime, prDay, prRange, prTime, prToISO, todayPR, weekStart } from '../../lib/format'
@@ -164,9 +164,9 @@ export default function Agenda() {
                   <span className="text-lg font-bold leading-none">{Number(d.slice(8))}</span>
                   <span className="mt-1 flex h-2 items-center gap-0.5">
                     {appts.slice(0, 3).map((a) => (
-                      <span key={a.id} className={`h-1.5 w-1.5 rounded-full ${sel ? 'bg-sun-400' : a.status === 'requested' ? 'bg-amber-500' : 'bg-emerald-600'}`} />
+                      <span key={a.id} className={`h-1.5 w-1.5 rounded-full ${sel ? 'bg-white' : a.status === 'requested' ? 'bg-amber-500' : 'bg-emerald-600'}`} />
                     ))}
-                    {appts.length > 3 && <span className={`text-[10px] font-bold leading-none ${sel ? 'text-sun-400' : 'text-emerald-700'}`}>+</span>}
+                    {appts.length > 3 && <span className={`text-[10px] font-bold leading-none ${sel ? 'text-white' : 'text-emerald-700'}`}>+</span>}
                   </span>
                 </button>
               )
@@ -188,7 +188,7 @@ export default function Agenda() {
             >
               <span className={`text-xs font-semibold ${sel ? 'text-navy-100' : 'text-slate-500'}`}>{WEEKDAYS.at(dow(d))}</span>
               <span className="text-xl font-extrabold">{Number(d.slice(8))}</span>
-              <span className={`text-xs font-bold ${sel ? 'text-sun-400' : n ? 'text-emerald-700' : 'text-slate-400'}`}>
+              <span className={`text-xs font-bold ${sel ? 'text-white' : n ? 'text-emerald-700' : 'text-slate-400'}`}>
                 {n === 0 ? (off ? '—' : 'libre') : n <= 3 ? '●'.repeat(n) : `●● +${n - 2}`}
               </span>
             </button>
@@ -205,7 +205,7 @@ export default function Agenda() {
 
       {/* El día escogido */}
       <div className="mb-3">
-        {day === today && <span className="mb-1 inline-block rounded-full bg-sun-400 px-3 py-0.5 text-xs font-extrabold uppercase tracking-wide text-navy-900">Hoy</span>}
+        {day === today && <span className="mb-1 inline-block rounded-full bg-sun-400 px-3 py-0.5 text-xs font-extrabold uppercase tracking-wide text-white">Hoy</span>}
         <h1 className="text-2xl font-extrabold leading-tight text-navy-900">{formatLongDate(day)}</h1>
         <div className="mt-2 flex flex-wrap gap-2 text-sm font-bold">
           <span className="rounded-full bg-navy-50 px-3 py-1 text-navy-800">{list.length === 0 ? 'Sin citas' : `${list.length} ${list.length === 1 ? 'cita' : 'citas'}`}</span>
@@ -269,7 +269,7 @@ export default function Agenda() {
       </label>
       <p className="mt-2 text-center text-xs text-slate-400">{formatDate(day)}</p>
 
-      <Fab to={`/citas/nueva?dia=${day}`} label="Hacer cita" />
+      <Fab to={`/citas/nueva?dia=${day}`} label="Hacer cita" icon={CalendarPlus} />
     </>
   )
 }

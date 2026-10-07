@@ -1,4 +1,4 @@
-import { CheckCircle2, FileText, HandCoins, Wrench, type LucideIcon } from 'lucide-react'
+import { CalendarPlus, CheckCircle2, FileText, HandCoins, Wrench, type LucideIcon } from 'lucide-react'
 import { WORK_ORDER_STATUS } from '../../lib/catalog'
 import { db } from '../../lib/db'
 import { formatDate, formatMoney } from '../../lib/format'
@@ -83,7 +83,7 @@ export default function Jobs() {
             </section>
           )
         })}
-      <Fab to="/citas/nueva" label="Hacer cita" />
+      <Fab to="/citas/nueva" label="Hacer cita" icon={CalendarPlus} />
     </>
   )
 }

@@ -12,6 +12,7 @@ import { useAuth } from '../auth/AuthProvider'
 import ConfirmDelete from './ConfirmDelete'
 import NextService from './NextService'
 import PartSheet from './PartSheet'
+import { WhatsAppIcon } from './BrandIcons'
 import { PackagePicker, SavePackageSheet } from './PackageSheets'
 import { PACKAGES_ENABLED, itemsFromJob } from '../lib/packages'
 import PhotoSection from './PhotoSection'
@@ -328,8 +329,8 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         ) : (
           <div className="space-y-3">
             {client.phone && (
-              <LinkButton href={whatsappLink(client.phone, estimateMsg)} external variant="primary">
-                <MessageCircle size={22} /> Enviar estimado por WhatsApp
+              <LinkButton href={whatsappLink(client.phone, estimateMsg)} external variant="whatsapp">
+                <WhatsAppIcon size={24} /> Enviar estimado por WhatsApp
               </LinkButton>
             )}
             <LinkButton href={`/d/${wo.public_token}`}><FileText size={20} /> Ver el estimado</LinkButton>
@@ -393,7 +394,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                     <Button variant="secondary" disabled={busy} onClick={makeInvoice}>Actualizar factura con el total nuevo ({formatMoney(totals.total)})</Button>
                   )}
                   {client.phone && (
-                    <LinkButton href={whatsappLink(client.phone, invoiceMsg)} external variant="primary"><MessageCircle size={22} /> Enviar factura por WhatsApp</LinkButton>
+                    <LinkButton href={whatsappLink(client.phone, invoiceMsg)} external variant="whatsapp"><WhatsAppIcon size={24} /> Enviar factura por WhatsApp</LinkButton>
                   )}
                   <LinkButton href={`/d/${invoice.public_token}?pago=${way}`}><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
                 </>

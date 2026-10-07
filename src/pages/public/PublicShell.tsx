@@ -13,7 +13,7 @@ export default function PublicShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-full bg-slate-50">
-      <header className="safe-top bg-navy-800 text-white">
+      <header className="safe-top bg-navy-900 text-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
           <Link to="/mecanicos" className="flex items-center gap-3">
             <img src="/logo.svg" alt="" className="h-10 w-10 rounded-xl" />

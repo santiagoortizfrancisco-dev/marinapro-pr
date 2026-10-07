@@ -1,14 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-navy-50: #f0f9ff;
-  --color-navy-100: #e0f2fe;
-  --color-navy-600: #0369a1;
-  --color-navy-700: #075985;
-  --color-navy-800: #0c4a6e;
-  --color-navy-900: #082f49;
-  --color-sun-400: #2dd4bf;
-  --color-sun-500: #14b8a6;
+  /* Blanco, negro y azul. "navy" = azul de los botones y negro de los títulos; "sun" = azul brillante de lo principal */
+  --color-navy-50: #eff6ff;
+  --color-navy-100: #dbeafe;
+  --color-navy-600: #2563eb;
+  --color-navy-700: #1d4ed8;
+  --color-navy-800: #1d4ed8;
+  --color-navy-900: #0b1220;
+  --color-sun-400: #2563eb;
+  --color-sun-500: #1e40af;
 }
 
 html, body, #root { height: 100%; }
@@ -16,8 +17,8 @@ html, body, #root { height: 100%; }
 html { font-size: 112.5%; }
 body {
   margin: 0;
-  background: #f4f7fb; /* gris muy suave: las tarjetas blancas resaltan */
-  color: #0f172a;
+  background: #ffffff;
+  color: #0b1220;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }

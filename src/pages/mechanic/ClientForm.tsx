@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { Home, Mail, MapPin, MessageCircle, Phone, StickyNote, User } from 'lucide-react'
+import { type LucideIcon, Home, Mail, MapPin, MessageCircle, Phone, StickyNote, User } from 'lucide-react'
+import { WhatsAppIcon } from '../../components/BrandIcons'
 import { useAuth } from '../../auth/AuthProvider'
 import { CONTACT_PREFS } from '../../lib/catalog'
 import { db } from '../../lib/db'
@@ -11,7 +12,7 @@ import { BackTitle, Choice, Field, FormActions, Input, Loading, Select, Textarea
 
 type Form = { full_name: string; phone: string; email: string; town: string; address: string; preferred_contact: Client['preferred_contact']; notes: string }
 const CONTACT_ICONS = {
-  whatsapp: { icon: MessageCircle, tone: 'green' },
+  whatsapp: { icon: WhatsAppIcon as unknown as LucideIcon, tone: 'green' },
   call: { icon: Phone, tone: 'blue' },
   email: { icon: Mail, tone: 'violet' },
 } as const
@@ -75,7 +76,7 @@ export default function ClientForm() {
         <Field label="Teléfono / WhatsApp" icon={Phone} tone="green">
           <Input type="tel" inputMode="tel" value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="787-555-0123" />
         </Field>
-        <Field label="¿Cómo prefiere que lo contacten?" icon={MessageCircle} tone="teal">
+        <Field label="¿Cómo prefiere que lo contacten?" icon={MessageCircle} tone="navy">
           <Choice columns={3} value={f.preferred_contact} onChange={(v) => set('preferred_contact', v)} options={CONTACT_PREFS.map((c) => ({ ...c, ...CONTACT_ICONS[c.value] }))} />
         </Field>
         <Field label="Email" icon={Mail} tone="blue" hint="Para enviarle facturas y recordatorios">

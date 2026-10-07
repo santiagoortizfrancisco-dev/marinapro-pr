@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { BellRing, CalendarPlus, MessageCircle, X } from 'lucide-react'
+import { BellRing, CalendarPlus, X } from 'lucide-react'
+import { WhatsAppIcon } from './BrandIcons'
 import { useAuth } from '../auth/AuthProvider'
 import { db } from '../lib/db'
 import { addDays, daysUntil, formatDate, todayPR } from '../lib/format'
@@ -88,7 +89,7 @@ export default function DueServices() {
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {d.phone ? (
                   <a href={whatsappLink(d.phone, msg)} target="_blank" rel="noreferrer" onClick={() => markNotified(d)} className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-emerald-700 text-base font-bold text-white active:bg-emerald-800">
-                    <MessageCircle size={20} /> Avisarle
+                    <WhatsAppIcon size={20} /> Avisarle
                   </a>
                 ) : (
                   <span className="flex min-h-12 items-center justify-center rounded-xl bg-slate-100 text-sm text-slate-500">Sin teléfono</span>
