@@ -1,0 +1,33 @@
+# Bot de pruebas: corre en cada cambio que se sube a GitHub.
+# Render solo publica si esto pasa (render.yaml: autoDeployTrigger: checksPass).
+name: Bot de pruebas
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Compilar el app
+        run: npm run build
+      - name: Base de datos (seguridad, totales, facturas)
+        run: npm run test:db
+      - name: Instalar el navegador del iPhone
+        run: npx playwright install --with-deps webkit
+      - name: Pantallas (como un iPhone)
+        run: npm run test:app
+      - name: Guardar el reporte si algo falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-de-pruebas
+          path: playwright-report/
+          retention-days: 14
