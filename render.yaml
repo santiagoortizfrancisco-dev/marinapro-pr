@@ -6,6 +6,7 @@ services:
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
     pullRequestPreviewsEnabled: false
+    autoDeployTrigger: checksPass # solo publica si el Bot de pruebas de GitHub pasa
     envVars:
       - key: VITE_SUPABASE_URL
         sync: false
