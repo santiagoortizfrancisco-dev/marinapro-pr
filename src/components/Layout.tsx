@@ -6,7 +6,7 @@ import type { Role } from '../lib/types'
 import { Sheet, Toast } from './Sheet'
 import { BRAND_EVENT, logoUrl } from '../lib/brand'
 import { db } from '../lib/db'
-import { Button, PoweredBy } from './ui'
+import { Button } from './ui'
 import ApprovalAlerts from './ApprovalAlerts'
 import RequestAlerts from './RequestAlerts'
 
@@ -113,6 +113,7 @@ export default function Layout() {
             <div className="text-sm font-bold uppercase tracking-wide text-white/85">
               Salt Boat Repair{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-white">DEMO</span>}
             </div>
+            <div className="text-[11px] leading-tight text-white/60">Powered by Francisco Santiago (Joy)</div>
             <div className="truncate text-lg font-bold">{brand.name || (isMechanic ? 'Mecánico' : 'Dueño de bote')}</div>
           </div>
           {demo && (
@@ -155,7 +156,6 @@ export default function Layout() {
       <main className="pb-44">
         <div className="mx-auto max-w-xl px-4 py-5">
           <Outlet />
-          <PoweredBy />
         </div>
       </main>
 

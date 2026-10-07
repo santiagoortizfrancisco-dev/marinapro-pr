@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Eye, EyeOff, LogIn, Mail, Ship, Wrench } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
-import { Button, Field, Input, PoweredBy } from '../components/ui'
+import { Button, Field, Input } from '../components/ui'
 import ContactSheet from '../components/ContactSheet'
 
 /**
@@ -72,6 +72,7 @@ export default function Login() {
       <div className="safe-top px-6 pb-8 pt-12 text-center text-white">
         <img src="/logo.svg" alt="" className="mx-auto h-20 w-20 rounded-2xl" />
         <h1 className="mt-4 text-[1.7rem] font-extrabold leading-tight">Salt Boat Repair</h1>
+        <p className="text-xs text-white/60">Powered by Francisco Santiago (Joy)</p>
         <p className="mt-1 text-lg text-navy-100">Agenda, trabajos y facturas para tu taller</p>
       </div>
 
@@ -162,7 +163,6 @@ export default function Login() {
           ¿Problemas para entrar? Escríbenos
         </button>
         <ContactSheet open={contactOpen} onClose={() => setContactOpen(false)} needsContact />
-        <PoweredBy />
       </div>
     </div>
   )
