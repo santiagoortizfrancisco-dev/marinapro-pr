@@ -76,7 +76,10 @@ test('agenda: la semana, la cita de mañana y los huecos libres', async ({ page 
   await page.goto(`/agenda?dia=${tomorrowPR()}`)
   await expect(page.getByText('1 cita')).toBeVisible()
   await expect(page.getByRole('link', { name: /La Tranquila/ })).toBeVisible()
-  await expect(page.getByText(/9:00 AM a 12:00 PM/)).toBeVisible()
+  const cita = page.getByRole('link', { name: /La Tranquila/ })
+  await expect(cita).toContainText('9:00 AM')
+  await expect(cita).toContainText('a 12:00 PM')
+  await expect(cita).toContainText('Confirmada')
   await expect(page.getByText('El motor de babor no arranca en frío')).toBeVisible()
   // 7–9 libre y 12–5 libre
   await expect(page.getByRole('link', { name: /Libre · 2 horas/ })).toBeVisible()
