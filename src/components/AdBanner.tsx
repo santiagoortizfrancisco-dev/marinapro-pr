@@ -15,7 +15,10 @@ function loadAds(): Promise<Ad[]> {
   return cache
 }
 
-/** Un anuncio de una tienda marina, marcado "Anuncio". Si no hay anuncios activos, no ocupa espacio. */
+/**
+ * Un anuncio de una tienda marina, marcado "Anuncio". Siempre es una franja horizontal (3 a 1),
+ * aunque la imagen sea cuadrada. Si no hay anuncios activos, no ocupa espacio.
+ */
 export default function AdBanner({ index = 0 }: { index?: number }) {
   const [ad, setAd] = useState<Ad | null>(null)
 
@@ -25,7 +28,7 @@ export default function AdBanner({ index = 0 }: { index?: number }) {
 
   if (!ad || !supabase) return null
   const src = supabase.storage.from('ads').getPublicUrl(ad.image_path).data.publicUrl
-  const img = <img src={src} alt={ad.advertiser} className="w-full rounded-xl object-cover" loading="lazy" />
+  const img = <img src={src} alt={ad.advertiser} className="aspect-[3/1] w-full bg-white object-contain" loading="lazy" />
 
   return (
     <aside className="my-5" aria-label={`Anuncio de ${ad.advertiser}`}>

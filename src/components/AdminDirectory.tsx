@@ -124,11 +124,11 @@ function AdsAdmin() {
   return (
     <div>
       <h3 className="mb-1 flex items-center gap-2 text-base font-bold text-slate-800"><Megaphone size={18} /> Anuncios de tiendas</h3>
-      <p className="mb-2 text-sm text-slate-500">Imagen ancha (ej. 1200 × 400). Salen marcados "Anuncio" entre los mecánicos.</p>
+      <p className="mb-2 text-sm text-slate-500">Salen como franja (3 veces más ancha que alta). La mejor imagen: 1200 × 400. Así se ve:</p>
       <div className="space-y-2">
         {ads?.map((ad) => (
           <div key={ad.id} className={`rounded-xl border-2 p-2 ${ad.active ? 'border-slate-200' : 'border-dashed border-slate-300 opacity-60'}`}>
-            <img src={imgUrl(ad.image_path)} alt={ad.advertiser} className="w-full rounded-lg object-cover" />
+            <img src={imgUrl(ad.image_path)} alt={ad.advertiser} className="aspect-[3/1] w-full rounded-lg bg-white object-contain ring-1 ring-slate-200" />
             <div className="mt-2 flex items-center justify-between gap-2 px-1">
               <div className="min-w-0">
                 <div className="truncate text-base font-bold text-slate-900">{ad.advertiser}</div>
