@@ -7,6 +7,8 @@ export interface Profile {
   phone: string | null
   email: string | null
   town: string | null
+  /** Registro con aprobación: hasta que el admin lo aprueba, no entra al app */
+  access?: 'pending' | 'approved' | 'rejected'
 }
 
 export interface Client {

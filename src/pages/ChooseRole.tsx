@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Wrench } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
 import { supabase } from '../lib/supabase'
@@ -7,16 +7,26 @@ import { Button, Field, Input, Select } from '../components/ui'
 
 /** Primera vez que entra. Fase 1: todos son mecánicos (la app del cliente llega en la Fase 2). */
 export default function ChooseRole() {
-  const { refreshProfile, signOut, profile } = useAuth()
-  const [fullName, setFullName] = useState(profile?.full_name ?? '')
-  const [businessName, setBusinessName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [town, setTown] = useState('')
+  const { refreshProfile, signOut, profile, session } = useAuth()
+  const meta = (session?.user.user_metadata ?? {}) as { signup?: boolean; full_name?: string; business_name?: string; phone?: string; town?: string }
+  const [fullName, setFullName] = useState(meta.full_name ?? profile?.full_name ?? '')
+  const [businessName, setBusinessName] = useState(meta.business_name ?? '')
+  const [phone, setPhone] = useState(meta.phone ?? '')
+  const [town, setTown] = useState(meta.town ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  async function save(e: FormEvent) {
-    e.preventDefault()
+  // Se registró con "Crear mi cuenta": ya llenó todo, no se lo volvemos a pedir
+  const auto = useRef(false)
+  useEffect(() => {
+    if (!meta.signup || !meta.full_name || auto.current) return
+    auto.current = true
+    save()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function save(e?: FormEvent) {
+    e?.preventDefault()
     if (!supabase) return
     setBusy(true)
     setError('')

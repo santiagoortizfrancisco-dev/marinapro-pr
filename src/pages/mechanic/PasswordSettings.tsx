@@ -3,14 +3,7 @@ import { useNavigate } from 'react-router'
 import { CheckCircle2, Grid3x3, KeyRound } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { BackTitle, Button, Choice, Field, Input } from '../../components/ui'
-
-/** PINs que cualquiera adivina. */
-function weakPin(pin: string): boolean {
-  if (/^(\d)\1{5}$/.test(pin)) return true // 111111
-  const asc = '0123456789012345'
-  const desc = '9876543210987654'
-  return asc.includes(pin) || desc.includes(pin) // 123456, 654321
-}
+import { weakPin } from '../../lib/pin'
 
 /** Cada mecánico cambia su contraseña o pone un PIN de 6 números para entrar. */
 export default function PasswordSettings() {

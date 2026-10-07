@@ -21,14 +21,16 @@ const addDays = (day, n) => {
 
 let db
 let passwords = {}
+let signups = {} // id -> { email, user_metadata }
 function reset() {
   passwords = {}
+  signups = {}
   const tomorrow = addDays(prDay(), 1)
   const now = new Date().toISOString()
   db = {
     profiles: [
-      { id: U, role: 'mechanic', full_name: 'JQR Boat Repair', phone: '787-555-0100', email: EMAIL, town: 'Fajardo', created_at: now },
-      { id: N, role: null, full_name: null, phone: null, email: NEW_EMAIL, town: null, created_at: now },
+      { id: U, role: 'mechanic', full_name: 'JQR Boat Repair', phone: '787-555-0100', email: EMAIL, town: 'Fajardo', access: 'approved', created_at: now },
+      { id: N, role: null, full_name: null, phone: null, email: NEW_EMAIL, town: null, access: 'approved', created_at: now },
     ],
     mechanics: [{
       profile_id: U, business_name: 'JQR Boat Repair', ath_movil_number: '787-555-0100', labor_rate_hour: 85, ivu_rate: 0.115,
@@ -255,6 +257,15 @@ const RPC = {
       contact: p_contact || null, message: String(p_message).trim(), app_version: p_version, page: p_page, created_at: new Date().toISOString(), read_at: null })
     return { ok: true }
   },
+  admin_pending_accounts: () => {
+    adminOnly()
+    return db.profiles.filter((x) => x.access === 'pending' || x.access === 'rejected').map((x) => ({
+      id: x.id, full_name: x.full_name, business_name: db.mechanics.find((m) => m.profile_id === x.id)?.business_name ?? null,
+      email: x.email, phone: x.phone, town: x.town, access: x.access, created_at: x.created_at,
+    }))
+  },
+  admin_set_access: ({ p_user, p_access }) => { adminOnly(); const x = db.profiles.find((y) => y.id === p_user); if (x) x.access = p_access; return null },
+  admin_pending_count: () => (caller === U ? db.profiles.filter((x) => x.access === 'pending').length : 0),
   admin_unread_messages: () => (caller === U ? db.support_messages.filter((m) => !m.read_at).length : 0),
   ads_active: () => (db.settings.directory_open || caller === U ? db.ads.filter((x) => x.active).map(({ id, advertiser, image_path, link_url }) => ({ id, advertiser, image_path, link_url })) : []),
   ad_click: ({ p_id }) => { const ad = db.ads.find((x) => x.id === p_id); if (ad) ad.clicks++; return null },
@@ -291,7 +302,7 @@ const RPC = {
 
 // ------------------------------------------------------------------------------------------
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
-const userFor = (id) => ({ ...USER, id, email: id === N ? NEW_EMAIL : EMAIL })
+const userFor = (id) => (signups[id] ? { ...USER, id, ...signups[id] } : { ...USER, id, email: id === N ? NEW_EMAIL : EMAIL })
 const USER = { id: U, email: EMAIL, aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: new Date().toISOString() }
 function session(id = U) {
   const exp = Math.floor(Date.now() / 1000) + 3600
@@ -317,7 +328,7 @@ http.createServer((req, res) => {
     try {
       const payload = (req.headers.authorization ?? '').split('.')[1]
       const sub = payload ? JSON.parse(Buffer.from(payload, 'base64url').toString()).sub : null
-      caller = sub === N ? N : sub === U ? U : 'anon' // sin sesión = visitante del directorio
+      caller = sub === N || sub === U || signups[sub] ? sub : 'anon' // sin sesión = visitante del directorio
     } catch {
       caller = 'anon'
     }
@@ -331,10 +342,22 @@ http.createServer((req, res) => {
         if (url.searchParams.get('grant_type') === 'password') {
           const { email, password } = json()
           if (email === NEW_EMAIL && password === (passwords[N] ?? TEST_PASSWORD)) return send(200, session(N))
+          const su = Object.entries(signups).find(([, u]) => u.email === String(email).toLowerCase())
+          if (su && passwords[su[0]] === password) return send(200, session(su[0]))
           return email === EMAIL && password === (passwords[U] ?? TEST_PASSWORD) ? send(200, session()) : send(400, { code: 'invalid_credentials', error_code: 'invalid_credentials', msg: 'Invalid login credentials' })
         }
-        const rt = json().refresh_token ?? ''
-        return send(200, session(rt === `r-${N}` ? N : U))
+        const rt = String(json().refresh_token ?? '').slice(2)
+        return send(200, session(rt === N || signups[rt] ? rt : U))
+      }
+      if (url.pathname === '/auth/v1/signup') {
+        const { email, password, data } = json()
+        const e = String(email).toLowerCase()
+        if (e === EMAIL || e === NEW_EMAIL || Object.values(signups).some((u) => u.email === e)) return send(422, { code: 'user_already_exists', error_code: 'user_already_exists', msg: 'User already registered' })
+        const id = randomUUID()
+        signups[id] = { email: e, user_metadata: data ?? {} }
+        passwords[id] = password
+        db.profiles.push({ id, role: null, full_name: null, phone: null, email: e, town: null, access: 'pending', created_at: new Date().toISOString() })
+        return send(200, session(id))
       }
       if (url.pathname === '/auth/v1/user') {
         if (req.method === 'PUT' && json().password) passwords[caller] = json().password

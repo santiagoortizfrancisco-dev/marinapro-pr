@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { Eye, EyeOff, LogIn, Mail, Ship, Wrench } from 'lucide-react'
+import { Eye, EyeOff, LogIn, Mail, Ship, Wrench, UserPlus } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { Button, Field, Input } from '../components/ui'
 import ContactSheet from '../components/ContactSheet'
+import Signup from './Signup'
 
 /**
  * Usuario sin @ -> email interno (alias del Gmail del app). Ej.: "jqr" -> marinepropr+jqr@gmail.com
@@ -18,7 +19,8 @@ export default function Login() {
   const { enterDemo } = useAuth()
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
-  const [step, setStep] = useState<'password' | 'email' | 'code'>('password')
+  const [step, setStep] = useState<'password' | 'email' | 'code' | 'signup' | 'wait'>('password')
+  const [waitEmail, setWaitEmail] = useState('')
   const [user, setUser] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -144,7 +146,25 @@ export default function Login() {
               <Button type="button" variant="ghost" onClick={() => { setStep('email'); setError('') }}>
                 Entrar con código por email
               </Button>
+              <div className="border-t border-slate-200 pt-5">
+                <Button type="button" variant="secondary" onClick={() => { setStep('signup'); setError('') }}>
+                  <UserPlus /> ¿Eres mecánico? Crea tu cuenta
+                </Button>
+              </div>
             </form>
+          )}
+
+          {isSupabaseConfigured && step === 'signup' && (
+            <Signup onBack={() => setStep('password')} onWaitEmail={(e) => { setWaitEmail(e); setStep('wait') }} />
+          )}
+
+          {isSupabaseConfigured && step === 'wait' && (
+            <div className="space-y-4 text-center">
+              <Mail size={48} className="mx-auto text-navy-700" />
+              <h2 className="text-2xl font-bold text-navy-900">Revisa tu email</h2>
+              <p className="text-base text-slate-600">Te enviamos un enlace a <b>{waitEmail}</b>. Ábrelo para confirmar tu cuenta. Si no lo ves, busca en “Spam” o “Promociones”.</p>
+              <Button type="button" variant="ghost" onClick={() => setStep('password')}>Volver a entrar</Button>
+            </div>
           )}
 
           {isSupabaseConfigured && step === 'email' && (
