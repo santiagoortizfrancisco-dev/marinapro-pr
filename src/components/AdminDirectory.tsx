@@ -21,8 +21,11 @@ export default function AdminDirectory() {
     setBusy(false)
   }
 
+  const [msg, setMsg] = useState('')
   async function approve(id: string, v: boolean) {
-    await db().rpc('admin_set_approved', { p_mechanic: id, p_approved: v })
+    setMsg('')
+    const { error } = await db().rpc('admin_set_approved', { p_mechanic: id, p_approved: v })
+    if (error) setMsg('No se pudo cambiar. Sal y vuelve a entrar al app e intenta otra vez.')
     reloadRows()
   }
 
@@ -41,6 +44,7 @@ export default function AdminDirectory() {
 
       <div>
         <h3 className="mb-2 text-base font-bold text-slate-800">Mecánicos que quieren salir</h3>
+        {msg && <p role="alert" className="mb-2 rounded-xl bg-red-100 p-3 text-base font-semibold text-red-800">{msg}</p>}
         {rows?.length === 0 && <p className="text-base text-slate-500">Ninguno todavía. Cada mecánico lo pide en Más → Mi perfil público.</p>}
         <div className="space-y-2">
           {rows?.map((r) => (

@@ -522,3 +522,17 @@ test('directorio cerrado: el admin lo ve desde el app en la misma ventana y pued
   await page.getByRole('link', { name: 'Volver al app' }).click()
   await expect(page.getByRole('heading', { name: 'Más' })).toBeVisible()
 })
+
+test('Admin: Quitar saca al mecánico del directorio', async ({ page }) => {
+  await login(page)
+  await page.getByRole('link', { name: 'Más' }).click()
+  await page.getByRole('link', { name: /Mi perfil público/ }).click()
+  await page.getByRole('switch', { name: /Quiero salir en el directorio/ }).click()
+  await page.getByRole('button', { name: 'Guardar' }).click()
+  await page.getByRole('link', { name: /Admin/ }).click()
+  await page.getByRole('button', { name: 'Aprobar' }).click()
+  await expect(page.getByText('Sale', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Quitar', exact: true }).click()
+  await expect(page.getByText('Por aprobar')).toBeVisible()
+  expect((await state()).mechanics[0].approved).toBe(false)
+})

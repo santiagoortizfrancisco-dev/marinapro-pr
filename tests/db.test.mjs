@@ -255,6 +255,12 @@ test('directorio: cerrado no se ve; el mecánico no se aprueba solo; el admin ap
   assert.equal((await one(null, `select directory_search('Ponce') j`, 'anon')).j.length, 0, 'otro pueblo no sale')
   const adminList = (await one(admin, `select admin_directory_list() j`)).j
   assert.ok(adminList.some((x) => x.slug === 'taller-a' && x.approved))
+  // Quitar: deja de salir; Aprobar otra vez: vuelve
+  await as(admin, `select admin_set_approved('${A}', false)`)
+  assert.equal((await one(null, `select directory_search() j`, 'anon')).j.length, 0, 'quitado no sale')
+  assert.equal((await one(null, `select directory_profile('taller-a') j`, 'anon')).j, null)
+  await as(admin, `select admin_set_approved('${A}', true)`)
+  assert.equal((await one(null, `select directory_search() j`, 'anon')).j.length, 1)
 })
 
 test('directorio: un dueño de bote pide cita sin cuenta → al mecánico le llega con cliente y bote; límite contra spam', async () => {
