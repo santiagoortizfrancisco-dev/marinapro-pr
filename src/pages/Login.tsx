@@ -69,7 +69,7 @@ export default function Login() {
     <div className="flex min-h-full flex-col bg-navy-800">
       <div className="safe-top px-6 pb-8 pt-12 text-center text-white">
         <img src="/logo.svg" alt="" className="mx-auto h-20 w-20 rounded-2xl" />
-        <h1 className="mt-4 text-[1.7rem] font-extrabold leading-tight">Marine Mechanics PR</h1>
+        <h1 className="mt-4 text-[1.7rem] font-extrabold leading-tight">Salt Boat</h1>
         <p className="mt-1 text-lg text-navy-100">Agenda, trabajos y facturas para tu taller</p>
       </div>
 

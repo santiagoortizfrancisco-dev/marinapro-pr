@@ -53,7 +53,7 @@ test('mecánico nuevo entra por primera vez con su email: pone nombre y compañ�
   await page.getByLabel('Email o usuario').fill('Nuevo@Prueba.test')
   await page.locator('input[autocomplete=current-password]').fill(PASSWORD)
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page.getByRole('heading', { name: /Bienvenido a Marine Mechanics PR/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Bienvenido a Salt Boat/ })).toBeVisible()
   await page.getByLabel('Tu nombre completo *').fill('Luis Prueba')
   await page.getByLabel('Nombre de tu compañía').fill('Luis Marine Service')
   await page.getByRole('button', { name: 'Empezar' }).click()
@@ -380,7 +380,7 @@ test('cliente y bote: ficha con WhatsApp, bote con Waze, motores y equipos', asy
 test('Más: versión del app y Mi negocio con ATH Móvil y tarifa', async ({ page }) => {
   await login(page)
   await page.getByRole('link', { name: 'Más' }).click()
-  await expect(page.getByText(/Marine Mechanics PR · versión \d{4}-\d{2}-\d{2}/)).toBeVisible()
+  await expect(page.getByText(/Salt Boat · versión \d{4}-\d{2}-\d{2}/)).toBeVisible()
   await page.getByRole('link', { name: /Mi negocio/ }).click()
   await expect(page.getByLabel(/Número de ATH Móvil/)).toHaveValue('787-555-0100')
   await expect(page.getByLabel('Tarifa por hora ($)')).toHaveValue('85')

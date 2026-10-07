@@ -111,7 +111,7 @@ export default function Layout() {
           )}
           <div className="min-w-0 flex-1 leading-tight">
             <div className="text-xs font-semibold uppercase tracking-wide text-white/75">
-              Marine Mechanics PR{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-navy-900">DEMO</span>}
+              Salt Boat{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-navy-900">DEMO</span>}
             </div>
             <div className="truncate text-lg font-bold">{brand.name || (isMechanic ? 'Mecánico' : 'Dueño de bote')}</div>
           </div>

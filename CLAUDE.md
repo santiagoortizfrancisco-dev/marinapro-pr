@@ -1,4 +1,4 @@
-# MarinaPro PR — App para mecánicos de bote (nombre provisional)
+# Salt Boat (antes MarinaPro PR / Marine Mechanics PR) — App para mecánicos de bote
 
 ## Qué es
 App web instalable (PWA), en español, para mecánicos de bote independientes en Puerto Rico.
