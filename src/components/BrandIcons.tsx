@@ -1,3 +1,19 @@
+import { Smartphone } from 'lucide-react'
+
+/**
+ * Distintivo de ATH Móvil en su naranja (para que el cliente vea enseguida cómo pagar).
+ * No es el logo oficial: para usar el oficial, Evertec lo da a los comercios con ATH Business.
+ */
+export function AthMovilBadge({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+  const s = size === 'sm' ? 'gap-1 px-2 py-0.5 text-xs' : size === 'lg' ? 'gap-2 px-4 py-1.5 text-xl' : 'gap-1.5 px-3 py-1 text-base'
+  const icon = size === 'sm' ? 12 : size === 'lg' ? 22 : 16
+  return (
+    <span className={`inline-flex items-center rounded-full bg-[#F37021] font-extrabold text-white [print-color-adjust:exact] ${s}`}>
+      <Smartphone size={icon} strokeWidth={2.5} /> ATH <span className="font-semibold">Móvil</span>
+    </span>
+  )
+}
+
 /** Logo de WhatsApp (el que todo el mundo reconoce). Hecho a la medida del tamaño del texto. */
 export function WhatsAppIcon({ size = 22, className = '' }: { size?: number; className?: string }) {
   return (

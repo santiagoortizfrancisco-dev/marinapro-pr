@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
-import { Anchor, CheckCircle2, MapPin, Phone, Ship, Wrench } from 'lucide-react'
+import { Anchor, CheckCircle2, MapPin, Phone, Ship, Wrench, type LucideIcon } from 'lucide-react'
 import { WhatsAppIcon } from '../../components/BrandIcons'
 import { supabase } from '../../lib/supabase'
 import { DEFAULT_BRAND, logoUrl } from '../../lib/brand'
@@ -159,7 +159,7 @@ function RequestForm({ m, onSent, onCancel }: { m: PublicMechanic; onSent: () =>
       <p className="text-base text-slate-600">No necesitas cuenta. Te llaman o te escriben para confirmar el día.</p>
 
       <Field label="Tu nombre"><Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
-      <Field label="Tu teléfono (WhatsApp)"><Input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="tel" placeholder="787-555-1234" /></Field>
+      <Field label="Tu teléfono (WhatsApp)" icon={WhatsAppIcon as unknown as LucideIcon} tone="whatsapp"><Input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="tel" placeholder="787-555-1234" /></Field>
       <Field label="¿Qué le pasa al bote?">
         <Textarea value={problem} onChange={(e) => setProblem(e.target.value)} placeholder="Ej.: el motor de babor no prende, la bomba de achique no trabaja…" />
       </Field>

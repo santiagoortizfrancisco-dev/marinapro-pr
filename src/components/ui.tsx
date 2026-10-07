@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Loader2, Plus, type LucideIcon } from 'lucid
 
 /** Colores de los circulitos de íconos (para reconocer las cosas de un vistazo). */
 export const TONES = {
+  whatsapp: 'bg-[#25D366] text-white',
   navy: 'bg-blue-50 text-blue-700',
   green: 'bg-emerald-100 text-emerald-700',
   orange: 'bg-orange-100 text-orange-700',

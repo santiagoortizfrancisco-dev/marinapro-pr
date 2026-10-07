@@ -88,8 +88,8 @@ export default function DueServices() {
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {d.phone ? (
-                  <a href={whatsappLink(d.phone, msg)} target="_blank" rel="noreferrer" onClick={() => markNotified(d)} className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-emerald-700 text-base font-bold text-white active:bg-emerald-800">
-                    <WhatsAppIcon size={20} /> Avisarle
+                  <a href={whatsappLink(d.phone, msg)} target="_blank" rel="noreferrer" onClick={() => markNotified(d)} className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-[#25D366] text-base font-bold text-white active:bg-[#1ebe5b]">
+                    <WhatsAppIcon size={22} /> Avisarle
                   </a>
                 ) : (
                   <span className="flex min-h-12 items-center justify-center rounded-xl bg-slate-100 text-sm text-slate-500">Sin teléfono</span>

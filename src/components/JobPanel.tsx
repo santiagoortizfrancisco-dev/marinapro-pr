@@ -21,9 +21,14 @@ import { BackTitle, Button, Choice, ErrorBox, Field, IconBadge, Input, LinkButto
 
 type Boat = { id: string; name: string; clients: Pick<Client, 'id' | 'full_name' | 'phone'> }
 
+/** Teléfono naranja de ATH Móvil (en un circulito naranja). */
+function AthIcon({ size = 22 }: { size?: number }) {
+  return <Smartphone size={size} className="text-[#F37021]" strokeWidth={2.5} />
+}
+
 /** Cómo paga el cliente: cada forma con su ícono y color para reconocerla rápido. */
 const PAY_ICONS: Record<string, { icon: LucideIcon; tone: Tone }> = {
-  ath_movil: { icon: Smartphone, tone: 'orange' },
+  ath_movil: { icon: AthIcon as unknown as LucideIcon, tone: 'orange' },
   cash: { icon: Banknote, tone: 'green' },
   check: { icon: ScrollText, tone: 'blue' },
   other: { icon: CreditCard, tone: 'violet' },
@@ -375,7 +380,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                     onChange={setPayWay}
                     options={[
                       { value: 'any', label: 'ATH Móvil o efectivo', icon: HandCoins, tone: 'teal' },
-                      { value: 'ath', label: 'Solo ATH Móvil', icon: Smartphone, tone: 'orange' },
+                      { value: 'ath', label: 'Solo ATH Móvil', icon: AthIcon as unknown as LucideIcon, tone: 'orange' },
                       { value: 'cash', label: 'Efectivo o cheque', icon: Banknote, tone: 'green' },
                     ]}
                   />

@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
-import { ArrowLeft, CheckCircle2, MessageCircle, Printer } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Printer } from 'lucide-react'
+import { AthMovilBadge, WhatsAppIcon } from '../components/BrandIcons'
 import { supabase } from '../lib/supabase'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, labelOf } from '../lib/catalog'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
 import { whatsappLink } from '../lib/links'
 import { percent } from '../lib/totals'
 import { DEFAULT_BRAND, logoUrl } from '../lib/brand'
+
+const ORANGE = '#F37021'
 
 interface Doc {
   kind: 'invoice' | 'estimate'
@@ -40,12 +43,13 @@ function AthBox({ number, total }: { number: string; total: number }) {
     }
   }
   return (
-    <div className="mt-4 rounded-xl bg-orange-50 p-4 text-center">
-      <p className="text-lg">Paga por <b>ATH Móvil</b> al</p>
+    <div className="mt-4 rounded-2xl border-2 border-orange-200 bg-orange-50 p-4 text-center [print-color-adjust:exact]">
+      <AthMovilBadge size="lg" />
+      <p className="mt-2 text-lg">Paga por ATH Móvil al</p>
       <p className="text-3xl font-extrabold tracking-wide">{number}</p>
       <div className="mt-3 grid grid-cols-2 gap-2 print:hidden">
-        <button onClick={() => copy(number.replace(/D/g, ''), 'número')} className="min-h-14 rounded-xl bg-orange-500 px-3 text-base font-bold text-white active:bg-orange-600">Copiar número</button>
-        <button onClick={() => copy(total.toFixed(2), 'total')} className="min-h-14 rounded-xl border-2 border-orange-500 bg-white px-3 text-base font-bold text-orange-700">Copiar total</button>
+        <button onClick={() => copy(number.replace(/D/g, ''), 'número')} className="min-h-14 rounded-xl bg-[#F37021] px-3 text-base font-bold text-white active:bg-orange-700">Copiar número</button>
+        <button onClick={() => copy(total.toFixed(2), 'total')} className="min-h-14 rounded-xl border-2 border-[#F37021] bg-white px-3 text-base font-bold text-orange-700">Copiar total</button>
       </div>
       <p className="mt-2 min-h-6 text-sm text-slate-600 print:hidden">{copied ? `✓ Se copió el ${copied}. Ábrelo en tu app de ATH Móvil y pégalo.` : 'Copia el número, abre tu ATH Móvil y pégalo.'}</p>
     </div>
@@ -88,8 +92,8 @@ function ApproveBox({ token, doc, color, onApproved }: { token: string; doc: Doc
         </>
       )}
       {doc.business.phone && (
-        <a href={whatsappLink(doc.business.phone, question)} target="_blank" rel="noreferrer" className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-300 text-lg font-bold text-slate-800">
-          <MessageCircle /> Tengo una pregunta
+        <a href={whatsappLink(doc.business.phone, question)} target="_blank" rel="noreferrer" className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] text-lg font-bold text-white">
+          <WhatsAppIcon size={24} /> Tengo una pregunta
         </a>
       )}
       {error && <p className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}
@@ -145,9 +149,14 @@ export default function PublicDoc() {
           <p className="mt-1 text-center text-xs text-slate-500">Así lo ve tu cliente. Este botón solo lo ves tú.</p>
         </div>
       )}
-      <article className="mx-auto max-w-2xl bg-white px-5 py-6 text-slate-900 shadow print:max-w-none print:shadow-none">
+      <article className="mx-auto max-w-2xl overflow-hidden rounded-2xl bg-white text-slate-900 shadow-lg [print-color-adjust:exact] print:max-w-none print:rounded-none print:shadow-none">
+        <div className="flex h-2.5" aria-hidden="true">
+          <span className="flex-[3]" style={{ backgroundColor: color }} />
+          <span className="flex-1" style={{ backgroundColor: ORANGE }} />
+        </div>
+        <div className="px-5 py-6">
         {/* Encabezado */}
-        <header className="flex flex-col gap-3 border-b-4 pb-4 sm:flex-row sm:items-start sm:justify-between" style={{ borderColor: color }}>
+        <header className="flex flex-col gap-3 border-b-2 border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             {logo && <img src={logo} alt="" className="h-20 w-20 shrink-0 rounded-xl bg-black object-contain" />}
             <div>
@@ -157,18 +166,18 @@ export default function PublicDoc() {
             </div>
           </div>
           <div className="sm:text-right">
-            <div className="text-2xl font-extrabold" style={{ color }}>{isInvoice ? `FACTURA #${doc.number}` : 'ESTIMADO'}</div>
+            <div className="inline-block rounded-full px-4 py-1 text-lg font-extrabold tracking-wide text-white" style={{ backgroundColor: ORANGE }}>{isInvoice ? `FACTURA #${doc.number}` : 'ESTIMADO'}</div>
             <div className="text-base text-slate-600">{formatDate(doc.date)}</div>
           </div>
         </header>
 
         <section className="mt-4 grid grid-cols-2 gap-4 text-base">
           <div>
-            <div className="text-sm font-bold uppercase text-slate-500">Cliente</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">Cliente</div>
             <div className="font-semibold">{doc.client.name}</div>
           </div>
           <div>
-            <div className="text-sm font-bold uppercase text-slate-500">Bote</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">Bote</div>
             <div className="font-semibold">{doc.boat.name}</div>
             {boatLine && <div className="text-slate-600">{boatLine}</div>}
           </div>
@@ -177,7 +186,7 @@ export default function PublicDoc() {
         {[['Problema reportado', doc.work.complaint], ['Diagnóstico', doc.work.diagnosis], ['Trabajo realizado', doc.work.work_done]].map(([label, text]) =>
           text ? (
             <section key={label} className="mt-4">
-              <div className="text-sm font-bold uppercase text-slate-500">{label}</div>
+              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">{label}</div>
               <p className="whitespace-pre-line text-base">{text}</p>
             </section>
           ) : null,
@@ -186,11 +195,11 @@ export default function PublicDoc() {
         {/* Detalle */}
         <table className="mt-5 w-full text-sm sm:text-base">
           <thead>
-            <tr className="border-b-2 border-slate-300 text-left text-sm uppercase text-slate-500">
-              <th className="py-2">Descripción</th>
+            <tr className="bg-navy-50 text-left text-sm uppercase text-navy-900">
+              <th className="rounded-l-lg px-2 py-2">Descripción</th>
               <th className="py-2 pl-2 text-right">Cant.</th>
               <th className="py-2 pl-3 text-right">Precio</th>
-              <th className="py-2 pl-3 text-right">Total</th>
+              <th className="rounded-r-lg py-2 pl-3 pr-2 text-right">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -221,14 +230,15 @@ export default function PublicDoc() {
           <div className="flex justify-between py-1"><dt>{doc.parts.some((p) => p.kind === 'service') ? 'Mano de obra y servicios' : 'Mano de obra'}</dt><dd>{formatMoney(Number(t.labor))}</dd></div>
           <div className="flex justify-between py-1"><dt>Piezas</dt><dd>{formatMoney(Number(t.parts))}</dd></div>
           <div className="flex justify-between py-1"><dt>IVU {percent(t.ivu_rate)}{ivuOn ? ` (${ivuOn})` : ''}</dt><dd>{formatMoney(Number(t.ivu))}</dd></div>
-          <div className="mt-1 flex justify-between border-t-2 py-2 text-2xl font-extrabold" style={{ borderColor: color, color }}><dt>TOTAL</dt><dd>{formatMoney(Number(t.total))}</dd></div>
+          <div className="mt-2 flex items-center justify-between rounded-xl bg-navy-900 px-4 py-3 text-white"><dt className="text-lg font-extrabold">TOTAL</dt><dd className="text-2xl font-extrabold" style={{ color: '#FDBA74' }}>{formatMoney(Number(t.total))}</dd></div>
         </dl>
 
         {/* Pago */}
         {isInvoice && (
           doc.paid_at ? (
             <p className="mt-4 rounded-xl bg-emerald-50 p-4 text-center text-xl font-extrabold text-emerald-800">
-              PAGADA el {formatDate(doc.paid_at)}{doc.payment_method ? ` · ${labelOf(PAYMENT_METHODS, doc.payment_method)}` : ''}
+              PAGADA el {formatDate(doc.paid_at)}{doc.payment_method && doc.payment_method !== 'ath_movil' ? ` · ${labelOf(PAYMENT_METHODS, doc.payment_method)}` : ''}
+              {doc.payment_method === 'ath_movil' && <span className="ml-2 align-middle"><AthMovilBadge /></span>}
             </p>
           ) : (
             <>
@@ -255,7 +265,7 @@ export default function PublicDoc() {
         {/* Prueba en el agua y garantía */}
         {doc.work.sea_trial_required && (
           <section className="mt-5 text-base">
-            <div className="text-sm font-bold uppercase text-slate-500">Prueba en el agua</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">Prueba en el agua</div>
             {doc.work.sea_trial_method === 'not_allowed' ? (
               <p className="font-bold text-red-700">El cliente no permitió la prueba en el agua. La garantía queda anulada.</p>
             ) : doc.work.sea_trial_done ? (
@@ -267,15 +277,18 @@ export default function PublicDoc() {
         )}
         {doc.policies && (
           <section className="mt-5 border-t border-slate-200 pt-3">
-            <div className="text-sm font-bold uppercase text-slate-500">Garantía y políticas</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">Garantía y políticas</div>
             <p className="whitespace-pre-line text-sm text-slate-700">{doc.policies}</p>
           </section>
         )}
 
-        <button onClick={() => window.print()} className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl text-lg font-bold text-white print:hidden" style={{ backgroundColor: color }}>
+        <button onClick={() => window.print()} className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900 print:hidden">
           <Printer /> Guardar PDF / Imprimir
         </button>
-        <p className="mt-3 text-center text-xs text-slate-400 print:hidden">Hecho con Salt Boat Repair</p>
+        </div>
+        <footer className="flex items-center justify-center gap-2 border-t border-slate-100 bg-slate-50 py-3 text-xs text-slate-500">
+          <img src="/logo.svg" alt="" className="h-5 w-5 rounded" /> Hecho con Salt Boat Repair
+        </footer>
       </article>
     </div>
   )

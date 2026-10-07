@@ -12,7 +12,7 @@ import { BackTitle, Choice, Field, FormActions, Input, Loading, Select, Textarea
 
 type Form = { full_name: string; phone: string; email: string; town: string; address: string; preferred_contact: Client['preferred_contact']; notes: string }
 const CONTACT_ICONS = {
-  whatsapp: { icon: WhatsAppIcon as unknown as LucideIcon, tone: 'green' },
+  whatsapp: { icon: WhatsAppIcon as unknown as LucideIcon, tone: 'whatsapp' },
   call: { icon: Phone, tone: 'blue' },
   email: { icon: Mail, tone: 'violet' },
 } as const
@@ -73,7 +73,7 @@ export default function ClientForm() {
         <Field label="Nombre completo *" icon={User}>
           <Input required autoComplete="off" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} placeholder="Ana Martínez" />
         </Field>
-        <Field label="Teléfono / WhatsApp" icon={Phone} tone="green">
+        <Field label="Teléfono / WhatsApp" icon={WhatsAppIcon as unknown as LucideIcon} tone="whatsapp">
           <Input type="tel" inputMode="tel" value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="787-555-0123" />
         </Field>
         <Field label="¿Cómo prefiere que lo contacten?" icon={MessageCircle} tone="navy">
