@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { AlertTriangle, Banknote, Boxes, Calculator, Camera, CheckCircle2, Clock, CreditCard, ExternalLink, FileText, HandCoins, ListChecks, MessageCircle, Package, Plus, Receipt, Ship, Smartphone, ThumbsUp, Waves, Wrench, CalendarClock, ScrollText, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Banknote, Calculator, ChevronDown, Camera, CheckCircle2, Clock, CreditCard, ExternalLink, FileText, HandCoins, ListChecks, MessageCircle, Package, Plus, Receipt, Ship, Smartphone, ThumbsUp, Waves, Wrench, CalendarClock, ScrollText, type LucideIcon } from 'lucide-react'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, WORK_ORDER_STATUS, WORK_STEPS, labelOf } from '../lib/catalog'
 import { db } from '../lib/db'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
@@ -13,8 +13,6 @@ import ConfirmDelete from './ConfirmDelete'
 import NextService from './NextService'
 import PartSheet from './PartSheet'
 import { WhatsAppIcon } from './BrandIcons'
-import { PackagePicker, SavePackageSheet } from './PackageSheets'
-import { PACKAGES_ENABLED, itemsFromJob } from '../lib/packages'
 import PhotoSection from './PhotoSection'
 import { Sheet } from './Sheet'
 import { BackTitle, Button, Choice, ErrorBox, Field, IconBadge, Input, LinkButton, Loading, Pill, Textarea, Toggle, type Tone } from './ui'
@@ -34,7 +32,30 @@ const PAY_ICONS: Record<string, { icon: LucideIcon; tone: Tone }> = {
   other: { icon: CreditCard, tone: 'violet' },
 }
 
-function Section({ title, icon, tone = 'navy', children, right }: { title: string; icon?: LucideIcon; tone?: Tone; children: React.ReactNode; right?: React.ReactNode }) {
+function Section({ title, icon, tone = 'navy', children, right, summary, closed }: {
+  title: string; icon?: LucideIcon; tone?: Tone; children: React.ReactNode; right?: React.ReactNode
+  /** Lo que se ve con la sección cerrada (ej. "$170.00 · 2 h") */
+  summary?: React.ReactNode
+  /** Empieza cerrada: se abre tocando el título (para que la pantalla no sea tan larga) */
+  closed?: boolean
+}) {
+  const [open, setOpen] = useState(!closed)
+  if (closed !== undefined) {
+    return (
+      <section className="mt-4">
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
+          className="flex min-h-14 w-full items-center gap-2 rounded-2xl bg-white px-3 py-2 text-left shadow-[0_6px_24px_-14px_rgba(8,47,73,0.35)] ring-1 ring-slate-200/80 active:bg-slate-50">
+          {icon && <IconBadge icon={icon} tone={tone} size="sm" />}
+          <span className="min-w-0 flex-1">
+            <span className="block text-lg font-extrabold text-navy-900">{title}</span>
+            {!open && summary && <span className="block truncate text-sm text-slate-600">{summary}</span>}
+          </span>
+          <ChevronDown size={22} className={`shrink-0 text-slate-400 transition ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && <div className="mt-3">{children}</div>}
+      </section>
+    )
+  }
   return (
     <section className="mt-7">
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -68,8 +89,6 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   const [editPart, setEditPart] = useState<Part | null>(null)
   const [partKind, setPartKind] = useState<Part['kind']>('part')
   const [skipNext, setSkipNext] = useState(false)
-  const [pkgOpen, setPkgOpen] = useState(false)
-  const [savePkgOpen, setSavePkgOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [payMethod, setPayMethod] = useState<NonNullable<Invoice['payment_method']>>('ath_movil')
   const [saved, setSaved] = useState('')
@@ -230,11 +249,11 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
       {!locked && wo.status !== 'invoiced' && (
         <Section title="¿En qué va?" icon={ListChecks} tone="navy">
-          <Choice value={wo.status} onChange={setStatus} options={WORK_STEPS} />
+          <Choice columns={3} value={wo.status} onChange={setStatus} options={WORK_STEPS} />
         </Section>
       )}
 
-      <Section title="El problema" icon={Wrench} tone="amber">
+      <Section title="El problema" icon={Wrench} tone="amber" closed={Boolean(wo.complaint || wo.diagnosis || wo.work_done)} summary={wo.work_done || wo.diagnosis || wo.complaint}>
         <div className="space-y-4">
           <AutoText label="Lo que dice el cliente" value={wo.complaint} onSave={(v) => patch({ complaint: v })} />
           <AutoText label="Diagnóstico (lo que encontraste)" value={wo.diagnosis} onSave={(v) => patch({ diagnosis: v })} rows={4} />
@@ -242,7 +261,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </div>
       </Section>
 
-      <Section title="Mano de obra" icon={Clock} tone="blue">
+      <Section title="Mano de obra por hora" icon={Clock} tone="blue" closed summary={Number(wo.labor_hours) > 0 ? `${Number(wo.labor_hours)} h × ${formatMoney(Number(wo.labor_rate))} = ${formatMoney(totals.hours)}` : 'Si cobras por hora (si no, usa + Servicio)'}>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Horas">
             <Input inputMode="decimal" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} onBlur={() => patch({ labor_hours: num(laborHours) ?? 0 })} />
@@ -263,9 +282,6 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
           <button onClick={() => { setEditPart(null); setPartKind('part'); setPartOpen(true) }} className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 text-lg font-bold text-navy-800 active:bg-navy-50">
             <Plus size={22} /> Pieza
           </button>
-          {PACKAGES_ENABLED && <button onClick={() => setPkgOpen(true)} className="col-span-2 flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-800 text-lg font-bold text-navy-800 active:bg-navy-50">
-            <Boxes size={22} /> Paquete (todo de un toque)
-          </button>}
         </div>
         {parts.length === 0 && <p className="text-base text-slate-600">Todavía no hay servicios ni piezas.</p>}
         <div className="space-y-2">
@@ -284,18 +300,13 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
             </button>
           ))}
         </div>
-        {PACKAGES_ENABLED && itemsFromJob(parts).length >= 2 && (
-          <button onClick={() => setSavePkgOpen(true)} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 text-base font-bold text-navy-700 underline underline-offset-4">
-            <Boxes size={18} /> Guardar como paquete
-          </button>
-        )}
       </Section>
 
-      <Section title="Fotos" icon={Camera} tone="violet">
+      <Section title="Fotos" icon={Camera} tone="violet" closed summary={photos.length ? `${photos.length} ${photos.length === 1 ? 'foto' : 'fotos'}` : 'Antes, pieza vieja, pieza nueva, después'}>
         <PhotoSection workOrderId={wo.id} photos={photos} onChange={reload} />
       </Section>
 
-      <Section title="Prueba en el agua" icon={Waves} tone="blue">
+      <Section title="Prueba en el agua" icon={Waves} tone="blue" closed summary={!wo.sea_trial_required ? 'No hace falta' : wo.sea_trial_method === 'not_allowed' ? 'El cliente no la permitió' : wo.sea_trial_done ? 'Hecha ✓' : 'Pendiente'}>
         <div className="space-y-3">
           <Toggle checked={wo.sea_trial_required} onChange={(v) => patch({ sea_trial_required: v })} label="Este trabajo necesita prueba en el agua" hint="Motor, propulsión o electricidad" />
           {wo.sea_trial_required && (
@@ -311,19 +322,22 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
       </Section>
 
       <Section title="Total" icon={Calculator} tone="navy">
-        <div className="space-y-2">
-          <Toggle checked={wo.charge_ivu_labor} onChange={(v) => patch({ charge_ivu_labor: v })} label="Cobrar IVU en mano de obra" />
-          <Toggle checked={wo.charge_ivu_parts} onChange={(v) => patch({ charge_ivu_parts: v })} label="Cobrar IVU en piezas" />
-        </div>
-        <dl className="mt-3 rounded-2xl border-2 border-slate-200 bg-white px-4 text-lg">
+        <dl className="rounded-2xl border-2 border-slate-200 bg-white px-4 text-lg">
           <div className="flex justify-between border-b border-slate-200 py-2"><dt>Mano de obra y servicios</dt><dd>{formatMoney(totals.labor)}</dd></div>
           <div className="flex justify-between border-b border-slate-200 py-2"><dt>Piezas</dt><dd>{formatMoney(totals.parts)}</dd></div>
           <div className="flex justify-between border-b border-slate-200 py-2"><dt>IVU {percent(mech.ivu_rate)}</dt><dd>{formatMoney(totals.ivu)}</dd></div>
           <div className="flex justify-between py-3 text-2xl font-extrabold text-navy-900"><dt>TOTAL</dt><dd>{formatMoney(totals.total)}</dd></div>
         </dl>
+        <details className="mt-2">
+          <summary className="cursor-pointer py-2 text-base font-bold text-navy-700">Cambiar el IVU</summary>
+          <div className="space-y-2">
+            <Toggle checked={wo.charge_ivu_labor} onChange={(v) => patch({ charge_ivu_labor: v })} label="Cobrar IVU en mano de obra" />
+            <Toggle checked={wo.charge_ivu_parts} onChange={(v) => patch({ charge_ivu_parts: v })} label="Cobrar IVU en piezas" />
+          </div>
+        </details>
       </Section>
 
-      <Section title="Estimado" icon={FileText} tone="amber">
+      {!invoice && <Section title="Estimado" icon={FileText} tone="amber">
         {wo.estimate_approved_at ? (
           <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-base font-semibold text-emerald-900">
             <CheckCircle2 />
@@ -349,7 +363,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
             {<p className="text-sm text-slate-500">El cliente puede aprobarlo él mismo con el botón verde del link. Si te dice que sí por teléfono, toca “El cliente me dijo que sí”.</p>}
           </div>
         )}
-      </Section>
+      </Section>}
 
       <Section title="Cobrar" icon={HandCoins} tone="green">
         <div className="space-y-3">
@@ -427,8 +441,6 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </div>
       </Sheet>
 
-      <PackagePicker open={pkgOpen} workOrderId={wo.id} onClose={() => setPkgOpen(false)} onAdded={(n) => { reload(); flash(`Añadido: ${n} ✓`) }} />
-      <SavePackageSheet open={savePkgOpen} items={itemsFromJob(parts)} onClose={() => setSavePkgOpen(false)} onSaved={(n) => flash(`Paquete guardado: ${n} ✓`)} />
       <PartSheet open={partOpen} kind={partKind} workOrderId={wo.id} part={editPart} onClose={() => setPartOpen(false)} onSaved={reload} />
 
       {!invoice && !embedded && (

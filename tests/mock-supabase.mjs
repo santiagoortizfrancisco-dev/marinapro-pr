@@ -61,13 +61,6 @@ function reset() {
       { id: 'cat3', mechanic_id: null, kind: 'part', name: 'Impeller', category: 'Motor', last_price: null, use_count: 0 },
       { id: 'cat4', mechanic_id: null, kind: 'part', name: 'Filtro de aceite', category: 'Motor', last_price: null, use_count: 0 },
     ],
-    service_packages: [
-      { id: 'pk1', mechanic_id: null, name: 'Cambio de aceite', use_count: 0, created_at: now, items: [
-        { kind: 'service', name: 'Cambio de aceite y filtro', qty: 1, price: null },
-        { kind: 'part', name: 'Aceite de motor (cuarto)', qty: 6, price: null },
-        { kind: 'part', name: 'Filtro de aceite', qty: 1, price: null },
-      ] },
-    ],
     support_messages: [],
     photos: [],
     invoices: [],

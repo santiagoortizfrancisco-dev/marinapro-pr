@@ -141,7 +141,6 @@ export default function AppointmentForm() {
     setError('')
     if (!pick) return setError('Escoge el cliente y el bote, o toca “Cliente nuevo”.')
     if (pick.kind === 'new' && !newClient.full_name.trim()) return setError('Escribe el nombre del cliente.')
-    if (pick.kind !== 'boat' && !newBoatName.trim()) return setError('Escribe el nombre del bote.')
     setBusy(true)
     try {
       // 1) Cliente y bote (si son nuevos)
@@ -154,7 +153,9 @@ export default function AppointmentForm() {
       }
       if (pick.kind !== 'boat') {
         const town = pick.kind === 'new' ? blank(newClient.town) : clients?.find((c) => c.id === clientId)?.town ?? null
-        const b = await db().from('boats').insert({ client_id: clientId, name: newBoatName.trim(), town }).select('id').single()
+        const owner = pick.kind === 'new' ? newClient.full_name : clients?.find((c) => c.id === clientId)?.full_name ?? ''
+        const boatName = newBoatName.trim() || `Bote de ${owner.trim().split(' ')[0] || 'cliente'}`
+        const b = await db().from('boats').insert({ client_id: clientId, name: boatName, town }).select('id').single()
         if (b.error) throw b.error
         boatId = (b.data as { id: string }).id
       }
@@ -257,8 +258,8 @@ export default function AppointmentForm() {
           )}
         </Field>
         {pick && pick.kind !== 'boat' && (
-          <Field label="Nombre del bote *" hint="Lo demás del bote (motores, marina, mapa) lo llenas después">
-            <Input required value={newBoatName} onChange={(e) => setNewBoatName(e.target.value)} placeholder="La Tranquila" />
+          <Field label="Nombre del bote o jet ski (opcional)" hint="Si lo dejas vacío se guarda como “Bote de …”. Lo demás lo llenas después.">
+            <Input value={newBoatName} onChange={(e) => setNewBoatName(e.target.value)} placeholder="La Tranquila" />
           </Field>
         )}
 
@@ -280,20 +281,21 @@ export default function AppointmentForm() {
             <ul className="mt-1">{sameDay.map((x) => <li key={x.id}>{formatTime(x.starts_at)} a {formatTime(new Date(new Date(x.starts_at).getTime() + x.duration_min * 60000))} · {x.boats.name}</li>)}</ul>
           </div>
         )}
-        <Field label="¿Cuánto tiempo?">
-          <Select value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
-            {durationOptions.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-          </Select>
-        </Field>
-        <Field label="¿Ya lo hablaste con el cliente?">
-          <Choice value={status} onChange={setStatus} options={[{ value: 'confirmed', label: 'Sí, confirmada' }, { value: 'requested', label: 'Falta confirmar' }]} />
-        </Field>
 
         <button type="button" onClick={() => setMoreOpen((v) => !v)} className="flex min-h-12 w-full items-center justify-between rounded-xl bg-slate-100 px-4 text-base font-bold text-slate-800">
-          Más detalles (opcional) {moreOpen ? <ChevronUp /> : <ChevronDown />}
+          <span>Más detalles <span className="font-normal text-slate-500">· {durationOptions.find((d) => d.value === duration)?.label}, {status === 'confirmed' ? 'confirmada' : 'falta confirmar'}</span></span> {moreOpen ? <ChevronUp /> : <ChevronDown />}
         </button>
         {moreOpen && (
           <div className="space-y-4">
+            <Field label="¿Cuánto tiempo?">
+              <Select value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
+                {durationOptions.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+              </Select>
+            </Field>
+            <Field label="¿Ya lo hablaste con el cliente?">
+              <Choice value={status} onChange={setStatus} options={[{ value: 'confirmed', label: 'Sí, confirmada' }, { value: 'requested', label: 'Falta confirmar' }]} />
+            </Field>
+
             <Field label="¿Qué se va a hacer?">
               <Input list="jobs" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Servicio de 100 horas" />
             </Field>

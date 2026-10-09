@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Calendar, CalendarPlus, ChevronLeft, ChevronRight, MapPin, Plus, User, Wrench } from 'lucide-react'
+import { Calendar, CalendarPlus, ChevronLeft, ChevronRight, MapPin, Plus, User, Wrench, Zap } from 'lucide-react'
 import { LOCATION_TYPES, labelOf } from '../../lib/catalog'
 import { db } from '../../lib/db'
 import { addDays, formatDate, formatLongDate, formatTime, prDay, prRange, prTime, prToISO, todayPR, weekStart } from '../../lib/format'
@@ -119,6 +119,10 @@ export default function Agenda() {
   return (
     <>
       {day === today && <DueServices />}
+
+      <Link to="/cobrar" className="mb-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-navy-800 bg-white text-base font-bold text-navy-800 active:bg-navy-50">
+        <Zap size={20} /> Factura rápida (sin cita)
+      </Link>
 
       {/* Mes | Semana */}
       <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">

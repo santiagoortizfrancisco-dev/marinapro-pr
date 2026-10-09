@@ -27,6 +27,7 @@ import MechanicProfile from './pages/public/MechanicProfile'
 import PublicProfileSettings from './pages/mechanic/PublicProfileSettings'
 import RequestDetail from './pages/mechanic/RequestDetail'
 import PasswordSettings from './pages/mechanic/PasswordSettings'
+import QuickInvoice from './pages/mechanic/QuickInvoice'
 import MyBoats from './pages/client/MyBoats'
 import Report from './pages/client/Report'
 import Alerts from './pages/client/Alerts'
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="/equipos/:id/editar" element={<EquipmentForm />} />
           <Route path="/trabajos" element={<Jobs />} />
           <Route path="/trabajos/nuevo" element={<JobNew />} />
+          <Route path="/cobrar" element={<QuickInvoice />} />
           <Route path="/trabajos/:id" element={<JobDetail />} />
           <Route path="/mas/negocio" element={<BusinessSettings />} />
           <Route path="/mas/admin" element={<Admin />} />

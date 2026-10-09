@@ -103,7 +103,7 @@ test('agenda: calendario del mes con las citas marcadas; recuerda si prefieres S
   await expect(page.getByText(/Semana del \d+ al \d+/)).toBeVisible()
 })
 
-test('los botones principales se ven claros: Hacer cita y Añadir cliente', async ({ page }) => {
+test('los botones principales se ven claros: Hacer cita, Añadir cliente y Factura rápida', async ({ page }) => {
   await login(page)
   await page.getByRole('link', { name: 'Hacer cita' }).click()
   await expect(page.getByRole('heading', { name: 'Cita nueva' })).toBeVisible()
@@ -111,7 +111,7 @@ test('los botones principales se ven claros: Hacer cita y Añadir cliente', asyn
   await page.getByRole('link', { name: 'Añadir cliente' }).click()
   await expect(page.getByRole('heading', { name: 'Cliente nuevo' })).toBeVisible()
   await page.getByRole('link', { name: 'Cobros' }).click()
-  await expect(page.getByRole('link', { name: 'Hacer cita' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Factura rápida' })).toBeVisible()
 })
 
 test('cita nueva desde un hueco libre, con cliente nuevo: crea cliente, bote, cita y su trabajo', async ({ page }) => {
@@ -154,6 +154,7 @@ test('cita nueva escogiendo un cliente que ya existe (buscando por teléfono)', 
 test('el trabajo: horas y piezas calculan el total con IVU; la pieza del cliente no se cobra', async ({ page }) => {
   await login(page)
   await openExampleAppointment(page)
+  await page.getByRole('button', { name: /Mano de obra por hora/ }).click()
   const hours = page.getByLabel('Horas')
   await hours.fill('2')
   await hours.blur()
@@ -345,6 +346,7 @@ test('"Ya me pagó" sin hacer factura: la hace sola y queda pagada', async ({ pa
 test('factura: cómo pagar (efectivo, solo ATH, o los dos) cambia lo que ve el cliente', async ({ page }) => {
   await login(page)
   await openExampleAppointment(page)
+  await page.getByRole('button', { name: /Mano de obra por hora/ }).click()
   const hours = page.getByLabel('Horas')
   await hours.fill('1')
   await hours.blur()
@@ -526,7 +528,7 @@ test('directorio cerrado: el admin lo ve desde el app en la misma ventana y pued
   await expect(page.getByRole('heading', { name: 'Más' })).toBeVisible()
 })
 
-test('paquetes escondidos: el trabajo solo tiene + Servicio y + Pieza', async ({ page }) => {
+test('sin paquetes: el trabajo solo tiene + Servicio y + Pieza', async ({ page }) => {
   await login(page)
   await openExampleAppointment(page)
   await expect(page.getByRole('button', { name: 'Servicio', exact: true })).toBeVisible()
@@ -547,54 +549,6 @@ test('Admin: Quitar saca al mecánico del directorio', async ({ page }) => {
   await page.getByRole('button', { name: 'Quitar', exact: true }).click()
   await expect(page.getByText('Por aprobar')).toBeVisible()
   expect((await state()).mechanics[0].approved).toBe(false)
-})
-
-// Paquetes escondidos por ahora (PACKAGES_ENABLED = false en src/lib/packages.ts)
-test.skip('paquetes: + Paquete añade todo de un toque; Guardar como paquete; cambiar precio en Mis piezas y servicios y usarlo otra vez', async ({ page }) => {
-  await login(page)
-  await openExampleAppointment(page)
-
-  // 1) Paquete de ejemplo: se añaden las 3 líneas de un toque
-  await page.getByRole('button', { name: /Paquete \(todo de un toque\)/ }).click()
-  const picker = page.getByRole('dialog', { name: 'Añadir un paquete' })
-  await picker.getByRole('button', { name: /Cambio de aceite/ }).click()
-  await expect(page.getByText('Añadido: Cambio de aceite ✓')).toBeVisible()
-  await expect(page.getByText('Aceite de motor (cuarto)')).toBeVisible()
-  let parts = (await state()).work_order_parts
-  expect(parts).toHaveLength(3)
-  expect(parts.filter((p) => p.kind === 'part').every((p) => p.received_at)).toBe(true) // ya las tiene: no sale "falta que llegue"
-
-  // 2) Guardarlo como mi paquete
-  await page.getByRole('button', { name: 'Guardar como paquete' }).click()
-  const save = page.getByRole('dialog', { name: 'Guardar como paquete' })
-  await expect(save.getByLabel('Nombre del paquete')).toHaveValue('Cambio de aceite y filtro')
-  await save.getByLabel('Nombre del paquete').fill('Aceite Yamaha F200')
-  await save.getByRole('button', { name: 'Guardar paquete' }).click()
-  await expect(page.getByText('Paquete guardado: Aceite Yamaha F200 ✓')).toBeVisible()
-  const mine = (await state()).service_packages.find((p) => p.name === 'Aceite Yamaha F200')!
-  expect(mine.mechanic_id).toBeTruthy()
-  expect(mine.items).toHaveLength(3)
-
-  // 3) Ponerle precio en Mis piezas y servicios → Paquetes
-  await page.goto('/mas/catalogo')
-  await page.getByRole('button', { name: 'Paquetes' }).click()
-  await expect(page.getByLabel('Nombre del paquete')).toHaveValue('Aceite Yamaha F200')
-  await page.getByLabel('Precio de Filtro de aceite').fill('18')
-  await page.getByLabel('Precio de Cambio de aceite y filtro').fill('80')
-  await page.getByLabel('Precio de Cambio de aceite y filtro').blur()
-  await expect(page.getByText('$98.00')).toBeVisible()
-
-  // 4) Usarlo otra vez: sale primero (★) y con su total
-  await openExampleAppointment(page)
-  await page.getByRole('button', { name: /Paquete \(todo de un toque\)/ }).click()
-  const first = page.getByRole('dialog', { name: 'Añadir un paquete' }).getByRole('button').first()
-  await expect(first).toContainText('Aceite Yamaha F200')
-  await expect(first).toContainText('$98.00')
-  await first.click()
-  await expect(page.getByText('Añadido: Aceite Yamaha F200 ✓')).toBeVisible()
-  parts = (await state()).work_order_parts
-  expect(parts).toHaveLength(6)
-  expect(parts.filter((p) => p.description === 'Filtro de aceite').map((p) => Number(p.unit_cost)).sort()).toEqual([0, 18])
 })
 
 test('Contactar al desarrollador: el mecánico escribe desde Más y al admin le llega a Mensajes (sin ver ningún email)', async ({ page, browser }) => {
@@ -689,4 +643,40 @@ test('registro: un mecánico crea su cuenta solo, espera aprobación, el admin l
   await nuevo.getByRole('button', { name: /Ya me aprobaron/ }).click()
   await expect(nuevo.locator('header').getByText('Pedro Marine')).toBeVisible()
   await nuevo.close()
+})
+
+test('factura rápida: sin cita, con cliente nuevo; Ya me pagó deja la factura pagada y en Cobros', async ({ page }) => {
+  await login(page)
+  await page.getByRole('link', { name: 'Cobros' }).click()
+  await page.getByRole('link', { name: /Factura rápida/ }).click()
+  await expect(page.getByRole('heading', { name: 'Factura rápida' })).toBeVisible()
+  await page.getByRole('button', { name: 'Hacer factura' }).click()
+  await expect(page.getByRole('alert')).toContainText('cliente')
+
+  await page.getByRole('button', { name: 'Cliente nuevo' }).click()
+  await page.getByPlaceholder('Nombre del cliente *').fill('Rosa Rápida')
+  await page.getByPlaceholder('Teléfono / WhatsApp').fill('787-555-0155')
+  await page.getByLabel('Descripción 1').fill('Cambio de impeller')
+  await page.getByLabel('Precio 1').fill('100')
+  await page.getByRole('button', { name: /Otra línea/ }).click()
+  await page.getByLabel('Descripción 2').fill('Impeller')
+  await page.getByLabel('Precio 2').fill('40')
+  await expect(page.getByText('$156.10')).toBeVisible() // 140 + 11.5% IVU
+  await page.getByRole('button', { name: 'Ya me pagó' }).click()
+  await page.getByRole('dialog', { name: '¿Cómo te pagó?' }).getByRole('button', { name: /Efectivo/ }).click()
+  await page.getByRole('button', { name: 'Guardar pago' }).click()
+  await expect(page.getByText('Pagada ✓')).toBeVisible()
+  await expect(page.getByRole('link', { name: /Enviar factura por WhatsApp/ })).toBeVisible()
+
+  const s = await state()
+  const boat = s.boats.find((b) => b.name === 'Bote de Rosa')!
+  expect(boat).toBeTruthy()
+  const wo = s.work_orders.find((w) => w.boat_id === boat.id)!
+  expect(wo).toMatchObject({ status: 'paid', sea_trial_required: false })
+  expect(s.work_order_parts.filter((p) => p.work_order_id === wo.id)).toHaveLength(2)
+  expect(s.invoices.find((i) => i.work_order_id === wo.id)).toMatchObject({ payment_method: 'cash', total: 156.1 })
+
+  await page.getByRole('button', { name: 'Listo' }).click()
+  await expect(page.getByRole('heading', { name: 'Pagados' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Bote de Rosa/ })).toBeVisible()
 })
