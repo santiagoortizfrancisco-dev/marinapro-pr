@@ -725,3 +725,16 @@ test('quién me debe: la factura sin pagar sale en Cobros, en Clientes ("Debe") 
   await page.getByRole('link', { name: 'Cobros' }).click()
   await expect(page.getByRole('heading', { name: 'Me deben' })).toHaveCount(0)
 })
+
+test('Factura rápida: la flecha de volver regresa a donde estabas (Inicio o Agenda), no a Cobros', async ({ page }) => {
+  await login(page)
+  await page.getByRole('link', { name: /Factura rápida/ }).first().click()
+  await expect(page.getByRole('heading', { name: 'Factura rápida' })).toBeVisible()
+  await page.getByRole('button', { name: 'Volver' }).click()
+  await expect(page.getByRole('heading', { name: /¡Buen(os|as)/ })).toBeVisible()
+
+  await page.getByRole('link', { name: 'Agenda', exact: true }).click()
+  await page.getByRole('link', { name: /Factura rápida/ }).click()
+  await page.getByRole('button', { name: 'Volver' }).click()
+  await expect(page).toHaveURL(/\/agenda/)
+})

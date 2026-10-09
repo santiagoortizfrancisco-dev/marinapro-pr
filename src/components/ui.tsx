@@ -193,7 +193,8 @@ export function BackTitle({ children, subtitle, to }: { children: ReactNode; sub
       <button
         type="button"
         aria-label="Volver"
-        onClick={() => (to ? navigate(to) : navigate(-1))}
+        // Vuelve a la pantalla anterior; si no hay (se abrió el app directo aquí), va a Inicio
+        onClick={() => (to ? navigate(to) : (window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate('/inicio'))}
         className="-ml-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-navy-800 active:bg-navy-50"
       >
         <ChevronLeft size={30} />

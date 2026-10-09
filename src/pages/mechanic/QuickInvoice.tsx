@@ -218,7 +218,7 @@ export default function QuickInvoice() {
 
   return (
     <>
-      <BackTitle to="/trabajos" subtitle="Sin cita ni estimado: cobra en el momento">Factura rápida</BackTitle>
+      <BackTitle subtitle="Sin cita ni estimado: cobra en el momento">Factura rápida</BackTitle>
       <div className="space-y-5">
         {/* 1. ¿A quién? */}
         <Field label="1. ¿A quién le cobras?">
