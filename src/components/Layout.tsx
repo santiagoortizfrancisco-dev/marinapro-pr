@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { Bell, Calendar, LogOut, Menu, MessageSquareWarning, Receipt, Repeat, Ship, Users, Wrench, type LucideIcon } from 'lucide-react'
+import { Bell, Calendar, Home, LogOut, Menu, MessageSquareWarning, Receipt, Repeat, Ship, Users, Wrench, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import type { Role } from '../lib/types'
@@ -27,6 +27,7 @@ interface Tab {
 }
 
 const MECHANIC_TABS: Tab[] = [
+  { to: '/inicio', label: 'Inicio', icon: Home },
   { to: '/agenda', label: 'Agenda', icon: Calendar, also: ['/citas'] },
   { to: '/clientes', label: 'Clientes', icon: Users, also: ['/botes', '/motores', '/equipos'] },
   { to: '/trabajos', label: 'Cobros', icon: Receipt },
@@ -160,7 +161,7 @@ export default function Layout() {
       </main>
 
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-10 border-t-2 border-slate-200 bg-white">
-        <div className="mx-auto grid max-w-xl grid-cols-4">
+        <div className={`mx-auto grid max-w-xl ${tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4'}`}>
           {tabs.map(({ to, label, icon: Icon, also }) => {
             const extra = also?.some((p) => pathname.startsWith(p)) ?? false
             return (

@@ -28,6 +28,7 @@ import PublicProfileSettings from './pages/mechanic/PublicProfileSettings'
 import RequestDetail from './pages/mechanic/RequestDetail'
 import PasswordSettings from './pages/mechanic/PasswordSettings'
 import QuickInvoice from './pages/mechanic/QuickInvoice'
+import Home from './pages/mechanic/Home'
 import MyBoats from './pages/client/MyBoats'
 import Report from './pages/client/Report'
 import Alerts from './pages/client/Alerts'
@@ -63,6 +64,7 @@ export default function App() {
     return (
       <Routes>
         <Route element={<Layout />}>
+          <Route path="/inicio" element={<Home />} />
           <Route path="/agenda" element={<Agenda />} />
           <Route path="/citas/nueva" element={<AppointmentForm />} />
           <Route path="/citas/:id" element={<AppointmentDetail />} />
@@ -89,7 +91,7 @@ export default function App() {
           <Route path="/mas/clave" element={<PasswordSettings />} />
           <Route path="/solicitudes/:id" element={<RequestDetail />} />
           <Route path="/mas" element={<More />} />
-          <Route path="*" element={<Navigate to="/agenda" replace />} />
+          <Route path="*" element={<Navigate to="/inicio" replace />} />
         </Route>
       </Routes>
     )

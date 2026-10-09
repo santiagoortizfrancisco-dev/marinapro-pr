@@ -7,7 +7,6 @@ import { addDays, formatDate, formatLongDate, formatTime, prDay, prRange, prTime
 import type { AppointmentFull } from '../../lib/types'
 import { must, useLoad } from '../../lib/useLoad'
 import { ErrorBox, Fab, Loading } from '../../components/ui'
-import DueServices from '../../components/DueServices'
 
 const SELECT = '*, service_requests(description), boats(id, name, location_type, marina_name, slip_number, town, lat, lng, location_notes, clients(id, full_name, phone))'
 
@@ -118,7 +117,6 @@ export default function Agenda() {
 
   return (
     <>
-      {day === today && <DueServices />}
 
       <Link to="/cobrar" className="mb-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-navy-800 bg-white text-base font-bold text-navy-800 active:bg-navy-50">
         <Zap size={20} /> Factura rápida (sin cita)

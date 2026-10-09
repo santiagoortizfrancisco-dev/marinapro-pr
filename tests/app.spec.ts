@@ -59,7 +59,7 @@ test('mecánico nuevo entra por primera vez con su email: pone nombre y compañ�
   await page.getByRole('button', { name: 'Empezar' }).click()
   await expect(page.locator('header').getByText('Luis Marine Service')).toBeVisible()
   await expect(page.locator('header img')).toHaveAttribute('src', '/logo.svg')
-  await expect(page.getByRole('link', { name: 'Agenda' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Agenda', exact: true })).toBeVisible()
   const s = await state()
   expect(s.profiles.find((p) => p.email === 'nuevo@prueba.test')?.role).toBe('mechanic')
 })
@@ -242,7 +242,7 @@ test('mantenimiento: al terminar el trabajo pregunta cuándo le toca, y el bote 
   await expect(page.getByText(/cada 6 meses/)).toBeVisible()
 })
 
-test('Le toca servicio: sale en la Agenda de hoy con Avisarle por WhatsApp y Hacer cita', async ({ page }) => {
+test('Le toca servicio: sale en Inicio con Avisarle por WhatsApp y Hacer cita', async ({ page }) => {
   await login(page)
   // recordatorio para dentro de 5 días, desde la ficha del bote
   await page.goto('/botes/b1')
@@ -256,11 +256,11 @@ test('Le toca servicio: sale en la Agenda de hoy con Avisarle por WhatsApp y Hac
   await page.getByRole('button', { name: 'Guardar recordatorio' }).click()
   await expect(page.getByText('Cambio de aceite').first()).toBeVisible()
 
-  await page.goto('/agenda')
+  await page.goto('/inicio')
   await expect(page.getByRole('heading', { name: /Le toca servicio \(1\)/ })).toBeVisible()
   await expect(page.getByText('En 5 días', { exact: false })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Avisarle' })).toHaveAttribute('href', /wa\.me\/17875550111\?text=.*Cambio%20de%20aceite/)
-  await page.getByRole('link', { name: 'Hacer cita', exact: true }).first().click()
+  await page.locator('section', { has: page.getByRole('heading', { name: /Le toca servicio/ }) }).getByRole('link', { name: 'Hacer cita', exact: true }).first().click()
   await expect(page.getByRole('heading', { name: 'Cita nueva' })).toBeVisible()
   await expect(page.getByPlaceholder('El motor de babor no arranca en frío')).toHaveValue('Cambio de aceite')
 })
@@ -315,7 +315,7 @@ test('el mecánico abre "Ver el estimado" y puede volver al app (en el iPhone no
   await client.close()
 })
 
-test('Cobros: el estimado sin aprobar no sale; al marcarlo "Trabajando" sí sale', async ({ page }) => {
+test('Cobros es solo dinero: lo que está "Trabajando" sale en Inicio, no en Cobros', async ({ page }) => {
   await login(page)
   await openExampleAppointment(page)
   await page.getByRole('link', { name: 'Cobros' }).click()
@@ -323,9 +323,11 @@ test('Cobros: el estimado sin aprobar no sale; al marcarlo "Trabajando" sí sale
 
   await openExampleAppointment(page)
   await page.getByRole('button', { name: 'Trabajando', exact: true }).click()
+  await page.getByRole('link', { name: 'Inicio' }).click()
+  await expect(page.getByRole('heading', { name: 'Trabajando' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /La Tranquila · Ana Ejemplo/ })).toBeVisible()
   await page.getByRole('link', { name: 'Cobros' }).click()
-  await expect(page.getByText('Aprobados y trabajando')).toBeVisible()
-  await expect(page.getByRole('link', { name: /La Tranquila.*Ana Ejemplo/ })).toBeVisible()
+  await expect(page.getByText('Todavía no hay cobros')).toBeVisible()
 })
 
 test('"Ya me pagó" sin hacer factura: la hace sola y queda pagada', async ({ page }) => {
@@ -340,7 +342,7 @@ test('"Ya me pagó" sin hacer factura: la hace sola y queda pagada', async ({ pa
   expect(s.invoices[0].number).toBe('0001')
   expect(s.invoices[0].payment_method).toBe('cash')
   await page.getByRole('link', { name: 'Cobros' }).click()
-  await expect(page.getByRole('heading', { name: 'Pagados' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Cobrado este mes/ })).toBeVisible()
 })
 
 test('factura: cómo pagar (efectivo, solo ATH, o los dos) cambia lo que ve el cliente', async ({ page }) => {
@@ -626,7 +628,7 @@ test('registro: un mecánico crea su cuenta solo, espera aprobación, el admin l
   await nuevo.getByLabel('Repite el PIN').fill('482913')
   await nuevo.getByRole('button', { name: /Crear mi cuenta/ }).click()
   await expect(nuevo.getByText(/Tu cuenta está/)).toBeVisible()
-  await expect(nuevo.getByRole('link', { name: 'Agenda' })).toHaveCount(0) // todavía no entra al app
+  await expect(nuevo.getByRole('link', { name: 'Agenda', exact: true })).toHaveCount(0) // todavía no entra al app
   const p = (await state()).profiles.find((x) => x.email === 'pedro@marine.test')!
   expect(p).toMatchObject({ role: 'mechanic', full_name: 'Pedro Mecánico', access: 'pending' })
 
@@ -677,6 +679,49 @@ test('factura rápida: sin cita, con cliente nuevo; Ya me pagó deja la factura 
   expect(s.invoices.find((i) => i.work_order_id === wo.id)).toMatchObject({ payment_method: 'cash', total: 156.1 })
 
   await page.getByRole('button', { name: 'Listo' }).click()
-  await expect(page.getByRole('heading', { name: 'Pagados' })).toBeVisible()
+  await page.getByRole('button', { name: /Cobrado este mes/ }).click()
   await expect(page.getByRole('link', { name: /Bote de Rosa/ })).toBeVisible()
+})
+
+test('Inicio: al entrar salen los 4 botones grandes y lo de hoy', async ({ page }) => {
+  await login(page)
+  await expect(page.getByRole('heading', { name: /¡Buen(os|as) (días|tardes|noches)/ })).toBeVisible()
+  for (const name of ['Hacer cita', 'Factura rápida', 'Añadir cliente', 'Me deben']) {
+    await expect(page.getByRole('link', { name: new RegExp(name) }).first()).toBeVisible()
+  }
+  await expect(page.getByRole('link', { name: /Ver agenda/ })).toBeVisible()
+  await page.getByRole('link', { name: /Factura rápida/ }).first().click()
+  await expect(page.getByRole('heading', { name: 'Factura rápida' })).toBeVisible()
+})
+
+test('quién me debe: la factura sin pagar sale en Cobros, en Clientes ("Debe") y en el cliente; Ya me pagó la pasa a Pagos', async ({ page }) => {
+  await login(page)
+  await openExampleAppointment(page)
+  await page.getByRole('button', { name: /Mano de obra por hora/ }).click()
+  await page.getByLabel('Horas').fill('1')
+  await page.getByLabel('Horas').blur()
+  await page.getByRole('button', { name: 'Hacer factura' }).click()
+  await expect(page.getByText('Factura #0001')).toBeVisible()
+
+  // Cobros: me deben $94.78 (85 + 11.5%)
+  await page.getByRole('link', { name: 'Cobros' }).click()
+  await expect(page.getByText('$94.78').first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Me deben' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Recordarle' })).toHaveAttribute('href', /wa\.me\/17875550111\?text=.*factura/)
+
+  // Clientes: etiqueta roja
+  await page.getByRole('link', { name: 'Clientes' }).click()
+  await expect(page.getByText('Debe $94.78')).toBeVisible()
+
+  // El cliente: pagar desde su ficha
+  await page.getByRole('link', { name: /Ana Ejemplo/ }).click()
+  await page.getByRole('button', { name: 'Ya me pagó' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: /Efectivo/ }).click()
+  await page.getByRole('button', { name: 'Guardar pago' }).click()
+  await expect(page.getByRole('heading', { name: 'Pagos' })).toBeVisible()
+  await expect(page.getByText(/#0001 · La Tranquila/)).toBeVisible()
+  expect((await state()).invoices[0].paid_at).toBeTruthy()
+
+  await page.getByRole('link', { name: 'Cobros' }).click()
+  await expect(page.getByRole('heading', { name: 'Me deben' })).toHaveCount(0)
 })
