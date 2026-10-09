@@ -29,10 +29,10 @@ const write = (k: string, v: string) => {
   }
 }
 
-/** Minutos sin tocar el app antes de pedir el PIN (por defecto 15; 0 = apagado). */
+/** Minutos sin tocar el app antes de pedir el PIN (por defecto apagado: cada mecánico lo prende en Más → Mi contraseña o PIN). */
 export function lockMinutes(): number {
   const v = read(KEY_MIN)
-  return v === null ? 15 : Number(v) || 0
+  return v === null ? 0 : Number(v) || 0
 }
 export function setLockMinutes(m: number) {
   write(KEY_MIN, String(m))
