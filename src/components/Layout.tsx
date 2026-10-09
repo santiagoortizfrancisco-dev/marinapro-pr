@@ -6,7 +6,7 @@ import type { Role } from '../lib/types'
 import { Sheet, Toast } from './Sheet'
 import { BRAND_EVENT, logoUrl } from '../lib/brand'
 import { db } from '../lib/db'
-import { Button } from './ui'
+import { BackButton, Button } from './ui'
 import ApprovalAlerts from './ApprovalAlerts'
 import RequestAlerts from './RequestAlerts'
 
@@ -156,6 +156,7 @@ export default function Layout() {
 
       <main className="pb-44">
         <div className="mx-auto max-w-xl px-4 py-5">
+          {['/agenda', '/clientes', '/trabajos', '/mas'].includes(pathname) && <BackButton />}
           <Outlet />
         </div>
       </main>

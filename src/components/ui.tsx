@@ -186,23 +186,27 @@ export function PageTitle({ children, subtitle }: { children: ReactNode; subtitl
 }
 
 /** Título con flecha para volver (pantallas de detalle y formularios). */
-export function BackTitle({ children, subtitle, to }: { children: ReactNode; subtitle?: string; to?: string }) {
+/** Botón grande "‹ Volver atrás": regresa a la pantalla anterior; si no hay (se abrió el app directo aquí), va a Inicio. */
+export function BackButton({ to }: { to?: string }) {
   const navigate = useNavigate()
   return (
-    <div className="mb-5 flex items-start gap-2">
-      <button
-        type="button"
-        aria-label="Volver"
-        // Vuelve a la pantalla anterior; si no hay (se abrió el app directo aquí), va a Inicio
-        onClick={() => (to ? navigate(to) : (window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate('/inicio'))}
-        className="-ml-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-navy-800 active:bg-navy-50"
-      >
-        <ChevronLeft size={30} />
-      </button>
-      <div className="min-w-0 pt-1">
-        <h1 className="text-2xl font-extrabold leading-tight text-navy-900">{children}</h1>
-        {subtitle && <p className="mt-1 text-base text-slate-600">{subtitle}</p>}
-      </div>
+    <button
+      type="button"
+      onClick={() => (to ? navigate(to) : (window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate('/inicio'))}
+      className={`${CARD} -ml-1 mb-3 inline-flex min-h-12 items-center gap-1 px-4 text-lg font-bold text-navy-800 active:bg-navy-50`}
+    >
+      <ChevronLeft size={26} strokeWidth={2.5} /> Volver atrás
+    </button>
+  )
+}
+
+/** Título con el botón grande de volver arriba (pantallas de detalle y formularios). */
+export function BackTitle({ children, subtitle, to }: { children: ReactNode; subtitle?: string; to?: string }) {
+  return (
+    <div className="mb-5">
+      <BackButton to={to} />
+      <h1 className="text-2xl font-extrabold leading-tight text-navy-900">{children}</h1>
+      {subtitle && <p className="mt-1 text-base text-slate-600">{subtitle}</p>}
     </div>
   )
 }

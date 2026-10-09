@@ -738,3 +738,15 @@ test('Factura rápida: la flecha de volver regresa a donde estabas (Inicio o Age
   await page.getByRole('button', { name: 'Volver' }).click()
   await expect(page).toHaveURL(/\/agenda/)
 })
+
+test('botón grande "Volver atrás": en Cobros regresa a Inicio, y en una pantalla de adentro regresa a la anterior', async ({ page }) => {
+  await login(page)
+  await page.getByRole('link', { name: 'Cobros' }).click()
+  await page.getByRole('button', { name: 'Volver atrás' }).click()
+  await expect(page.getByRole('heading', { name: /¡Buen(os|as)/ })).toBeVisible()
+
+  await page.getByRole('link', { name: 'Clientes' }).click()
+  await page.getByRole('link', { name: /Ana Ejemplo/ }).click()
+  await page.getByRole('button', { name: 'Volver atrás' }).click()
+  await expect(page.getByRole('heading', { name: 'Clientes' })).toBeVisible()
+})
