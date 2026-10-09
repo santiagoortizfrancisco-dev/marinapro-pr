@@ -287,7 +287,7 @@ export default function PublicDoc() {
         </button>
         </div>
         <footer className="flex items-center justify-center gap-2 border-t border-slate-100 bg-slate-50 py-3 text-xs text-slate-500">
-          <img src="/logo.svg" alt="" className="h-5 w-5 rounded" /> Hecho con Salt Boat Repair · Powered by Francisco Santiago (Joy)
+          <img src="/logo.svg" alt="" className="h-5 w-5 rounded" /> Hecho con Salt Marine Repair · Powered by Francisco Santiago (Joy)
         </footer>
       </article>
     </div>

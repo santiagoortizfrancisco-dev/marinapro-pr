@@ -91,7 +91,7 @@ export default function Login() {
     <div className="flex min-h-full flex-col bg-navy-900">
       <div className="safe-top px-6 pb-8 pt-12 text-center text-white">
         <img src="/logo.svg" alt="" className="mx-auto h-20 w-20 rounded-2xl" />
-        <h1 className="mt-4 text-[1.7rem] font-extrabold leading-tight">Salt Boat Repair</h1>
+        <h1 className="mt-4 text-[1.7rem] font-extrabold leading-tight">Salt Marine Repair</h1>
         <p className="text-xs text-white/60">Powered by Francisco Santiago (Joy)</p>
         <p className="mt-1 text-lg text-navy-100">Para mecánicos marinos: botes y jet skis</p>
       </div>

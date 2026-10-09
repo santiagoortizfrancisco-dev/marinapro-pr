@@ -42,7 +42,7 @@ export default function MechanicProfile() {
 
   const color = m.brand_color || DEFAULT_BRAND
   const logo = logoUrl(m.logo_path) ?? '/logo.svg'
-  const wa = m.phone ? whatsappLink(m.phone, `Hola ${m.owner ?? ''}, te encontré en Salt Boat Repair. Necesito ayuda con mi bote.`) : null
+  const wa = m.phone ? whatsappLink(m.phone, `Hola ${m.owner ?? ''}, te encontré en Salt Marine Repair. Necesito ayuda con mi bote.`) : null
 
   return (
     <PublicShell>

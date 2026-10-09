@@ -46,7 +46,7 @@ export default function RequestDetail() {
   if (error || !r) return <ErrorBox message={error || 'No se encontró la solicitud.'} />
 
   const first = (r.contact_name ?? '').split(' ')[0]
-  const wa = r.contact_phone && whatsappLink(r.contact_phone, `Hola ${first}, es sobre tu bote. Vi tu solicitud en Salt Boat Repair.`)
+  const wa = r.contact_phone && whatsappLink(r.contact_phone, `Hola ${first}, es sobre tu bote. Vi tu solicitud en Salt Marine Repair.`)
   const open = r.status === 'new' || r.status === 'seen'
 
   return (

@@ -111,7 +111,7 @@ export default function Layout() {
           )}
           <div className="min-w-0 flex-1 leading-tight">
             <div className="text-sm font-bold uppercase tracking-wide text-white/85">
-              Salt Boat Repair{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-white">DEMO</span>}
+              Salt Marine Repair{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-white">DEMO</span>}
             </div>
             <div className="text-[11px] leading-tight text-white/60">Powered by Francisco Santiago (Joy)</div>
             <div className="truncate text-lg font-bold">{brand.name || (isMechanic ? 'Mecánico' : 'Dueño de bote')}</div>

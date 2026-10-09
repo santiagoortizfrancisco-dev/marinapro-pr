@@ -15,8 +15,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
-        name: 'Salt Boat Repair',
-        short_name: 'Salt Boat',
+        name: 'Salt Marine Repair',
+        short_name: 'Salt Marine',
         description: 'Agenda, trabajos y facturas para mecánicos marinos (botes y jet skis) en Puerto Rico',
         lang: 'es-PR',
         start_url: '/',

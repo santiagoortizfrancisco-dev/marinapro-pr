@@ -22,7 +22,7 @@ export default function Directory() {
   const [results, setResults] = useState<PublicMechanic[] | null>(null)
 
   useEffect(() => {
-    document.title = 'Mecánicos marinos en Puerto Rico (botes y jet skis) · Salt Boat Repair'
+    document.title = 'Mecánicos marinos en Puerto Rico (botes y jet skis) · Salt Marine Repair'
     supabase?.rpc('directory_is_open').then(({ data }) => setOpen(data === true))
   }, [])
 

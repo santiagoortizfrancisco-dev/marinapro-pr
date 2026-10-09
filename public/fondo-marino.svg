@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260">
+  <!-- Fondo de la app: dibujos marinos casi transparentes (marca de agua). Se repite como un patrón. -->
+  <g fill="none" stroke="#0b3b5c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.07">
+    <!-- Bote -->
+    <path d="M18 62 h58 l-9 13 q-2 3 -6 3 h-30 q-4 0 -6 -3 z"/>
+    <path d="M36 62 l5 -10 h18 l5 10"/>
+    <!-- Ancla -->
+    <circle cx="190" cy="34" r="6"/>
+    <path d="M190 40 v38 M176 52 h28 M168 66 q4 16 22 16 q18 0 22 -16"/>
+    <!-- Timón -->
+    <circle cx="70" cy="170" r="20"/>
+    <circle cx="70" cy="170" r="5"/>
+    <path d="M70 142 v56 M42 170 h56 M50 150 l40 40 M90 150 l-40 40"/>
+    <!-- Llave de mecánico -->
+    <path d="M178 150 l34 34 M172 136 a14 14 0 1 0 14 22 l-6 -6 a5 5 0 0 1 -7 -7 l-6 -6 z" />
+    <!-- Jet ski -->
+    <path d="M150 226 h46 q8 0 10 -6 l-14 -2 l-6 -8 h-14 l-6 8 h-12 z"/>
+    <!-- Olas -->
+    <path d="M10 118 q10 -8 20 0 t20 0 t20 0"/>
+    <path d="M196 106 q10 -8 20 0 t20 0"/>
+    <path d="M20 236 q10 -8 20 0 t20 0 t20 0"/>
+    <!-- Hélice -->
+    <circle cx="232" cy="200" r="3"/>
+    <path d="M232 197 q-4 -12 4 -16 q4 8 -4 16 M235 201 q12 2 12 10 q-9 1 -12 -10 M229 201 q-12 2 -12 10 q9 1 12 -10"/>
+  </g>
+</svg>

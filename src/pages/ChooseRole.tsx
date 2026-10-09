@@ -45,7 +45,7 @@ export default function ChooseRole() {
   return (
     <div className="safe-top safe-bottom mx-auto max-w-md px-6 py-8">
       <Wrench size={44} className="text-navy-800" />
-      <h1 className="mt-3 text-2xl font-extrabold text-navy-900">¡Bienvenido a Salt Boat Repair!</h1>
+      <h1 className="mt-3 text-2xl font-extrabold text-navy-900">¡Bienvenido a Salt Marine Repair!</h1>
       <p className="mt-1 text-base text-slate-600">Antes de empezar, el nombre de tu compañía. El logo lo subes después en Más → Mi negocio.</p>
 
       <form onSubmit={save} className="mt-6 space-y-4">

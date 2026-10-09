@@ -57,7 +57,7 @@ export default function AdminPending() {
           </div>
           <div className="mt-2 flex gap-2">
             {p.phone && (
-              <a href={whatsappLink(p.phone, `Hola ${p.full_name?.split(' ')[0] ?? ''}, es sobre tu cuenta de Salt Boat Repair.`)} target="_blank" rel="noreferrer" className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-xl bg-[#25D366] text-sm font-bold text-white">
+              <a href={whatsappLink(p.phone, `Hola ${p.full_name?.split(' ')[0] ?? ''}, es sobre tu cuenta de Salt Marine Repair.`)} target="_blank" rel="noreferrer" className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-xl bg-[#25D366] text-sm font-bold text-white">
                 <WhatsAppIcon size={18} /> WhatsApp
               </a>
             )}
