@@ -26,7 +26,8 @@ export default function Catalog() {
   async function add(e: FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    await db().rpc('remember_catalog_item', { p_kind: tab, p_name: name.trim(), p_price: num(price) })
+    const { error } = await db().rpc('remember_catalog_item', { p_kind: tab, p_name: name.trim(), p_price: num(price) })
+    if (error) return flash('No se pudo guardar. Revisa la señal.')
     setName('')
     setPrice('')
     flash('Guardado ✓')

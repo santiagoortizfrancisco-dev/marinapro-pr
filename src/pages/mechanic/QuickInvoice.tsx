@@ -93,6 +93,13 @@ export default function QuickInvoice() {
     return [...new Set([...mine, ...common])]
   }
 
+  /** Añade una línea nueva (si la única línea está vacía, la usa) y pone el cursor para escribir. */
+  function addLine(kind: Line['kind']) {
+    const line = newLine(kind)
+    setLines((ls) => (ls.length === 1 && !ls[0].desc && !ls[0].price ? [line] : [...ls, line]))
+    setTimeout(() => document.getElementById(`qi-desc-${line.key}`)?.focus(), 50)
+  }
+
   function setLine(key: number, patch: Partial<Line>) {
     setLines((ls) => ls.map((l) => {
       if (l.key !== key) return l
@@ -283,12 +290,9 @@ export default function QuickInvoice() {
             {lines.map((l, i) => (
               <div key={l.key} className="rounded-2xl bg-white p-3 shadow-[0_6px_24px_-14px_rgba(8,47,73,0.35)] ring-1 ring-slate-200/80">
                 <div className="mb-2 flex items-center gap-2">
-                  {(['service', 'part'] as const).map((k) => (
-                    <button key={k} type="button" onClick={() => setLine(l.key, { kind: k })} aria-pressed={l.kind === k}
-                      className={`flex min-h-10 items-center gap-1 rounded-full px-3 text-sm font-bold ${l.kind === k ? 'bg-navy-800 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                      {k === 'service' ? <Wrench size={14} /> : <Package size={14} />} {k === 'service' ? 'Servicio' : 'Pieza'}
-                    </button>
-                  ))}
+                  <span className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm font-bold ${l.kind === 'service' ? 'bg-navy-50 text-navy-800' : 'bg-amber-50 text-amber-800'}`}>
+                    {l.kind === 'service' ? <Wrench size={14} /> : <Package size={14} />} {l.kind === 'service' ? 'Servicio' : 'Pieza'}
+                  </span>
                   {lines.length > 1 && (
                     <button type="button" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} aria-label={`Quitar línea ${i + 1}`} className="ml-auto flex h-10 w-10 items-center justify-center text-slate-400">
                       <Trash2 size={18} />
@@ -296,7 +300,7 @@ export default function QuickInvoice() {
                   )}
                 </div>
                 <div className="grid grid-cols-[1fr_6rem] gap-2">
-                  <Input aria-label={`Descripción ${i + 1}`} list={`qi-${l.kind}`} value={l.desc} onChange={(e) => setLine(l.key, { desc: e.target.value })} placeholder={l.kind === 'service' ? 'Mano de obra' : 'Impeller'} />
+                  <Input id={`qi-desc-${l.key}`} aria-label={`Descripción ${i + 1}`} list={`qi-${l.kind}`} value={l.desc} onChange={(e) => setLine(l.key, { desc: e.target.value })} placeholder={l.kind === 'service' ? 'Mano de obra' : 'Impeller'} />
                   <Input aria-label={`Precio ${i + 1}`} inputMode="decimal" value={l.price} onChange={(e) => setLine(l.key, { price: e.target.value })} placeholder="$" className="text-right" />
                 </div>
               </div>
@@ -304,10 +308,16 @@ export default function QuickInvoice() {
           </div>
           <datalist id="qi-service">{suggestions('service').map((n) => <option key={n} value={n} />)}</datalist>
           <datalist id="qi-part">{suggestions('part').map((n) => <option key={n} value={n} />)}</datalist>
-          <button type="button" onClick={() => setLines((ls) => [...ls, newLine(ls.length ? 'part' : 'service')])}
-            className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-700 text-base font-bold text-navy-800 active:bg-navy-50">
-            <Plus size={20} /> Otra línea
-          </button>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => addLine('service')}
+              className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900">
+              <Plus size={22} /> Servicio
+            </button>
+            <button type="button" onClick={() => addLine('part')}
+              className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 bg-white text-lg font-bold text-navy-800 active:bg-navy-50">
+              <Plus size={22} /> Pieza
+            </button>
+          </div>
         </div>
 
         {/* Total */}

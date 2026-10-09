@@ -664,7 +664,8 @@ test('factura rápida: sin cita, con cliente nuevo; Ya me pagó deja la factura 
   await page.getByPlaceholder('Teléfono / WhatsApp').fill('787-555-0155')
   await page.getByLabel('Descripción 1').fill('Cambio de impeller')
   await page.getByLabel('Precio 1').fill('100')
-  await page.getByRole('button', { name: /Otra línea/ }).click()
+  await page.getByRole('button', { name: 'Pieza', exact: true }).click() // "+ Pieza" crea una línea nueva
+  await expect(page.getByLabel('Descripción 2')).toBeFocused()
   await page.getByLabel('Descripción 2').fill('Impeller')
   await page.getByLabel('Precio 2').fill('40')
   await expect(page.getByText('$156.10')).toBeVisible() // 140 + 11.5% IVU
@@ -770,4 +771,22 @@ test('bloqueo con PIN: si el app estuvo sin usar más del tiempo escogido, pide 
   await page.getByLabel('Contraseña').fill('prueba-del-bot')
   await page.getByRole('button', { name: 'Desbloquear' }).click()
   await expect(page.getByRole('heading', { name: /¡Buen(os|as)/ })).toBeVisible()
+})
+
+test('Mis piezas y servicios: añadir un servicio y una pieza con su precio', async ({ page }) => {
+  await login(page)
+  await page.goto('/mas/catalogo')
+  await page.getByLabel('Servicio nuevo').fill('Cambio de bujías')
+  await page.getByLabel('Precio', { exact: true }).fill('60')
+  await page.getByRole('button', { name: /Añadir servicio/ }).click()
+  await expect(page.getByText('Cambio de bujías')).toBeVisible()
+  await expect(page.getByLabel('Servicio nuevo')).toHaveValue('')
+
+  await page.getByRole('button', { name: 'Piezas', exact: true }).click()
+  await page.getByLabel('Pieza nueva').fill('Bujía NGK')
+  await page.getByLabel('Precio', { exact: true }).fill('9')
+  await page.getByRole('button', { name: /Añadir pieza/ }).click()
+  await expect(page.getByText('Bujía NGK')).toBeVisible()
+  const mine = (await state()).catalog_items.filter((c) => c.mechanic_id)
+  expect(mine.map((c) => [c.kind, c.name, c.last_price])).toEqual(expect.arrayContaining([['service', 'Cambio de bujías', 60], ['part', 'Bujía NGK', 9]]))
 })
