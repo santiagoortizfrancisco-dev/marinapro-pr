@@ -87,7 +87,6 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   const { session, profile } = useAuth()
   const [partOpen, setPartOpen] = useState(false)
   const [editPart, setEditPart] = useState<Part | null>(null)
-  const [partKind, setPartKind] = useState<Part['kind']>('part')
   const [skipNext, setSkipNext] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [payMethod, setPayMethod] = useState<NonNullable<Invoice['payment_method']>>('ath_movil')
@@ -271,22 +270,17 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
           </Field>
         </div>
         <p className="mt-2 text-right text-lg font-bold text-navy-900">{formatMoney(totals.hours)}</p>
-        <p className="text-right text-sm text-slate-500">Si cobras por trabajo y no por hora, déjalo en 0 y usa “+ Servicio”.</p>
+        <p className="text-right text-sm text-slate-500">Si cobras por trabajo y no por hora, déjalo en 0 y usa “+ Añadir lo que cobras”.</p>
       </Section>
 
       <Section title="Servicios y piezas" icon={Package} tone="teal">
-        <div className="mb-3 grid grid-cols-2 gap-2">
-          <button onClick={() => { setEditPart(null); setPartKind('service'); setPartOpen(true) }} className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900">
-            <Plus size={22} /> Servicio
-          </button>
-          <button onClick={() => { setEditPart(null); setPartKind('part'); setPartOpen(true) }} className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 text-lg font-bold text-navy-800 active:bg-navy-50">
-            <Plus size={22} /> Pieza
-          </button>
-        </div>
+        <button onClick={() => { setEditPart(null); setPartOpen(true) }} className="mb-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900">
+          <Plus size={22} /> Añadir lo que cobras
+        </button>
         {parts.length === 0 && <p className="text-base text-slate-600">Todavía no hay servicios ni piezas.</p>}
         <div className="space-y-2">
           {[...parts].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'service' ? -1 : 1)).map((p) => (
-            <button key={p.id} onClick={() => { setEditPart(p); setPartKind(p.kind); setPartOpen(true) }} className="flex w-full items-start gap-3 rounded-2xl border-2 border-slate-200 bg-white p-3 text-left active:bg-slate-50">
+            <button key={p.id} onClick={() => { setEditPart(p); setPartOpen(true) }} className="flex w-full items-start gap-3 rounded-2xl border-2 border-slate-200 bg-white p-3 text-left active:bg-slate-50">
               {p.kind === 'service' ? <Wrench size={22} className="mt-0.5 shrink-0 text-navy-700" /> : <Package size={22} className="mt-0.5 shrink-0 text-navy-700" />}
               <div className="min-w-0 flex-1">
                 <div className="text-base font-bold text-slate-900">{p.description}</div>
@@ -441,7 +435,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </div>
       </Sheet>
 
-      <PartSheet open={partOpen} kind={partKind} workOrderId={wo.id} part={editPart} onClose={() => setPartOpen(false)} onSaved={reload} />
+      <PartSheet open={partOpen} workOrderId={wo.id} part={editPart} onClose={() => setPartOpen(false)} onSaved={reload} />
 
       {!invoice && !embedded && (
         <ConfirmDelete
