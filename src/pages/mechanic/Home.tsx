@@ -22,10 +22,11 @@ function greeting(): string {
 
 /** Poste de batería (el + rojo y el − negro), con brillo de metal. */
 function Post({ sign }: { sign: '+' | '−' }) {
+  const plus = sign === '+'
   return (
-    <span aria-hidden="true" className="flex w-9 flex-col items-center">
-      <span className={`text-sm font-black leading-none ${sign === '+' ? 'text-red-600' : 'text-slate-800'}`}>{sign}</span>
-      <span className={`mt-0.5 h-3 w-9 rounded-t-md border border-black/20 ${sign === '+' ? 'bg-gradient-to-b from-red-400 to-red-700' : 'bg-gradient-to-b from-slate-500 to-slate-900'}`} />
+    <span aria-hidden="true" className="flex w-12 flex-col items-center">
+      <span className={`text-3xl font-black leading-none [text-shadow:0_1px_0_rgba(255,255,255,0.8)] ${plus ? 'text-red-600' : 'text-slate-900'}`}>{sign}</span>
+      <span className={`mt-0.5 h-4 w-11 rounded-t-lg border-2 border-black/25 shadow-inner ${plus ? 'bg-gradient-to-b from-red-400 to-red-700' : 'bg-gradient-to-b from-slate-500 to-slate-900'}`} />
     </span>
   )
 }
@@ -34,7 +35,7 @@ function Post({ sign }: { sign: '+' | '−' }) {
 function Tile({ to, icon: Icon, label, sub, from, color, badge }: { to: string; icon: LucideIcon; label: string; sub?: string; from: string; color: string; badge?: React.ReactNode }) {
   return (
     <Link to={to} className="group block transition active:scale-[0.97]">
-      <span className="flex justify-between px-5">
+      <span className="flex justify-between px-4">
         <Post sign="−" />
         <Post sign="+" />
       </span>
