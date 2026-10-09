@@ -56,7 +56,7 @@ export default function Home() {
         <Tile to="/citas/nueva" icon={CalendarPlus} label="Hacer cita" color="bg-navy-800" />
         <Tile to="/cobrar" icon={Zap} label="Factura rápida" color="bg-sky-600" />
         <Tile to="/clientes/nuevo" icon={UserPlus} label="Añadir cliente" color="bg-slate-800" />
-        <Tile to="/trabajos" icon={HandCoins} label="Me deben" sub={data ? formatMoney(data.debt) : '…'} color="bg-orange-500" />
+        <Tile to="/trabajos" icon={HandCoins} label="Me deben" sub={data ? formatMoney(data.debt) : '…'} color="bg-orange-400 [text-shadow:0_1px_2px_rgba(0,0,0,0.25)]" />
       </div>
 
       {/* Hoy */}
