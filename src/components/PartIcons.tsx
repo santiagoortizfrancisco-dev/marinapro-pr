@@ -36,3 +36,28 @@ export function PistonIcon({ size = 24, className = '', strokeWidth = 2 }: P) {
     </svg>
   )
 }
+
+/** Hélice de tres aspas con su cubo. */
+export function PropellerIcon({ size = 24, className = '', strokeWidth = 2 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M12 10.2C10.4 6.6 10.6 2.8 12.6 1.6c2 1.4 1.6 5.2-.6 8.6z" fill="currentColor" fillOpacity="0.14" />
+      <path d="M13.6 13.1c3.9-.4 7.3 1.3 7.4 3.7-2.2 1.1-5.6-.5-7.4-3.7z" fill="currentColor" fillOpacity="0.14" />
+      <path d="M10.4 13.1c-2.3 3.2-5.7 4.8-7.6 3.6.2-2.4 3.6-4 7.6-3.6z" fill="currentColor" fillOpacity="0.14" />
+      <circle cx="12" cy="12" r="2.4" fill="currentColor" />
+    </svg>
+  )
+}
+
+/** Manómetro (reloj de presión) con la aguja en lo alto: rápido. */
+export function GaugeIcon({ size = 24, className = '', strokeWidth = 2 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <circle cx="12" cy="13" r="9.5" fill="currentColor" fillOpacity="0.12" />
+      <path d="M5.2 13h1.6M17.2 13h1.6M7.2 7.9l1.1 1.1M16.8 7.9l-1.1 1.1M12 5.5v1.6" />
+      <path d="M12 13l4.6-4.2" strokeWidth={strokeWidth * 1.2} />
+      <circle cx="12" cy="13" r="1.8" fill="currentColor" />
+      <path d="M8 19.5h8" />
+    </svg>
+  )
+}

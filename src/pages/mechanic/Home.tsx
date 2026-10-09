@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
-import { CalendarPlus, ChevronRight, Plus, Wrench, Zap, type LucideIcon } from 'lucide-react'
-import { PistonIcon, SparkPlugIcon } from '../../components/PartIcons'
+import { CalendarDays, ChevronRight, Plus, Wrench, Zap, type LucideIcon } from 'lucide-react'
+import { GaugeIcon, PistonIcon, PropellerIcon, SparkPlugIcon } from '../../components/PartIcons'
 import { useAuth } from '../../auth/AuthProvider'
 import DueServices from '../../components/DueServices'
 import { db } from '../../lib/db'
@@ -31,7 +31,7 @@ function Post({ sign }: { sign: '+' | '−' }) {
 }
 
 /** Botón grande con forma de batería de bote: dos postes arriba y cuerpo con brillo de metal. */
-function Tile({ to, icon: Icon, label, sub, from, color, badge }: { to: string; icon: LucideIcon; label: string; sub?: string; from: string; color: string; badge?: boolean }) {
+function Tile({ to, icon: Icon, label, sub, from, color, badge }: { to: string; icon: LucideIcon; label: string; sub?: string; from: string; color: string; badge?: React.ReactNode }) {
   return (
     <Link to={to} className="group block transition active:scale-[0.97]">
       <span className="flex justify-between px-5">
@@ -47,7 +47,7 @@ function Tile({ to, icon: Icon, label, sub, from, color, badge }: { to: string; 
         <span aria-hidden="true" className="pointer-events-none absolute inset-x-3 bottom-2 h-1.5 rounded-full bg-black/15" />
         <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md ring-4 ring-white/40" style={{ color }}>
           <Icon size={38} strokeWidth={2.2} />
-          {badge && <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-white"><Plus size={16} strokeWidth={3} /></span>}
+          {badge && <span className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full text-white ring-2 ring-white" style={{ backgroundColor: color }}>{badge}</span>}
         </span>
         <span className="relative text-lg font-extrabold leading-tight">{label}</span>
         {sub && <span className="relative rounded-full bg-black/20 px-3 py-0.5 text-base font-extrabold">{sub}</span>}
@@ -80,9 +80,9 @@ export default function Home() {
       </div>
 
       <div className="grid grid-cols-2 gap-x-3 gap-y-4">
-        <Tile to="/citas/nueva" icon={CalendarPlus} label="Hacer cita" from="#3b82f6" color="#1e3a8a" />
-        <Tile to="/cobrar" icon={Zap} label="Factura rápida" from="#38bdf8" color="#0369a1" />
-        <Tile to="/clientes/nuevo" icon={SparkPlugIcon as unknown as LucideIcon} badge label="Añadir cliente" from="#64748b" color="#0f172a" />
+        <Tile to="/citas/nueva" icon={PropellerIcon as unknown as LucideIcon} badge={<CalendarDays size={16} strokeWidth={2.5} />} label="Hacer cita" from="#3b82f6" color="#1e3a8a" />
+        <Tile to="/cobrar" icon={GaugeIcon as unknown as LucideIcon} badge={<Zap size={16} strokeWidth={2.5} />} label="Factura rápida" from="#38bdf8" color="#0369a1" />
+        <Tile to="/clientes/nuevo" icon={SparkPlugIcon as unknown as LucideIcon} badge={<Plus size={18} strokeWidth={3} />} label="Añadir cliente" from="#64748b" color="#0f172a" />
         <Tile to="/trabajos" icon={PistonIcon as unknown as LucideIcon} label="Me deben" sub={data ? formatMoney(data.debt) : '…'} from="#fca5a5" color="#ef4444" />
       </div>
 
