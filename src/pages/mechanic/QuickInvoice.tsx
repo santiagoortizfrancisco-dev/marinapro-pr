@@ -85,8 +85,10 @@ export default function QuickInvoice() {
   const chosenBoat = pick?.kind === 'boat' ? chosen?.boats.find((b) => b.id === pick.boatId) ?? null : null
 
   // Precio guardado del mecánico para lo que escribe (ej. "Cambio de impeller" → $150)
-  const myPrice = (kind: Line['kind'], desc: string) =>
-    catalog.find((c) => c.mechanic_id && c.kind === kind && plain(c.name) === plain(desc.trim()))?.last_price ?? null
+  const myPrice = (_kind: Line['kind'], desc: string) =>
+    catalog.find((c) => c.mechanic_id && plain(c.name) === plain(desc.trim()))?.last_price ?? null
+  /** Si ya lo tiene guardado como pieza, sigue siendo pieza; si no, cuenta como servicio (mano de obra). */
+  const kindOf = (desc: string): Line['kind'] => catalog.find((c) => c.mechanic_id && plain(c.name) === plain(desc.trim()))?.kind ?? 'service'
   const suggestions = (kind: Line['kind']) => {
     const mine = catalog.filter((c) => c.kind === kind && c.mechanic_id).sort((a, b) => b.use_count - a.use_count).map((c) => c.name)
     const common = catalog.filter((c) => c.kind === kind && !c.mechanic_id).map((c) => c.name)
@@ -105,6 +107,7 @@ export default function QuickInvoice() {
       if (l.key !== key) return l
       const next = { ...l, ...patch }
       // Si escoge algo que ya cobró antes y no ha puesto precio, el precio sale solo
+      if (patch.desc !== undefined) next.kind = kindOf(next.desc)
       if (patch.desc !== undefined && !l.price) {
         const p = myPrice(next.kind, next.desc)
         if (p != null) next.price = String(p)
@@ -285,14 +288,12 @@ export default function QuickInvoice() {
 
         {/* 3. Lo que se cobra */}
         <div role="group" aria-label="Lo que cobras">
-          <span className="mb-1.5 block text-base font-semibold text-slate-800">3. ¿Qué cobras?</span>
+          <span className="mb-1.5 block text-base font-semibold text-slate-800">3. ¿Qué cobras? (lo que hiciste y lo que pusiste)</span>
           <div className="space-y-3">
             {lines.map((l, i) => (
               <div key={l.key} className="rounded-2xl bg-white p-3 shadow-[0_6px_24px_-14px_rgba(8,47,73,0.35)] ring-1 ring-slate-200/80">
                 <div className="mb-2 flex items-center gap-2">
-                  <span className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm font-bold ${l.kind === 'service' ? 'bg-navy-50 text-navy-800' : 'bg-amber-50 text-amber-800'}`}>
-                    {l.kind === 'service' ? <Wrench size={14} /> : <Package size={14} />} {l.kind === 'service' ? 'Servicio' : 'Pieza'}
-                  </span>
+                  <span className="text-sm font-bold text-slate-500">{i + 1}.</span>
                   {lines.length > 1 && (
                     <button type="button" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} aria-label={`Quitar línea ${i + 1}`} className="ml-auto flex h-10 w-10 items-center justify-center text-slate-400">
                       <Trash2 size={18} />
@@ -300,24 +301,17 @@ export default function QuickInvoice() {
                   )}
                 </div>
                 <div className="grid grid-cols-[1fr_6rem] gap-2">
-                  <Input id={`qi-desc-${l.key}`} aria-label={`Descripción ${i + 1}`} list={`qi-${l.kind}`} value={l.desc} onChange={(e) => setLine(l.key, { desc: e.target.value })} placeholder={l.kind === 'service' ? 'Mano de obra' : 'Impeller'} />
+                  <Input id={`qi-desc-${l.key}`} aria-label={`Descripción ${i + 1}`} list="qi-todo" value={l.desc} onChange={(e) => setLine(l.key, { desc: e.target.value })} placeholder={i === 0 ? 'Ej.: Cambio de impeller' : 'Ej.: Impeller'} />
                   <Input aria-label={`Precio ${i + 1}`} inputMode="decimal" value={l.price} onChange={(e) => setLine(l.key, { price: e.target.value })} placeholder="$" className="text-right" />
                 </div>
               </div>
             ))}
           </div>
-          <datalist id="qi-service">{suggestions('service').map((n) => <option key={n} value={n} />)}</datalist>
-          <datalist id="qi-part">{suggestions('part').map((n) => <option key={n} value={n} />)}</datalist>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => addLine('service')}
-              className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900">
-              <Plus size={22} /> Servicio
-            </button>
-            <button type="button" onClick={() => addLine('part')}
-              className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-navy-800 bg-white text-lg font-bold text-navy-800 active:bg-navy-50">
-              <Plus size={22} /> Pieza
-            </button>
-          </div>
+          <datalist id="qi-todo">{[...new Set([...suggestions('service'), ...suggestions('part')])].map((n) => <option key={n} value={n} />)}</datalist>
+          <button type="button" onClick={() => addLine('service')}
+            className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-navy-800 bg-white text-lg font-bold text-navy-800 active:bg-navy-50">
+            <Plus size={22} /> Añadir otra cosa
+          </button>
         </div>
 
         {/* Total */}

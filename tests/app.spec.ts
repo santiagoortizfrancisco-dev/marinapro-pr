@@ -664,7 +664,7 @@ test('factura rápida: sin cita, con cliente nuevo; Ya me pagó deja la factura 
   await page.getByPlaceholder('Teléfono / WhatsApp').fill('787-555-0155')
   await page.getByLabel('Descripción 1').fill('Cambio de impeller')
   await page.getByLabel('Precio 1').fill('100')
-  await page.getByRole('button', { name: 'Pieza', exact: true }).click() // "+ Pieza" crea una línea nueva
+  await page.getByRole('button', { name: /Añadir otra cosa/ }).click() // sin escoger pieza o servicio
   await expect(page.getByLabel('Descripción 2')).toBeFocused()
   await page.getByLabel('Descripción 2').fill('Impeller')
   await page.getByLabel('Precio 2').fill('40')
@@ -682,10 +682,19 @@ test('factura rápida: sin cita, con cliente nuevo; Ya me pagó deja la factura 
   expect(wo).toMatchObject({ status: 'paid', sea_trial_required: false })
   expect(s.work_order_parts.filter((p) => p.work_order_id === wo.id)).toHaveLength(2)
   expect(s.invoices.find((i) => i.work_order_id === wo.id)).toMatchObject({ payment_method: 'cash', total: 156.1 })
+  // Lo que escribió y sus precios quedan guardados para la próxima vez
+  const mine = s.catalog_items.filter((c) => c.mechanic_id)
+  expect(mine.find((c) => c.name === 'Cambio de impeller')?.last_price).toBe(100)
+  expect(mine.find((c) => c.name === 'Impeller')?.last_price).toBe(40)
 
   await page.getByRole('button', { name: 'Listo' }).click()
   await page.getByRole('button', { name: /Cobrado este mes/ }).click()
   await expect(page.getByRole('link', { name: /Bote de Rosa/ })).toBeVisible()
+
+  // La próxima factura: al escribirlo, el precio sale solo
+  await page.getByRole('link', { name: /Factura rápida/ }).click()
+  await page.getByLabel('Descripción 1').fill('Cambio de impeller')
+  await expect(page.getByLabel('Precio 1')).toHaveValue('100')
 })
 
 test('Inicio: al entrar salen los 4 botones grandes y lo de hoy', async ({ page }) => {
