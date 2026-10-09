@@ -21,7 +21,15 @@ export default function Login() {
   const [code, setCode] = useState('')
   const [step, setStep] = useState<'password' | 'email' | 'code' | 'signup' | 'wait'>('password')
   const [waitEmail, setWaitEmail] = useState('')
-  const [user, setUser] = useState('')
+  const [user, setUser] = useState(() => {
+    try {
+      return localStorage.getItem('ultimo-usuario') ?? ''
+    } catch {
+      return ''
+    }
+  })
+  // Si ya entró antes en este teléfono, solo pide el PIN (con "Cambiar" por si es otra persona)
+  const [remembered, setRemembered] = useState(() => Boolean(user))
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -53,7 +61,14 @@ export default function Login() {
     setError('')
     const { error } = await supabase.auth.signInWithPassword({ email: userToEmail(user), password })
     setBusy(false)
-    if (!error) return
+    if (!error) {
+      try {
+        localStorage.setItem('ultimo-usuario', user.trim())
+      } catch {
+        /* sin memoria del teléfono: no pasa nada */
+      }
+      return
+    }
     if (error.status === 429) setError('Muchos intentos seguidos. Espera unos minutos.')
     else if (error.status === 400 || error.code === 'invalid_credentials') setError(usePin ? 'Usuario o PIN incorrectos.' : 'Usuario o contraseña incorrectos.')
     else setError('No se pudo entrar. Revisa la señal e intenta otra vez.')
@@ -84,7 +99,12 @@ export default function Login() {
     setError('')
     const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' })
     setBusy(false)
-    if (error) setError('El código no es correcto o ya venció. Pide uno nuevo.')
+    if (error) return setError('El código no es correcto o ya venció. Pide uno nuevo.')
+    try {
+      localStorage.setItem('ultimo-usuario', email.trim())
+    } catch {
+      /* sin memoria del teléfono: no pasa nada */
+    }
   }
 
   return (
@@ -115,9 +135,22 @@ export default function Login() {
           {isSupabaseConfigured && step === 'password' && (
             <form onSubmit={signInWithPassword} className="space-y-5">
               <h2 className="text-2xl font-bold text-navy-900">Entrar</h2>
-              <Field label="Email o usuario">
-                <Input required autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={user} onChange={(e) => setUser(e.target.value)} placeholder="nombre@gmail.com" />
-              </Field>
+              {remembered ? (
+                <div className="flex items-center gap-3 rounded-xl bg-navy-50 px-4 py-3">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm text-slate-600">Entrando como</span>
+                    <span className="block truncate text-base font-bold text-navy-900">{user}</span>
+                  </span>
+                  <button type="button" onClick={() => { setRemembered(false); setUser(''); setPassword('') }} className="shrink-0 rounded-lg border-2 border-navy-800 px-3 py-1.5 text-sm font-bold text-navy-800">
+                    Cambiar
+                  </button>
+                  <input type="hidden" autoComplete="username" value={user} readOnly />
+                </div>
+              ) : (
+                <Field label="Email o usuario">
+                  <Input required autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={user} onChange={(e) => setUser(e.target.value)} placeholder="nombre@gmail.com" />
+                </Field>
+              )}
               <Field label={usePin ? 'PIN (6 números)' : 'Contraseña'}>
                 <div className="relative">
                   <Input

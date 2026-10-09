@@ -417,6 +417,10 @@ test('Salir pide confirmación y vuelve a la pantalla de entrar', async ({ page 
   await login(page)
   await page.locator('header').getByRole('button', { name: /Salir/ }).click()
   await page.getByRole('button', { name: 'Sí, salir' }).click()
+  // El teléfono se acuerda de quién era: solo pide la contraseña o el PIN
+  await expect(page.getByText('Entrando como')).toBeVisible()
+  await expect(page.getByText('jqr', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Cambiar' }).click()
   await expect(page.getByLabel('Email o usuario')).toBeVisible()
 })
 
@@ -609,7 +613,7 @@ test('PIN: el mecánico cambia su contraseña por un PIN de 6 números y entra c
   await page.getByRole('button', { name: 'Sí, salir' }).click()
   await expect(page.getByLabel('PIN', { exact: true })).toBeVisible()
   await expect(page.getByLabel('PIN', { exact: true })).toHaveAttribute('inputmode', 'numeric')
-  await page.getByLabel('Email o usuario').fill('jqr')
+  await expect(page.getByText('Entrando como')).toBeVisible() // solo pide el PIN
   await page.getByLabel('PIN', { exact: true }).fill('482913')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await expect(page.locator('header').getByText('JQR Boat Repair')).toBeVisible()
