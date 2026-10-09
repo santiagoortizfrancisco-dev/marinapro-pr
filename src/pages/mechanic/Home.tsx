@@ -19,12 +19,35 @@ function greeting(): string {
   return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'
 }
 
-function Tile({ to, icon: Icon, label, sub, color }: { to: string; icon: LucideIcon; label: string; sub?: string; color: string }) {
+/** Poste de batería (el + rojo y el − negro), con brillo de metal. */
+function Post({ sign }: { sign: '+' | '−' }) {
   return (
-    <Link to={to} className={`flex min-h-36 flex-col items-center justify-center gap-2 rounded-3xl p-3 text-center text-white shadow-lg transition active:scale-[0.97] ${color}`}>
-      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20"><Icon size={32} /></span>
-      <span className="text-lg font-extrabold leading-tight">{label}</span>
-      {sub && <span className="text-sm font-semibold text-white/85">{sub}</span>}
+    <span aria-hidden="true" className="flex w-9 flex-col items-center">
+      <span className={`text-sm font-black leading-none ${sign === '+' ? 'text-red-600' : 'text-slate-800'}`}>{sign}</span>
+      <span className={`mt-0.5 h-3 w-9 rounded-t-md border border-black/20 ${sign === '+' ? 'bg-gradient-to-b from-red-400 to-red-700' : 'bg-gradient-to-b from-slate-500 to-slate-900'}`} />
+    </span>
+  )
+}
+
+/** Botón grande con forma de batería de bote: dos postes arriba y cuerpo con brillo de metal. */
+function Tile({ to, icon: Icon, label, sub, from, color }: { to: string; icon: LucideIcon; label: string; sub?: string; from: string; color: string }) {
+  return (
+    <Link to={to} className="group block transition active:scale-[0.97]">
+      <span className="flex justify-between px-5">
+        <Post sign="−" />
+        <Post sign="+" />
+      </span>
+      <span
+        className="relative flex min-h-32 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-black/25 px-3 pb-6 pt-3 text-center text-white shadow-lg [text-shadow:0_1px_2px_rgba(0,0,0,0.3)]"
+        style={{ backgroundImage: `linear-gradient(160deg, ${from} 0%, ${color} 100%)` }}
+      >
+        {/* brillo de metal y las rayitas de la batería */}
+        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/30 to-transparent" />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-x-3 bottom-2 h-1.5 rounded-full bg-black/15" />
+        <span className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/20 ring-2 ring-white/30"><Icon size={32} /></span>
+        <span className="relative text-lg font-extrabold leading-tight">{label}</span>
+        {sub && <span className="relative rounded-full bg-black/20 px-3 py-0.5 text-base font-extrabold">{sub}</span>}
+      </span>
     </Link>
   )
 }
@@ -52,11 +75,11 @@ export default function Home() {
         <p className="mt-1 text-base text-slate-600">{formatLongDate(today)}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Tile to="/citas/nueva" icon={CalendarPlus} label="Hacer cita" color="bg-navy-800" />
-        <Tile to="/cobrar" icon={Zap} label="Factura rápida" color="bg-sky-600" />
-        <Tile to="/clientes/nuevo" icon={UserPlus} label="Añadir cliente" color="bg-slate-800" />
-        <Tile to="/trabajos" icon={HandCoins} label="Me deben" sub={data ? formatMoney(data.debt) : '…'} color="bg-orange-400 [text-shadow:0_1px_2px_rgba(0,0,0,0.25)]" />
+      <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+        <Tile to="/citas/nueva" icon={CalendarPlus} label="Hacer cita" from="#3b82f6" color="#1e3a8a" />
+        <Tile to="/cobrar" icon={Zap} label="Factura rápida" from="#38bdf8" color="#0369a1" />
+        <Tile to="/clientes/nuevo" icon={UserPlus} label="Añadir cliente" from="#64748b" color="#0f172a" />
+        <Tile to="/trabajos" icon={HandCoins} label="Me deben" sub={data ? formatMoney(data.debt) : '…'} from="#fca5a5" color="#ef4444" />
       </div>
 
       {/* Hoy */}
