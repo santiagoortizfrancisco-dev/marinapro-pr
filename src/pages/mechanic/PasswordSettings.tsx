@@ -4,6 +4,7 @@ import { CheckCircle2, Grid3x3, KeyRound } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { BackTitle, Button, Choice, Field, Input } from '../../components/ui'
 import { weakPin } from '../../lib/pin'
+import { LOCK_OPTIONS, lockMinutes, setLockMinutes } from '../../components/AppLock'
 
 /** Cada mecánico cambia su contraseña o pone un PIN de 6 números para entrar. */
 export default function PasswordSettings() {
@@ -14,6 +15,7 @@ export default function PasswordSettings() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [lock, setLock] = useState<number>(lockMinutes)
   const isPin = kind === 'pin'
 
   async function save(e: FormEvent) {
@@ -63,6 +65,12 @@ export default function PasswordSettings() {
   return (
     <>
       <BackTitle to="/mas" subtitle="Lo que pones para entrar al app">Mi contraseña o PIN</BackTitle>
+      <section className="mb-6 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+        <Field label="Bloquear el app y pedir el PIN si no la uso por…" hint="Protege tus clientes y facturas si dejas el teléfono por ahí. Se guarda en este teléfono.">
+          <Choice value={lock} onChange={(v) => { setLock(v); setLockMinutes(v) }} options={LOCK_OPTIONS.map((o) => ({ value: o.value as number, label: o.label }))} />
+        </Field>
+      </section>
+
       <form onSubmit={save} className="space-y-5">
         <Field label="¿Cómo quieres entrar?">
           <Choice

@@ -29,6 +29,7 @@ import RequestDetail from './pages/mechanic/RequestDetail'
 import PasswordSettings from './pages/mechanic/PasswordSettings'
 import QuickInvoice from './pages/mechanic/QuickInvoice'
 import Home from './pages/mechanic/Home'
+import AppLock from './components/AppLock'
 import MyBoats from './pages/client/MyBoats'
 import Report from './pages/client/Report'
 import Alerts from './pages/client/Alerts'
@@ -62,6 +63,7 @@ export default function App() {
 
   if (profile.role === 'mechanic') {
     return (
+      <AppLock>
       <Routes>
         <Route element={<Layout />}>
           <Route path="/inicio" element={<Home />} />
@@ -94,6 +96,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/inicio" replace />} />
         </Route>
       </Routes>
+      </AppLock>
     )
   }
 

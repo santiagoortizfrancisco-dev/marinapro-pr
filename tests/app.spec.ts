@@ -750,3 +750,20 @@ test('botón grande "Volver atrás": en Cobros regresa a Inicio, y en una pantal
   await page.getByRole('button', { name: 'Volver atrás' }).click()
   await expect(page.getByRole('heading', { name: 'Clientes' })).toBeVisible()
 })
+
+test('bloqueo con PIN: si el app estuvo sin usar más del tiempo escogido, pide el PIN para seguir', async ({ page }) => {
+  await login(page)
+  await page.getByRole('link', { name: 'Más' }).click()
+  await page.getByRole('link', { name: /Mi contraseña o PIN/ }).click()
+  await page.getByRole('button', { name: '5 minutos', exact: true }).click()
+  // Como si hubieran pasado 10 minutos sin tocarla
+  await page.evaluate(() => localStorage.setItem('ultima-actividad', String(Date.now() - 10 * 60_000)))
+  await page.goto('/inicio')
+  await expect(page.getByRole('heading', { name: 'El app está bloqueada' })).toBeVisible()
+  await page.getByLabel('Contraseña').fill('mala')
+  await page.getByRole('button', { name: 'Desbloquear' }).click()
+  await expect(page.getByRole('alert')).toContainText('incorrect')
+  await page.getByLabel('Contraseña').fill('prueba-del-bot')
+  await page.getByRole('button', { name: 'Desbloquear' }).click()
+  await expect(page.getByRole('heading', { name: /¡Buen(os|as)/ })).toBeVisible()
+})

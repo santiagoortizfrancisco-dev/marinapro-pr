@@ -39,7 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.session) await loadProfile(data.session.user.id)
       setLoading(false)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
+      // Acaba de entrar con su PIN o contraseña: el bloqueo del app empieza a contar desde ahora
+      if (event === 'SIGNED_IN') {
+        try {
+          localStorage.setItem('ultima-actividad', String(Date.now()))
+        } catch {
+          /* sin memoria del teléfono: no pasa nada */
+        }
+      }
       setSession(newSession)
       if (newSession) {
         // Fuera del callback para no bloquear el cliente de Supabase
