@@ -6,15 +6,16 @@ import { db } from '../lib/db'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
 import { whatsappLink } from '../lib/links'
 import { computeTotals, percent } from '../lib/totals'
-import type { Client, Invoice, Mechanic, Part, Photo, WorkOrder } from '../lib/types'
+import { addPayment, paidSoFar } from '../lib/money'
+import type { Client, Invoice, Mechanic, Part, Payment, Photo, WorkOrder } from '../lib/types'
 import { must, num, useLoad } from '../lib/useLoad'
 import { useAuth } from '../auth/AuthProvider'
 import ConfirmDelete from './ConfirmDelete'
 import NextService from './NextService'
 import PartSheet from './PartSheet'
+import PaySheet from './PaySheet'
 import { WhatsAppIcon } from './BrandIcons'
 import PhotoSection from './PhotoSection'
-import { Sheet } from './Sheet'
 import { BackTitle, Button, Choice, ErrorBox, Field, IconBadge, Input, LinkButton, Loading, Pill, Textarea, Toggle, type Tone } from './ui'
 
 type Boat = { id: string; name: string; clients: Pick<Client, 'id' | 'full_name' | 'phone'> }
@@ -89,7 +90,6 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   const [editPart, setEditPart] = useState<Part | null>(null)
   const [skipNext, setSkipNext] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
-  const [payMethod, setPayMethod] = useState<NonNullable<Invoice['payment_method']>>('ath_movil')
   const [saved, setSaved] = useState('')
   const [payWay, setPayWay] = useState<'any' | 'ath' | 'cash' | null>(null)
   const [busy, setBusy] = useState(false)
@@ -98,14 +98,15 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
   const { data, loading, error, reload, setData } = useLoad(async () => {
     const wo = must(await db().from('work_orders').select('*, boats(id, name, clients(id, full_name, phone))').eq('id', id!).single()) as WorkOrder & { boats: Boat }
-    const [parts, photos, invoice, mech, next] = await Promise.all([
+    const [parts, photos, invoice, mech, next, payments] = await Promise.all([
       db().from('work_order_parts').select('*').eq('work_order_id', id!).order('created_at'),
       db().from('photos').select('*').eq('work_order_id', id!).order('taken_at'),
       db().from('invoices').select('*').eq('work_order_id', id!).maybeSingle(),
       db().from('mechanics').select('*').eq('profile_id', session!.user.id).single(),
       db().from('maintenance_schedules').select('service_type, due_date').eq('work_order_id', id).limit(1),
+      db().from('payments').select('*').eq('work_order_id', id!).order('paid_at'),
     ])
-    return { wo, parts: must(parts) as Part[], photos: must(photos) as Photo[], invoice: (invoice.data as Invoice | null) ?? null, mech: must(mech) as Mechanic, next: ((next.data ?? [])[0] as { service_type: string; due_date: string } | undefined) ?? null }
+    return { wo, parts: must(parts) as Part[], photos: must(photos) as Photo[], invoice: (invoice.data as Invoice | null) ?? null, mech: must(mech) as Mechanic, next: ((next.data ?? [])[0] as { service_type: string; due_date: string } | undefined) ?? null, payments: (payments.data ?? []) as Payment[] }
   }, [id])
 
   useEffect(() => {
@@ -116,13 +117,17 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
   if (loading && !data) return <Loading />
   if (error || !data) return <ErrorBox message={error || 'No se encontró el trabajo.'} onRetry={reload} />
-  const { wo, parts, photos, invoice, mech } = data
+  const { wo, parts, photos, invoice, mech, payments } = data
   const boat = wo.boats
   const client = boat.clients
   const totals = computeTotals(wo, parts, mech.ivu_rate)
   const firstName = client.full_name.split(' ')[0]
   const link = (token: string) => `${window.location.origin}/d/${token}`
   const locked = wo.status === 'paid'
+  // Depósitos y abonos: lo pagado y lo que falta (de la factura, o del total si todavía no hay factura)
+  const paid = paidSoFar(payments)
+  const due = invoice ? Number(invoice.total) : totals.total
+  const balance = invoice?.paid_at ? 0 : Math.max(0, Math.round((due - paid) * 100) / 100)
 
   async function patch(fields: Partial<WorkOrder>) {
     const { error } = await db().from('work_orders').update(fields).eq('id', wo.id)
@@ -159,23 +164,31 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
     reload()
   }
 
-  async function markPaid(paid: boolean) {
-    setBusy(true)
-    let invoiceId = invoice?.id
-    if (!invoiceId) {
-      // "Ya me pagó" sin haber hecho factura: se hace sola para que quede el récord
-      const { data: newId, error } = await db().rpc('create_invoice', { p_wo: wo.id })
-      if (error) {
-        setBusy(false)
-        setSaved('No se pudo guardar el pago')
-        return
-      }
-      invoiceId = newId as string
+  /** Recibir un pago (completo, depósito o abono). Si paga todo y no hay factura, la factura se hace sola para que quede el récord. */
+  async function receive(method: NonNullable<Invoice['payment_method']>, amount: number) {
+    if (!invoice && due > 0 && amount >= due - paid - 0.004) {
+      const { error } = await db().rpc('create_invoice', { p_wo: wo.id })
+      if (error) throw error
     }
-    await db().from('invoices').update(paid ? { paid_at: new Date().toISOString(), payment_method: payMethod } : { paid_at: null, payment_method: null }).eq('id', invoiceId)
-    await db().from('work_orders').update({ status: paid ? 'paid' : 'invoiced' }).eq('id', wo.id)
-    setBusy(false)
+    await addPayment(wo.id, amount, method)
     setPayOpen(false)
+    reload()
+  }
+
+  async function removePayment(pay: Payment) {
+    if (!window.confirm(`¿Quitar el pago de ${formatMoney(Number(pay.amount))} del ${formatDate(pay.paid_at)}?`)) return
+    setBusy(true)
+    await db().from('payments').delete().eq('id', pay.id)
+    setBusy(false)
+    reload()
+  }
+
+  async function unmarkPaid() {
+    setBusy(true)
+    await db().from('payments').delete().eq('work_order_id', wo.id)
+    await db().from('invoices').update({ paid_at: null, payment_method: null }).eq('id', invoice!.id)
+    await db().from('work_orders').update({ status: 'invoiced' }).eq('id', wo.id)
+    setBusy(false)
     reload()
   }
 
@@ -195,7 +208,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
     : way === 'any' && mech.ath_movil_number ? ` Puedes pagar por ATH Móvil al ${mech.ath_movil_number}, o en efectivo o cheque.`
     : ' El pago es en efectivo o cheque.'
   const invoiceMsg = invoice
-    ? `Hola ${firstName}, aquí está la factura #${invoice.number} del bote ${boat.name} por ${formatMoney(Number(invoice.total))}: ${link(invoice.public_token)}?pago=${way} .` + payText + ` ¡Gracias! ${profile?.full_name ?? ''}`
+    ? `Hola ${firstName}, aquí está la factura #${invoice.number} del bote ${boat.name} por ${formatMoney(Number(invoice.total))}` + (paid > 0 && balance > 0 ? ` (ya pagaste ${formatMoney(paid)}; balance ${formatMoney(balance)})` : '') + `: ${link(invoice.public_token)}?pago=${way} .` + payText + ` ¡Gracias! ${profile?.full_name ?? ''}`
     : ''
   const invoiceOutdated = invoice && !invoice.paid_at && Math.abs(Number(invoice.total) - totals.total) > 0.004
 
@@ -378,6 +391,34 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
             </div>
           )}
 
+          {payments.length > 0 && (
+            <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-3">
+              <div className="mb-1 text-base font-extrabold text-emerald-900">Pagos recibidos</div>
+              <ul className="divide-y divide-emerald-100">
+                {payments.map((pay) => (
+                  <li key={pay.id} className="flex items-center gap-2 py-2 text-base">
+                    <IconBadge icon={PAY_ICONS[pay.method].icon} tone={PAY_ICONS[pay.method].tone} size="sm" />
+                    <span className="min-w-0 flex-1 truncate">
+                      {formatDate(pay.paid_at)} · {!invoice || pay.paid_at < invoice.created_at ? 'Depósito' : 'Abono'} · {labelOf(PAYMENT_METHODS, pay.method)}
+                    </span>
+                    <b className="shrink-0">{formatMoney(Number(pay.amount))}</b>
+                    {!invoice?.paid_at && (
+                      <button type="button" disabled={busy} onClick={() => removePayment(pay)} aria-label={`Quitar pago de ${formatMoney(Number(pay.amount))}`}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl font-bold text-slate-400 active:bg-white">×</button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {!invoice?.paid_at && due > 0 && (
+                <div className="mt-1 flex items-center justify-between border-t-2 border-emerald-200 pt-2">
+                  <span className="text-lg font-extrabold text-navy-900">Balance</span>
+                  <span className="text-2xl font-extrabold text-navy-900" aria-label="Balance">{formatMoney(balance)}</span>
+                </div>
+              )}
+              {!invoice && <p className="mt-1 text-sm text-slate-600">Total del trabajo hasta ahora: {formatMoney(totals.total)}. Pagado: {formatMoney(paid)}.</p>}
+            </div>
+          )}
+
           {!invoice?.paid_at && (
             <>
               <Field label="¿Cómo te va a pagar?" hint="Es lo que dice la factura que le envías">
@@ -413,27 +454,21 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                 </>
               )}
 
-              <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700! active:bg-emerald-800!"><CheckCircle2 /> Ya me pagó</Button>
-              {!invoice && <p className="text-sm text-slate-500">Si ya te pagaron, toca “Ya me pagó”: la factura se hace sola para que quede el récord.</p>}
+              <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700! active:bg-emerald-800!"><HandCoins /> Recibir pago o depósito</Button>
+              <p className="text-sm text-slate-500">Puede pagar todo de una vez o por partes (depósito y abonos), como tú quieras. Cuando completa el total, la factura queda pagada sola.</p>
             </>
           )}
 
           {invoice?.paid_at && (
             <>
               <LinkButton href={`/d/${invoice.public_token}`}><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
-              <Button variant="ghost" disabled={busy} onClick={() => markPaid(false)}>Desmarcar pagada</Button>
+              <Button variant="ghost" disabled={busy} onClick={unmarkPaid}>Desmarcar pagada</Button>
             </>
           )}
         </div>
       </Section>
 
-      <Sheet open={payOpen} title="¿Cómo te pagó?" onClose={() => setPayOpen(false)}>
-        <div className="space-y-3">
-          <Choice value={payMethod} onChange={setPayMethod} options={PAYMENT_METHODS.map((m) => ({ ...m, ...PAY_ICONS[m.value] }))} />
-          <Button disabled={busy} onClick={() => markPaid(true)} className="bg-emerald-700! active:bg-emerald-800!"><CheckCircle2 /> Guardar pago</Button>
-          <Button variant="ghost" onClick={() => setPayOpen(false)}>Cancelar</Button>
-        </div>
-      </Sheet>
+      <PaySheet open={payOpen} balance={balance} title={invoice ? 'Recibir pago' : 'Recibir pago o depósito'} onClose={() => setPayOpen(false)} onPay={receive} />
 
       <PartSheet open={partOpen} workOrderId={wo.id} part={editPart} onClose={() => setPartOpen(false)} onSaved={reload} />
 

@@ -1,8 +1,8 @@
 import { db } from './db'
 import { formatMoney } from './format'
-import type { Invoice, WorkOrder } from './types'
+import type { Invoice, Payment, WorkOrder } from './types'
 
-/** Un trabajo con su bote, su cliente y su factura (si tiene): lo que hace falta para saber quién debe. */
+/** Un trabajo con su bote, su cliente, su factura (si tiene) y lo que ya le han pagado: lo que hace falta para saber quién debe. */
 export interface MoneyRow {
   id: string
   status: WorkOrder['status']
@@ -10,34 +10,55 @@ export interface MoneyRow {
   completed_at: string | null
   boats: { name: string; clients: { id: string; full_name: string; phone: string | null } }
   invoice: Pick<Invoice, 'id' | 'number' | 'total' | 'paid_at' | 'payment_method' | 'public_token' | 'created_at'> | null
+  payments: Pick<Payment, 'id' | 'amount' | 'method' | 'paid_at'>[]
 }
 
-const SELECT = 'id, status, created_at, completed_at, boats(name, clients(id, full_name, phone)), invoices(id, number, total, paid_at, payment_method, public_token, created_at)'
+const SELECT = 'id, status, created_at, completed_at, boats(name, clients(id, full_name, phone)), invoices(id, number, total, paid_at, payment_method, public_token, created_at), payments(id, amount, method, paid_at)'
 
-type Raw = Omit<MoneyRow, 'invoice'> & { invoices: MoneyRow['invoice'][] | MoneyRow['invoice'] }
+type Raw = Omit<MoneyRow, 'invoice' | 'payments'> & { invoices: MoneyRow['invoice'][] | MoneyRow['invoice']; payments: MoneyRow['payments'] | null }
 
-/** Trabajos terminados, facturados o pagados (lo que tiene que ver con dinero). */
+const r2 = (n: number) => Math.round(n * 100) / 100
+
+/** Todos los trabajos con lo que tiene que ver con dinero (facturas y depósitos). */
 export async function loadMoney(): Promise<MoneyRow[]> {
-  const { data, error } = await db().from('work_orders').select(SELECT).in('status', ['done', 'invoiced', 'paid']).order('created_at', { ascending: false }).limit(500)
+  const { data, error } = await db().from('work_orders').select(SELECT).order('created_at', { ascending: false }).limit(500)
   if (error) throw error
-  return ((data ?? []) as unknown as Raw[]).map(({ invoices, ...w }) => ({ ...w, invoice: (Array.isArray(invoices) ? invoices[0] : invoices) ?? null }))
+  return ((data ?? []) as unknown as Raw[]).map(({ invoices, payments, ...w }) => ({ ...w, invoice: (Array.isArray(invoices) ? invoices[0] : invoices) ?? null, payments: payments ?? [] }))
 }
 
-/** Facturas sin pagar (la más vieja primero). */
+/** Lo que ya le han pagado (depósitos y abonos). */
+export const paidSoFar = (payments: { amount: number }[]) => r2(payments.reduce((t, p) => t + Number(p.amount), 0))
+
+/** Lo que falta de la factura. */
+export const balanceOf = (r: MoneyRow) => (r.invoice && !r.invoice.paid_at ? Math.max(0, r2(Number(r.invoice.total) - paidSoFar(r.payments))) : 0)
+
+/** Facturas sin pagar del todo (la más vieja primero). */
 export const owed = (rows: MoneyRow[]) =>
-  rows.filter((r) => r.invoice && !r.invoice.paid_at).sort((a, b) => a.invoice!.created_at.localeCompare(b.invoice!.created_at))
+  rows.filter((r) => balanceOf(r) > 0.004).sort((a, b) => a.invoice!.created_at.localeCompare(b.invoice!.created_at))
 
 /** Trabajos terminados que todavía no tienen factura. */
 export const toInvoice = (rows: MoneyRow[]) => rows.filter((r) => r.status === 'done' && !r.invoice)
 
-export const sum = (rows: MoneyRow[]) => Math.round(rows.reduce((t, r) => t + Number(r.invoice?.total ?? 0), 0) * 100) / 100
+/** Cuánto falta en total. */
+export const sumOwed = (rows: MoneyRow[]) => r2(rows.reduce((t, r) => t + balanceOf(r), 0))
 
-/** Marca la factura como pagada (y su trabajo). */
-export async function payInvoice(invoiceId: string, workOrderId: string, method: NonNullable<Invoice['payment_method']>) {
-  const now = new Date().toISOString()
-  const a = await db().from('invoices').update({ paid_at: now, payment_method: method }).eq('id', invoiceId)
-  if (a.error) throw a.error
-  await db().from('work_orders').update({ status: 'paid' }).eq('id', workOrderId)
+/** Cada pago recibido (el más nuevo primero). Las facturas viejas pagadas sin pagos guardados cuentan como un pago. */
+export function received(rows: MoneyRow[]) {
+  const out: { key: string; row: MoneyRow; amount: number; date: string; deposit: boolean }[] = []
+  for (const r of rows) {
+    if (r.payments.length) {
+      for (const p of r.payments) out.push({ key: p.id, row: r, amount: Number(p.amount), date: p.paid_at, deposit: !r.invoice || p.paid_at < r.invoice.created_at })
+    } else if (r.invoice?.paid_at) {
+      out.push({ key: r.invoice.id, row: r, amount: Number(r.invoice.total), date: r.invoice.paid_at, deposit: false })
+    }
+  }
+  return out.sort((a, b) => b.date.localeCompare(a.date))
+}
+
+/** Guarda un pago (depósito o abono). Si con eso se completa la factura, queda Pagada sola. */
+export async function addPayment(workOrderId: string, amount: number, method: NonNullable<Invoice['payment_method']>) {
+  const { error } = await db().from('payments').insert({ work_order_id: workOrderId, amount: r2(amount), method })
+  if (error) throw error
 }
 
 /** Mensaje amable para recordarle al cliente que pague, con el link de la factura. */
@@ -46,5 +67,9 @@ export function reminderMessage(r: MoneyRow, ath: string | null, signature: stri
   const way = ath ? 'any' : 'cash'
   const link = `${window.location.origin}/d/${r.invoice!.public_token}?pago=${way}`
   const pay = ath ? ` Puedes pagar por ATH Móvil al ${ath}, o en efectivo.` : ''
-  return `Hola ${first}, te recuerdo la factura #${r.invoice!.number} del bote ${r.boats.name} por ${formatMoney(Number(r.invoice!.total))}: ${link} .${pay} ¡Gracias! ${signature}`.trim()
+  const paid = paidSoFar(r.payments)
+  const amount = paid > 0
+    ? `de ${formatMoney(Number(r.invoice!.total))}; ya pagaste ${formatMoney(paid)} y queda un balance de ${formatMoney(balanceOf(r))}`
+    : `por ${formatMoney(Number(r.invoice!.total))}`
+  return `Hola ${first}, te recuerdo la factura #${r.invoice!.number} del bote ${r.boats.name} ${amount}: ${link} .${pay} ¡Gracias! ${signature}`.trim()
 }

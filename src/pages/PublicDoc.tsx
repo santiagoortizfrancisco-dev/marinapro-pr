@@ -26,6 +26,8 @@ interface Doc {
   }
   parts: { kind?: 'part' | 'service'; description: string; part_number: string | null; qty: number; unit_cost: number; supplied_by: 'client' | 'mechanic' }[]
   totals: { labor_hours: number; labor_rate: number; labor: number; parts: number; ivu: number; ivu_rate: number; ivu_on_labor: boolean; ivu_on_parts: boolean; total: number }
+  /** Depósitos y abonos */
+  payments?: { amount: number; method: string; paid_at: string }[]
   warranty_days: number
   policies: string
 }
@@ -137,6 +139,8 @@ export default function PublicDoc() {
   const logo = logoUrl(doc.business.logo_path)
   const isInvoice = doc.kind === 'invoice'
   const ivuOn = [t.ivu_on_labor && 'mano de obra', t.ivu_on_parts && 'piezas'].filter(Boolean).join(' y ')
+  const payments = doc.payments ?? []
+  const balance = Math.max(0, Math.round((Number(t.total) - payments.reduce((x, py) => x + Number(py.amount), 0)) * 100) / 100)
   const boatLine = [[doc.boat.make, doc.boat.model, doc.boat.year].filter(Boolean).join(' '), [doc.boat.marina, doc.boat.slip && `muelle ${doc.boat.slip}`, doc.boat.town].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
 
   return (
@@ -231,6 +235,14 @@ export default function PublicDoc() {
           <div className="flex justify-between py-1"><dt>Piezas</dt><dd>{formatMoney(Number(t.parts))}</dd></div>
           <div className="flex justify-between py-1"><dt>IVU {percent(t.ivu_rate)}{ivuOn ? ` (${ivuOn})` : ''}</dt><dd>{formatMoney(Number(t.ivu))}</dd></div>
           <div className="mt-2 flex items-center justify-between rounded-xl bg-navy-900 px-4 py-3 text-white"><dt className="text-lg font-extrabold">TOTAL</dt><dd className="text-2xl font-extrabold" style={{ color: '#FDBA74' }}>{formatMoney(Number(t.total))}</dd></div>
+          {payments.map((py, i) => (
+            <div key={i} className="flex justify-between py-1 text-emerald-800">
+              <dt>{!isInvoice || py.paid_at < doc.date ? 'Depósito' : 'Abono'} {formatDate(py.paid_at)}</dt><dd>−{formatMoney(Number(py.amount))}</dd>
+            </div>
+          ))}
+          {payments.length > 0 && !doc.paid_at && (
+            <div className="mt-1 flex items-center justify-between rounded-xl border-2 border-navy-900 px-4 py-2"><dt className="text-lg font-extrabold">BALANCE</dt><dd className="text-2xl font-extrabold">{formatMoney(balance)}</dd></div>
+          )}
         </dl>
 
         {/* Pago */}
@@ -243,7 +255,7 @@ export default function PublicDoc() {
           ) : (
             <>
               {/* ?pago=ath | cash | any (lo escoge el mecánico al enviar la factura) */}
-              {pago !== 'cash' && doc.business.ath_movil && <AthBox number={doc.business.ath_movil} total={Number(t.total)} />}
+              {pago !== 'cash' && doc.business.ath_movil && <AthBox number={doc.business.ath_movil} total={balance} />}
               {(pago === 'cash' || !doc.business.ath_movil) && (
                 <p className="mt-4 rounded-xl bg-slate-100 p-4 text-center text-lg">Pago en <b>efectivo o cheque</b> a {doc.business.name}.</p>
               )}

@@ -7,7 +7,7 @@ import PaySheet from '../../components/PaySheet'
 import { db } from '../../lib/db'
 import { ago, formatDate, formatMoney, todayPR } from '../../lib/format'
 import { whatsappLink } from '../../lib/links'
-import { loadMoney, owed, payInvoice, reminderMessage, sum, toInvoice, type MoneyRow } from '../../lib/money'
+import { addPayment, balanceOf, loadMoney, owed, paidSoFar, received, reminderMessage, sumOwed, toInvoice, type MoneyRow } from '../../lib/money'
 import { must, useLoad } from '../../lib/useLoad'
 import { useMechanic } from '../../lib/useMechanic'
 import { CARD, EmptyState, ErrorBox, Fab, IconBadge, Loading, PageTitle } from '../../components/ui'
@@ -27,8 +27,8 @@ export default function Jobs() {
   const debt = owed(data)
   const pending = toInvoice(data)
   const month = todayPR().slice(0, 7)
-  const paidMonth = data.filter((r) => r.invoice?.paid_at && r.invoice.paid_at.slice(0, 7) >= month)
-    .sort((a, b) => b.invoice!.paid_at!.localeCompare(a.invoice!.paid_at!))
+  const paidMonth = received(data).filter((p) => p.date.slice(0, 7) >= month)
+  const paidMonthTotal = Math.round(paidMonth.reduce((t, p) => t + p.amount, 0) * 100) / 100
 
   async function invoiceNow(r: MoneyRow) {
     setBusy(r.id)
@@ -46,8 +46,8 @@ export default function Jobs() {
         <IconBadge icon={HandCoins} tone="orange" size="lg" />
         <div>
           <div className="text-sm font-bold uppercase tracking-wide text-slate-500">Me deben</div>
-          <div className="text-3xl font-extrabold text-navy-900">{formatMoney(sum(debt))}</div>
-          <div className="text-sm text-slate-600">{debt.length === 0 ? 'Nadie te debe' : `${debt.length} ${debt.length === 1 ? 'factura sin pagar' : 'facturas sin pagar'}`}</div>
+          <div className="text-3xl font-extrabold text-navy-900">{formatMoney(sumOwed(debt))}</div>
+          <div className="text-sm text-slate-600">{debt.length === 0 ? 'Nadie te debe' : `${debt.length} ${debt.length === 1 ? 'factura con balance' : 'facturas con balance'}`}</div>
         </div>
       </div>
 
@@ -65,8 +65,9 @@ export default function Jobs() {
                   <span className="min-w-0">
                     <span className="block truncate text-lg font-bold text-slate-900">{r.boats.clients.full_name}</span>
                     <span className="block truncate text-sm text-slate-600">{r.boats.name} · Factura #{r.invoice!.number} · {ago(r.invoice!.created_at)}</span>
+                    {r.payments.length > 0 && <span className="block text-sm text-slate-600">De {formatMoney(Number(r.invoice!.total))} · ya pagó {formatMoney(paidSoFar(r.payments))}</span>}
                   </span>
-                  <span className="shrink-0 text-xl font-extrabold text-navy-900">{formatMoney(Number(r.invoice!.total))}</span>
+                  <span className="shrink-0 text-xl font-extrabold text-navy-900">{formatMoney(balanceOf(r))}</span>
                 </Link>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   {r.boats.clients.phone ? (
@@ -109,15 +110,15 @@ export default function Jobs() {
           <button onClick={() => setShowPaid((v) => !v)} aria-expanded={showPaid} className={`${CARD} flex min-h-14 w-full items-center gap-2 px-3 py-2 text-left`}>
             <IconBadge icon={CheckCircle2} tone="green" size="sm" />
             <span className="flex-1 text-lg font-extrabold text-navy-900">Cobrado este mes</span>
-            <span className="text-lg font-extrabold text-emerald-700">{formatMoney(sum(paidMonth))}</span>
+            <span className="text-lg font-extrabold text-emerald-700">{formatMoney(paidMonthTotal)}</span>
             <ChevronDown className={`text-slate-400 transition ${showPaid ? 'rotate-180' : ''}`} />
           </button>
           {showPaid && (
             <div className="mt-2 space-y-1">
-              {paidMonth.map((r) => (
-                <Link key={r.id} to={`/trabajos/${r.id}`} className="flex items-center justify-between gap-2 rounded-xl bg-white/80 px-3 py-2 text-base">
-                  <span className="min-w-0 truncate">{r.boats.clients.full_name} · {r.boats.name}</span>
-                  <span className="shrink-0 font-bold">{formatMoney(Number(r.invoice!.total))}</span>
+              {paidMonth.map((p) => (
+                <Link key={p.key} to={`/trabajos/${p.row.id}`} className="flex items-center justify-between gap-2 rounded-xl bg-white/80 px-3 py-2 text-base">
+                  <span className="min-w-0 truncate">{formatDate(p.date)} · {p.row.boats.clients.full_name}{p.deposit ? ' · depósito' : ''}</span>
+                  <span className="shrink-0 font-bold">{formatMoney(p.amount)}</span>
                 </Link>
               ))}
             </div>
@@ -127,11 +128,11 @@ export default function Jobs() {
 
       <PaySheet
         open={!!paying}
-        total={Number(paying?.invoice?.total ?? 0)}
+        balance={paying ? balanceOf(paying) : 0}
         onClose={() => setPaying(null)}
-        onPay={async (method) => {
-          if (!paying?.invoice) return
-          await payInvoice(paying.invoice.id, paying.id, method)
+        onPay={async (method, amount) => {
+          if (!paying) return
+          await addPayment(paying.id, amount, method)
           setPaying(null)
           reload()
         }}

@@ -4,7 +4,7 @@ import { Calendar, CheckCircle2, HandCoins, Mail, Pencil, Phone, Ship } from 'lu
 import PaySheet from '../../components/PaySheet'
 import { useAuth } from '../../auth/AuthProvider'
 import { useMechanic } from '../../lib/useMechanic'
-import { loadMoney, owed, payInvoice, reminderMessage, sum, type MoneyRow } from '../../lib/money'
+import { addPayment, balanceOf, loadMoney, owed, paidSoFar, received, reminderMessage, sumOwed, type MoneyRow } from '../../lib/money'
 import { WhatsAppIcon } from '../../components/BrandIcons'
 import { CONTACT_PREFS, LOCATION_TYPES, labelOf } from '../../lib/catalog'
 import { db } from '../../lib/db'
@@ -38,7 +38,7 @@ export default function ClientDetail() {
   if (error || !data) return <ErrorBox message={error || 'No se encontró el cliente.'} onRetry={reload} />
   const { client: c, boats, appts, money } = data
   const debt = owed(money)
-  const paidHistory = money.filter((r) => r.invoice?.paid_at).sort((a, b) => b.invoice!.paid_at!.localeCompare(a.invoice!.paid_at!)).slice(0, 5)
+  const paidHistory = received(money).slice(0, 8)
   const boatName = (bid: string) => boats.find((b) => b.id === bid)?.name ?? ''
 
   return (
@@ -59,14 +59,14 @@ export default function ClientDetail() {
         <section className="mb-4 rounded-2xl bg-red-50 p-4 ring-2 ring-red-200">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-2 text-lg font-extrabold text-red-800"><HandCoins size={22} /> Debe</span>
-            <span className="text-2xl font-extrabold text-red-800">{formatMoney(sum(debt))}</span>
+            <span className="text-2xl font-extrabold text-red-800">{formatMoney(sumOwed(debt))}</span>
           </div>
           <div className="mt-2 space-y-2">
             {debt.map((r) => (
               <div key={r.id} className="rounded-xl bg-white p-3">
                 <Link to={`/trabajos/${r.id}`} className="flex justify-between gap-2 text-base">
-                  <span className="min-w-0 truncate">Factura #{r.invoice!.number} · {r.boats.name} · {ago(r.invoice!.created_at)}</span>
-                  <b className="shrink-0">{formatMoney(Number(r.invoice!.total))}</b>
+                  <span className="min-w-0 truncate">Factura #{r.invoice!.number} · {r.boats.name} · {ago(r.invoice!.created_at)}{r.payments.length > 0 ? ` · ya pagó ${formatMoney(paidSoFar(r.payments))}` : ''}</span>
+                  <b className="shrink-0">{formatMoney(balanceOf(r))}</b>
                 </Link>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   {c.phone ? (
@@ -128,10 +128,10 @@ export default function ClientDetail() {
         <>
           <SectionHeader title="Pagos" />
           <div className="space-y-1">
-            {paidHistory.map((r) => (
-              <Link key={r.id} to={`/trabajos/${r.id}`} className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-base ring-1 ring-slate-200">
-                <span className="min-w-0 truncate">{formatDate(r.invoice!.paid_at!)} · #{r.invoice!.number} · {r.boats.name}</span>
-                <b className="shrink-0 text-emerald-700">{formatMoney(Number(r.invoice!.total))}</b>
+            {paidHistory.map((p) => (
+              <Link key={p.key} to={`/trabajos/${p.row.id}`} className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-base ring-1 ring-slate-200">
+                <span className="min-w-0 truncate">{formatDate(p.date)} · {p.row.invoice ? `#${p.row.invoice.number}` : 'Depósito'} · {p.row.boats.name}</span>
+                <b className="shrink-0 text-emerald-700">{formatMoney(p.amount)}</b>
               </Link>
             ))}
           </div>
@@ -140,11 +140,11 @@ export default function ClientDetail() {
 
       <PaySheet
         open={!!paying}
-        total={Number(paying?.invoice?.total ?? 0)}
+        balance={paying ? balanceOf(paying) : 0}
         onClose={() => setPaying(null)}
-        onPay={async (method) => {
-          if (!paying?.invoice) return
-          await payInvoice(paying.invoice.id, paying.id, method)
+        onPay={async (method, amount) => {
+          if (!paying) return
+          await addPayment(paying.id, amount, method)
           setPaying(null)
           reload()
         }}

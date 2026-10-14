@@ -332,10 +332,14 @@ test('Cobros es solo dinero: lo que está "Trabajando" sale en Inicio, no en Cob
   await expect(page.getByText('Todavía no hay cobros')).toBeVisible()
 })
 
-test('"Ya me pagó" sin hacer factura: la hace sola y queda pagada', async ({ page }) => {
+test('"Recibir pago" de todo sin hacer factura: la hace sola y queda pagada', async ({ page }) => {
   await login(page)
   await openExampleAppointment(page)
-  await page.getByRole('button', { name: 'Ya me pagó' }).click()
+  await page.getByRole('button', { name: /Mano de obra por hora/ }).click()
+  await page.getByLabel('Horas').fill('1')
+  await page.getByLabel('Horas').blur()
+  await page.getByRole('button', { name: /Recibir pago o depósito/ }).click()
+  await expect(page.getByLabel(/¿Cuánto te dio\?/)).toHaveValue('94.78') // sale lo que falta
   await page.getByRole('dialog').getByRole('button', { name: 'Efectivo' }).click()
   await page.getByRole('button', { name: 'Guardar pago' }).click()
   await expect(page.getByText(/Pagada el .* Efectivo/)).toBeVisible()
@@ -672,7 +676,7 @@ test('factura rápida: sin cita, con cliente nuevo; Ya me pagó deja la factura 
   await page.getByLabel('Precio 2').fill('40')
   await expect(page.getByText('$156.10')).toBeVisible() // 140 + 11.5% IVU
   await page.getByRole('button', { name: 'Ya me pagó' }).click()
-  await page.getByRole('dialog', { name: '¿Cómo te pagó?' }).getByRole('button', { name: /Efectivo/ }).click()
+  await page.getByRole('dialog').getByRole('button', { name: /Efectivo/ }).click()
   await page.getByRole('button', { name: 'Guardar pago' }).click()
   await expect(page.getByText('Pagada ✓')).toBeVisible()
   await expect(page.getByRole('link', { name: /Enviar factura por WhatsApp/ })).toBeVisible()
@@ -691,7 +695,7 @@ test('factura rápida: sin cita, con cliente nuevo; Ya me pagó deja la factura 
 
   await page.getByRole('button', { name: 'Listo' }).click()
   await page.getByRole('button', { name: /Cobrado este mes/ }).click()
-  await expect(page.getByRole('link', { name: /Bote de Rosa/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Rosa Rápida/ })).toBeVisible()
 
   // La próxima factura: al escribirlo, el precio sale solo
   await page.getByRole('link', { name: /Factura rápida/ }).click()
@@ -800,4 +804,59 @@ test('Mis piezas y servicios: añadir un servicio y una pieza con su precio', as
   await expect(page.getByText('Bujía NGK')).toBeVisible()
   const mine = (await state()).catalog_items.filter((c) => c.mechanic_id)
   expect(mine.map((c) => [c.kind, c.name, c.last_price])).toEqual(expect.arrayContaining([['service', 'Cambio de bujías', 60], ['part', 'Bujía NGK', 9]]))
+})
+
+test('depósito y abonos: el cliente paga por partes hasta saldar; Me deben enseña solo el balance', async ({ page }) => {
+  await login(page)
+  await openExampleAppointment(page)
+  await page.getByRole('button', { name: /Mano de obra por hora/ }).click()
+  await page.getByLabel('Horas').fill('1')
+  await page.getByLabel('Horas').blur()
+  await expect(page.getByText('$94.78').first()).toBeVisible()
+
+  // Depósito antes de la factura: no hace factura
+  await page.getByRole('button', { name: /Recibir pago o depósito/ }).click()
+  await page.getByLabel(/¿Cuánto te dio\?/).fill('20')
+  await expect(page.getByText('Le quedan $74.78 de balance.')).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: /ATH Móvil/ }).click()
+  await page.getByRole('button', { name: 'Guardar pago' }).click()
+  await expect(page.getByText(/Depósito · ATH Móvil/)).toBeVisible()
+  await expect(page.getByLabel('Balance')).toHaveText('$74.78')
+  let s = await state()
+  expect(s.invoices).toHaveLength(0)
+  expect(s.payments).toHaveLength(1)
+
+  // Factura y un abono
+  await page.getByRole('button', { name: 'Hacer factura' }).click()
+  await expect(page.getByText('Factura #0001')).toBeVisible()
+  await page.getByRole('button', { name: /Recibir pago/ }).click()
+  await expect(page.getByLabel(/¿Cuánto te dio\?/)).toHaveValue('74.78')
+  await page.getByLabel(/¿Cuánto te dio\?/).fill('50')
+  await page.getByRole('dialog').getByRole('button', { name: /Efectivo/ }).click()
+  await page.getByRole('button', { name: 'Guardar pago' }).click()
+  await expect(page.getByLabel('Balance')).toHaveText('$24.78')
+  expect((await state()).invoices[0].paid_at).toBeNull()
+
+  // La factura del cliente enseña los pagos y el balance
+  const token = (await state()).invoices[0].public_token
+  await page.goto(`/d/${token}?pago=any`)
+  await expect(page.getByText('BALANCE')).toBeVisible()
+  await expect(page.getByText('$24.78').first()).toBeVisible()
+  await page.goBack()
+
+  // Cobros: Me deben solo lo que falta; Recordarle dice el balance
+  await page.goto('/trabajos')
+  await expect(page.getByText('$24.78').first()).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Recordarle' })).toHaveAttribute('href', /balance/)
+  await page.getByRole('button', { name: 'Ya me pagó' }).click()
+  await expect(page.getByLabel(/¿Cuánto te dio\?/)).toHaveValue('24.78')
+  await expect(page.getByText('Con esto queda saldado ✓')).toBeVisible()
+  await page.getByRole('button', { name: 'Guardar pago' }).click()
+  await expect(page.getByRole('heading', { name: 'Me deben' })).toHaveCount(0)
+  s = await state()
+  expect(s.invoices[0].paid_at).toBeTruthy()
+  expect(s.work_orders[0].status).toBe('paid')
+  expect(s.payments.map((p) => p.amount)).toEqual([20, 50, 24.78])
+  await page.getByRole('button', { name: /Cobrado este mes/ }).click()
+  await expect(page.getByText(/depósito/)).toBeVisible()
 })

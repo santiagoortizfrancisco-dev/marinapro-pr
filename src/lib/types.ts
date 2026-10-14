@@ -188,3 +188,14 @@ export interface Invoice {
   sent_at: string | null
   created_at: string
 }
+
+/** Un pago del cliente: depósito (antes de la factura) o abono. */
+export interface Payment {
+  id: string
+  work_order_id: string
+  amount: number
+  method: 'ath_movil' | 'cash' | 'check' | 'other'
+  paid_at: string
+  note: string | null
+  created_at: string
+}

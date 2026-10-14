@@ -6,7 +6,7 @@ import DueServices from '../../components/DueServices'
 import { db } from '../../lib/db'
 import { formatLongDate, formatMoney, formatTime, prRange, prTime, todayPR } from '../../lib/format'
 import { WORK_ORDER_STATUS } from '../../lib/catalog'
-import { loadMoney, owed, sum } from '../../lib/money'
+import { loadMoney, owed, sumOwed } from '../../lib/money'
 import type { WorkOrder } from '../../lib/types'
 import { must, useLoad } from '../../lib/useLoad'
 import { CARD, Pill } from '../../components/ui'
@@ -68,7 +68,7 @@ export default function Home() {
       db().from('work_orders').select('id, status, appointment_id, boats(name, clients(full_name))').in('status', ['approved', 'waiting_parts', 'in_progress', 'sea_trial']).order('created_at', { ascending: false }).limit(10),
       loadMoney(),
     ])
-    return { appts: must(appts) as unknown as TodayAppt[], working: must(working) as unknown as Working[], debt: sum(owed(money)) }
+    return { appts: must(appts) as unknown as TodayAppt[], working: must(working) as unknown as Working[], debt: sumOwed(owed(money)) }
   }, [today])
 
   const first = (profile?.full_name ?? '').split(' ')[0]

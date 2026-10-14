@@ -64,6 +64,7 @@ function reset() {
     support_messages: [],
     photos: [],
     invoices: [],
+    payments: [],
     maintenance_schedules: [],
     notifications: [],
   }
@@ -85,6 +86,7 @@ const DEFAULTS = {
   }),
   maintenance_schedules: () => ({ engine_id: null, due_hours: null, last_notified_at: null, status: 'pending', interval_months: null, work_order_id: null, notes: null }),
   service_packages: () => ({ items: [], use_count: 0 }),
+  payments: () => ({ method: 'cash', paid_at: new Date().toISOString(), note: null }),
   work_order_parts: () => ({ kind: 'part', part_number: null, qty: 1, unit_cost: 0, supplied_by: 'mechanic', supplier: null, eta: null, received_at: null }),
 }
 
@@ -107,6 +109,7 @@ function withRelations(table, row) {
     r.work_order_parts = db.work_order_parts.filter((p) => p.work_order_id === row.id)
     r.boats = boat(row.boat_id)
     r.invoices = db.invoices.filter((i) => i.work_order_id === row.id)
+    r.payments = db.payments.filter((x) => x.work_order_id === row.id)
   }
   return r
 }
@@ -164,7 +167,27 @@ function publicDoc(token) {
     totals: inv
       ? { labor_hours: inv.labor_hours, labor_rate: inv.labor_rate, labor: inv.labor_subtotal, parts: inv.parts_subtotal, ivu: inv.ivu_amount, ivu_rate: inv.ivu_rate, ivu_on_labor: inv.ivu_on_labor, ivu_on_parts: inv.ivu_on_parts, total: inv.total }
       : { labor_hours: wo.labor_hours, labor_rate: wo.labor_rate, ...t, ivu_on_labor: wo.charge_ivu_labor, ivu_on_parts: wo.charge_ivu_parts },
+    payments: db.payments.filter((x) => x.work_order_id === wo.id).map(({ amount, method, paid_at }) => ({ amount, method, paid_at })),
     warranty_days: m.warranty_days, policies: m.policies_text,
+  }
+}
+
+// Como el trigger de la migración 0016: cuando lo pagado llega al total, la factura queda Pagada sola
+function settle(woId) {
+  const inv = db.invoices.find((i) => i.work_order_id === woId)
+  const pays = db.payments.filter((x) => x.work_order_id === woId)
+  if (!inv || !pays.length) return
+  const paid = pays.reduce((t, x) => t + Number(x.amount), 0)
+  const wo = db.work_orders.find((w) => w.id === woId)
+  if (paid >= Number(inv.total) - 0.004) {
+    if (!inv.paid_at) {
+      const last = [...pays].sort((a, b) => b.paid_at.localeCompare(a.paid_at))[0]
+      Object.assign(inv, { paid_at: last.paid_at, payment_method: last.method })
+      if (wo) wo.status = 'paid'
+    }
+  } else if (inv.paid_at) {
+    Object.assign(inv, { paid_at: null, payment_method: null })
+    if (wo && wo.status === 'paid') wo.status = 'invoiced'
   }
 }
 
@@ -283,12 +306,13 @@ const RPC = {
     const t = totals(wo)
     const fields = { labor_subtotal: t.labor, parts_subtotal: t.parts, ivu_amount: t.ivu, total: t.total, ivu_rate: t.ivu_rate, labor_hours: wo.labor_hours, labor_rate: wo.labor_rate, ivu_on_labor: wo.charge_ivu_labor, ivu_on_parts: wo.charge_ivu_parts }
     const existing = db.invoices.find((i) => i.work_order_id === wo.id)
-    if (existing) return Object.assign(existing, fields).id
+    if (existing) { Object.assign(existing, fields); settle(wo.id); return existing.id }
     const m = db.mechanics[0]
     const inv = { id: randomUUID(), work_order_id: wo.id, mechanic_id: U, number: String(m.next_invoice_number).padStart(4, '0'), public_token: randomUUID(), sent_at: null, paid_at: null, payment_method: null, created_at: new Date().toISOString(), ...fields }
     m.next_invoice_number++
     db.invoices.push(inv)
     if (wo.status !== 'paid') wo.status = 'invoiced'
+    settle(wo.id)
     return inv.id
   },
 }
@@ -389,6 +413,7 @@ http.createServer((req, res) => {
       if (req.method === 'POST') {
         const items = [].concat(json()).map((item) => ({ ...(DEFAULTS[table]?.() ?? {}), id: randomUUID(), created_at: new Date().toISOString(), ...item }))
         rows.push(...items)
+        if (table === 'payments') items.forEach((x) => settle(x.work_order_id))
         return out(items)
       }
       if (req.method === 'PATCH') {
@@ -398,6 +423,7 @@ http.createServer((req, res) => {
       }
       if (req.method === 'DELETE') {
         db[table] = rows.filter((r) => !found.includes(r))
+        if (table === 'payments') found.forEach((x) => settle(x.work_order_id))
         return out(found)
       }
       send(405, {})

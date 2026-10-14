@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Banknote, CheckCircle2, CreditCard, ExternalLink, Package, Plus, ScrollText, Search, Ship, Smartphone, Trash2, UserPlus, Wrench, X, Zap, type LucideIcon } from 'lucide-react'
+import { CheckCircle2, ExternalLink, Package, Plus, Search, Ship, Trash2, UserPlus, Wrench, X, Zap } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import { db } from '../../lib/db'
-import { PAYMENT_METHODS } from '../../lib/catalog'
+import { addPayment } from '../../lib/money'
 import { formatMoney } from '../../lib/format'
 import { whatsappLink } from '../../lib/links'
 import { computeTotals, percent } from '../../lib/totals'
@@ -12,19 +12,12 @@ import { num } from '../../lib/useLoad'
 import { useMechanic } from '../../lib/useMechanic'
 import { WhatsAppIcon } from '../../components/BrandIcons'
 import type { CatalogItem } from '../../components/PartSheet'
-import { Sheet } from '../../components/Sheet'
-import { BackTitle, Button, Choice, ErrorBox, Field, Input, LinkButton, Loading, Toggle, type Tone } from '../../components/ui'
+import PaySheet from '../../components/PaySheet'
+import { BackTitle, Button, ErrorBox, Field, Input, LinkButton, Loading, Toggle } from '../../components/ui'
 
 interface ClientRow { id: string; full_name: string; phone: string | null; boats: { id: string; name: string }[] }
 type Pick = { kind: 'boat'; boatId: string; clientId: string } | { kind: 'client'; clientId: string } | { kind: 'new' } | null
 interface Line { key: number; kind: 'service' | 'part'; desc: string; price: string }
-
-const PAY_ICONS: Record<string, { icon: LucideIcon; tone: Tone }> = {
-  ath_movil: { icon: Smartphone, tone: 'orange' },
-  cash: { icon: Banknote, tone: 'green' },
-  check: { icon: ScrollText, tone: 'blue' },
-  other: { icon: CreditCard, tone: 'violet' },
-}
 
 function plain(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -51,10 +44,9 @@ export default function QuickInvoice() {
   const [lines, setLines] = useState<Line[]>([newLine()])
   const [ivu, setIvu] = useState(true)
   const [payOpen, setPayOpen] = useState(false)
-  const [payMethod, setPayMethod] = useState<NonNullable<Invoice['payment_method']>>('ath_movil')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [done, setDone] = useState<{ woId: string; invoice: Invoice; phone: string | null; first: string; boat: string; paid: boolean } | null>(null)
+  const [done, setDone] = useState<{ woId: string; invoice: Invoice; phone: string | null; first: string; boat: string; paid: number } | null>(null)
 
   useEffect(() => {
     db().from('clients').select('id, full_name, phone, boats(id, name)').order('full_name').then(({ data }) => setClients((data ?? []) as unknown as ClientRow[]))
@@ -131,7 +123,8 @@ export default function QuickInvoice() {
   }
 
   /** Crea cliente y bote (si hacen falta), el trabajo terminado, sus líneas y la factura. */
-  async function createAll(paid: boolean) {
+  /** paid: lo que le dio hoy (todo, una parte o nada). */
+  async function createAll(paid = 0, method: NonNullable<Invoice['payment_method']> = 'cash') {
     const problem = check()
     if (problem) return setError(problem)
     if (!mech) return
@@ -180,10 +173,8 @@ export default function QuickInvoice() {
       await Promise.all(filled.map((l) => db().rpc('remember_catalog_item', { p_kind: l.kind, p_name: l.desc.trim(), p_price: num(l.price) })))
       const inv = await db().rpc('create_invoice', { p_wo: woId })
       if (inv.error) throw inv.error
-      if (paid) {
-        await db().from('invoices').update({ paid_at: now, payment_method: payMethod }).eq('id', inv.data as string)
-        await db().from('work_orders').update({ status: 'paid' }).eq('id', woId)
-      }
+      // Lo que le dio (todo o una parte): si completa el total, la factura queda pagada sola
+      if (paid > 0) await addPayment(woId, paid, method)
       const { data: invoice } = await db().from('invoices').select('*').eq('id', inv.data as string).single()
       setPayOpen(false)
       setDone({ woId, invoice: invoice as Invoice, phone, first, boat: boatName.trim() || chosenBoat?.name || `Bote de ${first}`, paid })
@@ -202,8 +193,10 @@ export default function QuickInvoice() {
   if (done) {
     const way = mech.ath_movil_number ? 'any' : 'cash'
     const link = `${window.location.origin}/d/${done.invoice.public_token}`
-    const payText = done.paid ? ' ¡Gracias por tu pago!'
-      : mech.ath_movil_number ? ` Puedes pagar por ATH Móvil al ${mech.ath_movil_number}, o en efectivo o cheque.` : ' El pago es en efectivo o cheque.'
+    const total = Number(done.invoice.total)
+    const left = Math.max(0, Math.round((total - done.paid) * 100) / 100)
+    const payText = done.paid > 0 && left <= 0.004 ? ' ¡Gracias por tu pago!'
+      : (done.paid > 0 ? ` Recibí ${formatMoney(done.paid)}; queda un balance de ${formatMoney(left)}.` : '') + (mech.ath_movil_number ? ` Puedes pagar por ATH Móvil al ${mech.ath_movil_number}, o en efectivo o cheque.` : ' El pago es en efectivo o cheque.')
     const msg = `Hola ${done.first}, aquí está la factura #${done.invoice.number} del bote ${done.boat} por ${formatMoney(Number(done.invoice.total))}: ${link}?pago=${way} .${payText} ${profile?.full_name ?? ''}`.trim()
     return (
       <>
@@ -212,7 +205,7 @@ export default function QuickInvoice() {
           <CheckCircle2 size={56} className="mx-auto text-emerald-600" />
           <p className="text-2xl font-extrabold text-emerald-900">Factura #{done.invoice.number}</p>
           <p className="text-3xl font-extrabold text-navy-900">{formatMoney(Number(done.invoice.total))}</p>
-          <p className="text-base font-semibold text-emerald-900">{done.paid ? 'Pagada ✓' : 'Falta cobrar'}</p>
+          <p className="text-base font-semibold text-emerald-900">{done.paid > 0 && left <= 0.004 ? 'Pagada ✓' : done.paid > 0 ? `Pagó ${formatMoney(done.paid)} · Balance ${formatMoney(left)}` : 'Falta cobrar'}</p>
         </div>
         <div className="mt-4 space-y-3">
           {done.phone && (
@@ -325,21 +318,16 @@ export default function QuickInvoice() {
         {error && <p role="alert" className="rounded-xl bg-red-100 p-3 text-base font-semibold text-red-800">{error}</p>}
 
         <div className="space-y-3 pb-4">
-          <Button disabled={busy} onClick={() => createAll(false)}><Zap /> {busy ? 'Haciendo factura…' : 'Hacer factura'}</Button>
+          <Button disabled={busy} onClick={() => createAll()}><Zap /> {busy ? 'Haciendo factura…' : 'Hacer factura'}</Button>
           <Button disabled={busy} onClick={() => { const p = check(); if (p) setError(p); else setPayOpen(true) }} className="bg-emerald-700! active:bg-emerald-800!">
             <CheckCircle2 /> Ya me pagó
           </Button>
+          <p className="text-center text-sm text-slate-500">¿Te dio solo una parte o un depósito? Toca “Ya me pagó” y cambia la cantidad.</p>
           <p className="text-center text-sm text-slate-500">Para trabajos grandes con estimado, usa <Link to="/citas/nueva" className="font-bold text-navy-700 underline">Hacer cita</Link>.</p>
         </div>
       </div>
 
-      <Sheet open={payOpen} title="¿Cómo te pagó?" onClose={() => setPayOpen(false)}>
-        <div className="space-y-3">
-          <Choice value={payMethod} onChange={setPayMethod} options={PAYMENT_METHODS.map((m) => ({ ...m, ...PAY_ICONS[m.value] }))} />
-          <Button disabled={busy} onClick={() => createAll(true)} className="bg-emerald-700! active:bg-emerald-800!"><CheckCircle2 /> {busy ? 'Guardando…' : 'Guardar pago'}</Button>
-          <Button variant="ghost" onClick={() => setPayOpen(false)}>Cancelar</Button>
-        </div>
-      </Sheet>
+      <PaySheet open={payOpen} balance={totals.total} title="¿Cuánto te pagó?" onClose={() => setPayOpen(false)} onPay={(method, amount) => createAll(amount, method)} />
     </>
   )
 }

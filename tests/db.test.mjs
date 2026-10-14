@@ -369,3 +369,45 @@ test('avisos al teléfono: sin pg_net ni canal no frenan nada (registro, directo
   assert.ok(await fails(() => as(D, `select notify_admin('x', 'y')`)), 'nadie llama los avisos desde el app')
   await db.exec(`delete from app_settings where key = 'ntfy_topic'`)
 })
+
+test('depósitos y abonos: el cliente paga por partes; al completar el total la factura queda Pagada sola; otro mecánico no ve los pagos', async () => {
+  const w = (await one(A, `insert into work_orders(boat_id, labor_hours, labor_rate, charge_ivu_labor, charge_ivu_parts) values ('${boat}', 10, 100, false, false) returning id, public_token`))
+  // Depósito antes de la factura
+  await as(A, `insert into payments(work_order_id, amount, method) values ('${w.id}', 500, 'ath_movil')`)
+  assert.ok(await fails(() => as(B, `insert into payments(work_order_id, amount) values ('${w.id}', 1)`)), 'otro mecánico no puede añadir pagos')
+  assert.equal((await as(B, `select * from payments where work_order_id = '${w.id}'`)).length, 0, 'otro mecánico no ve los pagos')
+  assert.ok(await fails(() => as(A, `insert into payments(work_order_id, amount) values ('${w.id}', 0)`)), 'un pago de $0 no se acepta')
+
+  const inv = (await one(A, `select create_invoice('${w.id}') id`)).id
+  let i = await one(A, `select total, paid_at from invoices where id = '${inv}'`)
+  assert.equal(Number(i.total), 1000)
+  assert.equal(i.paid_at, null, 'con $500 de $1,000 no está pagada')
+
+  await as(A, `insert into payments(work_order_id, amount, method) values ('${w.id}', 200, 'cash')`)
+  assert.equal((await one(A, `select paid_at from invoices where id = '${inv}'`)).paid_at, null)
+
+  // La factura pública enseña los pagos
+  const tok = (await one(A, `select public_token from invoices where id = '${inv}'`)).public_token
+  const d = (await one(null, `select get_public_document('${tok}') d`, 'anon')).d
+  assert.deepEqual(d.payments.map((p) => Number(p.amount)), [500, 200])
+
+  // El balance
+  await as(A, `insert into payments(work_order_id, amount, method) values ('${w.id}', 300, 'check')`)
+  i = await one(A, `select paid_at, payment_method from invoices where id = '${inv}'`)
+  assert.ok(i.paid_at, 'al saldar queda pagada')
+  assert.equal(i.payment_method, 'check')
+  assert.equal((await one(A, `select status from work_orders where id = '${w.id}'`)).status, 'paid')
+
+  // Si se quita un pago por error, vuelve a deber
+  await as(A, `delete from payments where work_order_id = '${w.id}' and amount = 300`)
+  assert.equal((await one(A, `select paid_at from invoices where id = '${inv}'`)).paid_at, null)
+  assert.equal((await one(A, `select status from work_orders where id = '${w.id}'`)).status, 'invoiced')
+})
+
+test('depósito que cubre todo: al hacer la factura sale Pagada', async () => {
+  const w = (await one(A, `insert into work_orders(boat_id, labor_hours, labor_rate, charge_ivu_labor, charge_ivu_parts) values ('${boat}', 1, 100, false, false) returning id`)).id
+  await as(A, `insert into payments(work_order_id, amount, method) values ('${w}', 100, 'cash')`)
+  const inv = (await one(A, `select create_invoice('${w}') id`)).id
+  assert.ok((await one(A, `select paid_at from invoices where id = '${inv}'`)).paid_at)
+  assert.equal((await one(A, `select status from work_orders where id = '${w}'`)).status, 'paid')
+})

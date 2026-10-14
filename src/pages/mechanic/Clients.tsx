@@ -3,7 +3,7 @@ import { Search, UserPlus, Users } from 'lucide-react'
 import { db } from '../../lib/db'
 import { must, useLoad } from '../../lib/useLoad'
 import { formatMoney } from '../../lib/format'
-import { loadMoney, owed } from '../../lib/money'
+import { balanceOf, loadMoney, owed } from '../../lib/money'
 import { EmptyState, ErrorBox, Fab, Initials, Input, Loading, PageTitle, RowLink } from '../../components/ui'
 
 interface Row {
@@ -28,7 +28,7 @@ export default function Clients() {
   // Cuánto debe cada cliente (facturas sin pagar)
   const { data: debts } = useLoad(async () => {
     const m = new Map<string, number>()
-    for (const r of owed(await loadMoney())) m.set(r.boats.clients.id, (m.get(r.boats.clients.id) ?? 0) + Number(r.invoice!.total))
+    for (const r of owed(await loadMoney())) m.set(r.boats.clients.id, (m.get(r.boats.clients.id) ?? 0) + balanceOf(r))
     return m
   }, [])
 
