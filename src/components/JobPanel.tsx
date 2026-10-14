@@ -374,54 +374,59 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
       <Section title="Cobrar" icon={HandCoins} tone="green">
         <div className="space-y-3">
-          {invoice && (
-            <div className="rounded-2xl border-2 border-violet-200 bg-violet-50 p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xl font-extrabold text-violet-950">Factura #{invoice.number}</span>
-                <span className="text-xl font-extrabold text-violet-950">{formatMoney(Number(invoice.total))}</span>
-              </div>
-              <div className="mt-1 text-base text-violet-900">
-                {invoice.paid_at ? (
-                  <span className="flex items-center gap-2">
-                    {invoice.payment_method && <IconBadge icon={PAY_ICONS[invoice.payment_method].icon} tone={PAY_ICONS[invoice.payment_method].tone} size="sm" />}
-                    Pagada el {formatDate(invoice.paid_at)} · {labelOf(PAYMENT_METHODS, invoice.payment_method)}
-                  </span>
-                ) : 'Falta cobrar'}
-              </div>
+          {/* Una sola cuenta: total, lo que ha pagado y lo que falta */}
+          <div className="rounded-2xl bg-white p-4 ring-2 ring-slate-200">
+            <div className="flex items-center justify-between text-lg">
+              <span className="font-bold text-slate-700">{invoice ? `Factura #${invoice.number}` : 'Total'}</span>
+              <span className="font-extrabold text-navy-900">{formatMoney(due)}</span>
             </div>
-          )}
-
-          {payments.length > 0 && (
-            <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-3">
-              <div className="mb-1 text-base font-extrabold text-emerald-900">Pagos recibidos</div>
-              <ul className="divide-y divide-emerald-100">
-                {payments.map((pay) => (
-                  <li key={pay.id} className="flex items-center gap-2 py-2 text-base">
-                    <IconBadge icon={PAY_ICONS[pay.method].icon} tone={PAY_ICONS[pay.method].tone} size="sm" />
-                    <span className="min-w-0 flex-1 truncate">
-                      {formatDate(pay.paid_at)} · {!invoice || pay.paid_at < invoice.created_at ? 'Depósito' : 'Abono'} · {labelOf(PAYMENT_METHODS, pay.method)}
-                    </span>
-                    <b className="shrink-0">{formatMoney(Number(pay.amount))}</b>
-                    {!invoice?.paid_at && (
-                      <button type="button" disabled={busy} onClick={() => removePayment(pay)} aria-label={`Quitar pago de ${formatMoney(Number(pay.amount))}`}
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl font-bold text-slate-400 active:bg-white">×</button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              {!invoice?.paid_at && due > 0 && (
-                <div className="mt-1 flex items-center justify-between border-t-2 border-emerald-200 pt-2">
-                  <span className="text-lg font-extrabold text-navy-900">Balance</span>
-                  <span className="text-2xl font-extrabold text-navy-900" aria-label="Balance">{formatMoney(balance)}</span>
-                </div>
-              )}
-              {!invoice && <p className="mt-1 text-sm text-slate-600">Total del trabajo hasta ahora: {formatMoney(totals.total)}. Pagado: {formatMoney(paid)}.</p>}
-            </div>
-          )}
+            {payments.map((pay) => (
+              <div key={pay.id} className="flex items-center gap-2 text-base text-emerald-800">
+                <span className="min-w-0 flex-1 truncate">
+                  {!invoice || pay.paid_at < invoice.created_at ? 'Depósito' : 'Abono'} {formatDate(pay.paid_at).slice(0, 5)} · {({ ath_movil: 'ATH', cash: 'Efectivo', check: 'Cheque', other: 'Otro' } as const)[pay.method]}
+                </span>
+                <b className="shrink-0">−{formatMoney(Number(pay.amount))}</b>
+                {!invoice?.paid_at ? (
+                  <button type="button" disabled={busy} onClick={() => removePayment(pay)} aria-label={`Quitar pago de ${formatMoney(Number(pay.amount))}`}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl font-bold text-slate-400 active:bg-slate-100">×</button>
+                ) : <span className="w-2" />}
+              </div>
+            ))}
+            {invoice?.paid_at ? (
+              <p className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-50 p-2 text-lg font-extrabold text-emerald-800">
+                <CheckCircle2 /> Pagada el {formatDate(invoice.paid_at)}
+              </p>
+            ) : (
+              <div className="mt-2 flex items-center justify-between border-t-2 border-slate-200 pt-2">
+                <span className="text-lg font-extrabold text-navy-900">{payments.length ? 'Balance' : 'Falta cobrar'}</span>
+                <span className="text-2xl font-extrabold text-navy-900" aria-label="Balance">{formatMoney(balance)}</span>
+              </div>
+            )}
+          </div>
 
           {!invoice?.paid_at && (
             <>
-              <Field label="¿Cómo te va a pagar?" hint="Es lo que dice la factura que le envías">
+              <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700! active:bg-emerald-800!"><HandCoins /> Recibir pago o depósito</Button>
+
+              {!invoice ? (
+                <Button variant="secondary" disabled={busy} onClick={makeInvoice}><Receipt /> {busy ? 'Haciendo factura…' : 'Hacer factura'}</Button>
+              ) : (
+                <>
+                  {invoiceOutdated && (
+                    <Button variant="secondary" disabled={busy} onClick={makeInvoice}>Actualizar factura con el total nuevo ({formatMoney(totals.total)})</Button>
+                  )}
+                  {client.phone && (
+                    <LinkButton href={whatsappLink(client.phone, invoiceMsg)} external variant="whatsapp"><WhatsAppIcon size={24} /> Enviar factura por WhatsApp</LinkButton>
+                  )}
+                  <LinkButton href={`/d/${invoice.public_token}?pago=${way}`}><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
+                </>
+              )}
+
+              {/* Lo que dice la factura sobre cómo pagar: casi nunca se cambia */}
+              <details>
+                <summary className="cursor-pointer py-2 text-base font-bold text-navy-700">
+                  Pago en la factura: {way === 'ath' ? 'solo ATH' : way === 'cash' || !mech.ath_movil_number ? 'efectivo' : 'ATH o efectivo'}
+                </summary>
                 {mech.ath_movil_number ? (
                   <Choice
                     columns={1}
@@ -435,27 +440,10 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                   />
                 ) : (
                   <Link to="/mas/negocio" className="block rounded-xl bg-slate-100 p-3 text-base text-slate-700">
-                    La factura dice <b>efectivo o cheque</b>. Si también quieres cobrar por ATH Móvil, pon tu número en <b className="text-navy-700 underline">Más → Mi negocio</b>.
+                    Para cobrar también por ATH Móvil, pon tu número en <b className="text-navy-700 underline">Más → Mi negocio</b>.
                   </Link>
                 )}
-              </Field>
-
-              {!invoice ? (
-                <Button disabled={busy} onClick={makeInvoice}><Receipt /> {busy ? 'Haciendo factura…' : 'Hacer factura'}</Button>
-              ) : (
-                <>
-                  {invoiceOutdated && (
-                    <Button variant="secondary" disabled={busy} onClick={makeInvoice}>Actualizar factura con el total nuevo ({formatMoney(totals.total)})</Button>
-                  )}
-                  {client.phone && (
-                    <LinkButton href={whatsappLink(client.phone, invoiceMsg)} external variant="whatsapp"><WhatsAppIcon size={24} /> Enviar factura por WhatsApp</LinkButton>
-                  )}
-                  <LinkButton href={`/d/${invoice.public_token}?pago=${way}`}><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
-                </>
-              )}
-
-              <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700! active:bg-emerald-800!"><HandCoins /> Recibir pago o depósito</Button>
-              <p className="text-sm text-slate-500">Puede pagar todo de una vez o por partes (depósito y abonos), como tú quieras. Cuando completa el total, la factura queda pagada sola.</p>
+              </details>
             </>
           )}
 

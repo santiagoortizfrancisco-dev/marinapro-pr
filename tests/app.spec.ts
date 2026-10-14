@@ -342,7 +342,7 @@ test('"Recibir pago" de todo sin hacer factura: la hace sola y queda pagada', as
   await expect(page.getByLabel(/¿Cuánto te dio\?/)).toHaveValue('94.78') // sale lo que falta
   await page.getByRole('dialog').getByRole('button', { name: 'Efectivo' }).click()
   await page.getByRole('button', { name: 'Guardar pago' }).click()
-  await expect(page.getByText(/Pagada el .* Efectivo/)).toBeVisible()
+  await expect(page.getByText(/Pagada el/)).toBeVisible()
   const s = await state()
   expect(s.invoices).toHaveLength(1)
   expect(s.invoices[0].number).toBe('0001')
@@ -820,7 +820,7 @@ test('depósito y abonos: el cliente paga por partes hasta saldar; Me deben ense
   await expect(page.getByText('Le quedan $74.78 de balance.')).toBeVisible()
   await page.getByRole('dialog').getByRole('button', { name: /ATH Móvil/ }).click()
   await page.getByRole('button', { name: 'Guardar pago' }).click()
-  await expect(page.getByText(/Depósito · ATH Móvil/)).toBeVisible()
+  await expect(page.getByText(/Depósito .* · ATH/)).toBeVisible()
   await expect(page.getByLabel('Balance')).toHaveText('$74.78')
   let s = await state()
   expect(s.invoices).toHaveLength(0)
