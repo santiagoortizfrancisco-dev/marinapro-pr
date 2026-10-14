@@ -303,7 +303,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                     : [p.part_number, `${Number(p.qty)} × ${p.supplied_by === 'client' ? 'del cliente' : formatMoney(Number(p.unit_cost))}`, !p.received_at && (p.eta ? `llega ${formatDate(p.eta)}` : 'falta que llegue')].filter(Boolean).join(' · ')}
                 </div>
               </div>
-              <div className="text-right text-base font-bold text-slate-900">{p.supplied_by === 'client' ? <span className="text-sm text-slate-500">No se cobra</span> : formatMoney(Number(p.qty) * Number(p.unit_cost))}</div>
+              <div className="text-right text-base font-bold text-slate-900">{p.supplied_by === 'client' ? <span className="text-sm text-slate-500">No se cobra</span> : Number(p.unit_cost) === 0 ? <span className="text-sm text-slate-500">Incluido</span> : formatMoney(Number(p.qty) * Number(p.unit_cost))}</div>
             </button>
           ))}
         </div>

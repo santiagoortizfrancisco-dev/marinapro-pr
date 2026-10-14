@@ -108,7 +108,9 @@ export default function QuickInvoice() {
     }))
   }
 
-  const filled = lines.filter((l) => l.desc.trim() && (num(l.price) ?? 0) > 0)
+  // Todo lo que escribió va en la factura, tenga precio o no (sin precio sale como "Incluido")
+  const filled = lines.filter((l) => l.desc.trim())
+  const noName = lines.findIndex((l) => !l.desc.trim() && (num(l.price) ?? 0) > 0)
   const totals = computeTotals(
     { labor_hours: 0, labor_rate: 0, charge_ivu_labor: ivu, charge_ivu_parts: ivu },
     filled.map((l) => ({ qty: 1, unit_cost: num(l.price) ?? 0, supplied_by: 'mechanic' as const, kind: l.kind })),
@@ -118,7 +120,9 @@ export default function QuickInvoice() {
   function check(): string | null {
     if (!pick) return 'Escoge el cliente o toca “Cliente nuevo”.'
     if (pick.kind === 'new' && newClient.full_name.trim().length < 2) return 'Escribe el nombre del cliente.'
-    if (filled.length === 0) return 'Añade por lo menos una línea con su precio.'
+    if (noName >= 0) return `Escribe qué es la línea ${noName + 1} (tiene precio pero no dice qué es).`
+    if (filled.length === 0) return 'Escribe por lo menos una cosa de lo que cobras.'
+    if (totals.total <= 0) return 'Pon el precio por lo menos en una línea.'
     return null
   }
 
@@ -170,7 +174,7 @@ export default function QuickInvoice() {
       })))
       if (p.error) throw p.error
       // Sus precios quedan guardados para la próxima vez
-      await Promise.all(filled.map((l) => db().rpc('remember_catalog_item', { p_kind: l.kind, p_name: l.desc.trim(), p_price: num(l.price) })))
+      await Promise.all(filled.map((l) => db().rpc('remember_catalog_item', { p_kind: l.kind, p_name: l.desc.trim(), p_price: (num(l.price) ?? 0) > 0 ? num(l.price) : null })))
       const inv = await db().rpc('create_invoice', { p_wo: woId })
       if (inv.error) throw inv.error
       // Lo que le dio (todo o una parte): si completa el total, la factura queda pagada sola

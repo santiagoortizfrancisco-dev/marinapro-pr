@@ -223,8 +223,8 @@ export default function PublicDoc() {
                   {p.supplied_by === 'client' && <span className="block text-sm text-slate-500">Pieza suplida por el cliente: solo se garantiza la instalación.</span>}
                 </td>
                 <td className="whitespace-nowrap py-2 pl-3 text-right">{Number(p.qty)}</td>
-                <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' ? '—' : formatMoney(Number(p.unit_cost))}</td>
-                <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' ? 'No se cobra' : formatMoney(Number(p.qty) * Number(p.unit_cost))}</td>
+                <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' || Number(p.unit_cost) === 0 ? '—' : formatMoney(Number(p.unit_cost))}</td>
+                <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' ? 'No se cobra' : Number(p.unit_cost) === 0 ? 'Incluido' : formatMoney(Number(p.qty) * Number(p.unit_cost))}</td>
               </tr>
             ))}
           </tbody>
