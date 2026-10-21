@@ -57,7 +57,7 @@ export default function PaySheet({ open, balance, title = 'Recibir pago', onClos
     <Sheet open={open} title={title} onClose={onClose}>
       <div className="space-y-3">
         <Field label="¿Cuánto te dio? ($)" hint={balance > 0 ? `Falta ${formatMoney(balance)}. Si te dio una parte (depósito o abono), cambia la cantidad.` : 'Un depósito o adelanto: la cantidad que quieras.'}>
-          <Input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="text-2xl! font-extrabold" />
+          <Input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} onFocus={(e) => { const box = e.currentTarget; setTimeout(() => box.select(), 0) }} placeholder="0.00" className="text-2xl! font-extrabold" />
         </Field>
         {balance > 0 && value > 0 && left > 0.004 && <p className="rounded-xl bg-amber-50 p-3 text-base font-bold text-amber-900">Le quedan {formatMoney(left)} de balance.</p>}
         {balance > 0 && value > 0 && left <= 0.004 && <p className="rounded-xl bg-emerald-50 p-3 text-base font-bold text-emerald-800">Con esto queda saldado ✓</p>}
