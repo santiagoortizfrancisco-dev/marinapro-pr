@@ -215,7 +215,7 @@ export default function QuickInvoice() {
           {done.phone && (
             <div className="flex"><LinkButton href={whatsappLink(done.phone, msg)} external variant="whatsapp"><WhatsAppIcon size={24} /> Enviar factura por WhatsApp</LinkButton></div>
           )}
-          <div className="flex"><LinkButton href={`/d/${done.invoice.public_token}?pago=${way}`}><ExternalLink size={20} /> Ver / imprimir factura</LinkButton></div>
+          <div className="flex"><LinkButton href={`/d/${done.invoice.public_token}?pago=${way}`}><ExternalLink size={20} /> Ver factura o PDF</LinkButton></div>
           <Button variant="secondary" onClick={() => navigate(`/trabajos/${done.woId}`)}>Abrir el trabajo</Button>
           <Button variant="ghost" onClick={() => navigate('/trabajos')}>Listo</Button>
         </div>

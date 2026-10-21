@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
-import { ArrowLeft, CheckCircle2, Printer } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, FileDown, Printer } from 'lucide-react'
 import { AthMovilBadge, WhatsAppIcon } from '../components/BrandIcons'
 import { supabase } from '../lib/supabase'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, labelOf } from '../lib/catalog'
@@ -8,6 +8,7 @@ import { formatDate, formatMoney, formatTime } from '../lib/format'
 import { whatsappLink } from '../lib/links'
 import { percent } from '../lib/totals'
 import { DEFAULT_BRAND, logoUrl } from '../lib/brand'
+import { pdfName, shareAsPdf } from '../lib/pdf'
 
 const ORANGE = '#F37021'
 
@@ -111,6 +112,24 @@ export default function PublicDoc() {
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading')
   // El mecánico (que tiene sesión) ve un botón para volver: en el app instalada del iPhone no hay "atrás"
   const [isMechanic, setIsMechanic] = useState(false)
+  const paper = useRef<HTMLElement>(null)
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const [pdfError, setPdfError] = useState('')
+
+  /** Hace el PDF de lo que se ve y lo comparte (celular) o lo descarga (computadora). */
+  async function makePdf() {
+    if (!paper.current || !doc) return
+    setPdfBusy(true)
+    setPdfError('')
+    try {
+      await shareAsPdf(paper.current, pdfName(doc.kind, doc.number, doc.client.name))
+    } catch (e) {
+      console.error(e)
+      setPdfError('No se pudo hacer el PDF. Intenta otra vez o usa Imprimir.')
+    } finally {
+      setPdfBusy(false)
+    }
+  }
 
   useEffect(() => {
     supabase?.auth.getSession().then(({ data }) => setIsMechanic(Boolean(data.session)))
@@ -150,10 +169,14 @@ export default function PublicDoc() {
           <button onClick={backToApp} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl text-lg font-bold text-white" style={{ backgroundColor: doc.business.brand_color || DEFAULT_BRAND }}>
             <ArrowLeft /> Volver al app
           </button>
-          <p className="mt-1 text-center text-xs text-slate-500">Así lo ve tu cliente. Este botón solo lo ves tú.</p>
+          <button onClick={makePdf} disabled={pdfBusy} className="mt-2 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-navy-800 bg-white text-lg font-bold text-navy-800 active:bg-navy-50 disabled:opacity-60">
+            <FileDown /> {pdfBusy ? 'Haciendo el PDF…' : `${isInvoice ? 'Factura' : 'Estimado'} en PDF (compartir o guardar)`}
+          </button>
+          {pdfError && <p className="mt-1 rounded-lg bg-red-100 p-2 text-center text-sm font-semibold text-red-800">{pdfError}</p>}
+          <p className="mt-1 text-center text-xs text-slate-500">Así lo ve tu cliente. Estos botones solo los ves tú.</p>
         </div>
       )}
-      <article className="mx-auto max-w-2xl overflow-hidden rounded-2xl bg-white text-slate-900 shadow-lg [print-color-adjust:exact] print:max-w-none print:rounded-none print:shadow-none">
+      <article ref={paper} className="mx-auto max-w-2xl overflow-hidden rounded-2xl bg-white text-slate-900 shadow-lg [print-color-adjust:exact] print:max-w-none print:rounded-none print:shadow-none">
         <div className="flex h-2.5" aria-hidden="true">
           <span className="flex-[3]" style={{ backgroundColor: color }} />
           <span className="flex-1" style={{ backgroundColor: ORANGE }} />
@@ -294,9 +317,15 @@ export default function PublicDoc() {
           </section>
         )}
 
-        <button onClick={() => window.print()} className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900 print:hidden">
-          <Printer /> Guardar PDF / Imprimir
-        </button>
+        <div data-nopdf className="mt-6 space-y-2 print:hidden">
+          <button onClick={makePdf} disabled={pdfBusy} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900 disabled:opacity-60">
+            <FileDown /> {pdfBusy ? 'Haciendo el PDF…' : 'Descargar PDF'}
+          </button>
+          <button onClick={() => window.print()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-bold text-navy-800 active:bg-slate-100">
+            <Printer /> Imprimir
+          </button>
+          {pdfError && <p className="rounded-lg bg-red-100 p-2 text-center text-sm font-semibold text-red-800">{pdfError}</p>}
+        </div>
         </div>
         <footer className="flex items-center justify-center gap-2 border-t border-slate-100 bg-slate-50 py-3 text-xs text-slate-500">
           <img src="/logo.svg" alt="" className="h-5 w-5 rounded" /> Hecho con Salt Marine Repair · Powered by Francisco Santiago (Joy)

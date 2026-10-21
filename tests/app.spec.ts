@@ -29,7 +29,7 @@ async function login(page: Page) {
 async function openExampleAppointment(page: Page) {
   await page.goto(`/agenda?dia=${tomorrowPR()}`)
   await page.getByRole('link', { name: /La Tranquila/ }).first().click()
-  await expect(page.getByRole('heading', { name: 'El trabajo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'El trabajo', exact: true })).toBeVisible()
 }
 
 test.beforeEach(async () => {
@@ -129,7 +129,7 @@ test('cita nueva desde un hueco libre, con cliente nuevo: crea cliente, bote, ci
   await page.getByPlaceholder('El motor de babor no arranca en frío').fill('No prende el GPS')
   await page.getByRole('button', { name: 'Guardar cita' }).click()
 
-  await expect(page.getByRole('heading', { name: 'El trabajo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'El trabajo', exact: true })).toBeVisible()
   await expect(page.getByText('Bote del Bot').first()).toBeVisible()
   const s = await state()
   expect(s.clients.some((c) => c.full_name === 'Pedro Prueba')).toBe(true)
@@ -147,7 +147,7 @@ test('cita nueva escogiendo un cliente que ya existe (buscando por teléfono)', 
   await page.getByPlaceholder('Buscar cliente, bote o teléfono').fill('0111')
   await page.getByRole('button', { name: /La Tranquila · Ana Ejemplo/ }).click()
   await page.getByRole('button', { name: 'Guardar cita' }).click()
-  await expect(page.getByRole('heading', { name: 'El trabajo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'El trabajo', exact: true })).toBeVisible()
   expect((await state()).appointments).toHaveLength(2)
 })
 
@@ -233,7 +233,8 @@ test('mantenimiento: al terminar el trabajo pregunta cuándo le toca, y el bote 
   await expect(page.getByPlaceholder('Cambio de aceite e impeller')).toHaveValue('Cambio de impeller')
   await page.getByRole('button', { name: '6 meses' }).click()
   await page.getByRole('button', { name: 'Guardar recordatorio' }).click()
-  await expect(page.getByText(/Próximo servicio: Cambio de impeller/)).toBeVisible()
+  await expect(page.getByText('Próximo servicio', { exact: true })).toBeVisible()
+  await expect(page.getByText(/^Cambio de impeller · /)).toBeVisible()
   const m = (await state()).maintenance_schedules[0]
   expect(m.interval_months).toBe(6)
 
@@ -294,7 +295,7 @@ test('el cliente aprueba el estimado desde el link y al mecánico le sale el avi
   await alert.getByRole('button', { name: 'Quitar aviso' }).click()
   await expect(alert).toHaveCount(0)
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'El trabajo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'El trabajo', exact: true })).toBeVisible()
   await expect(alert).toHaveCount(0)
 })
 
@@ -306,7 +307,7 @@ test('el mecánico abre "Ver el estimado" y puede volver al app (en el iPhone no
   await expect(page.getByText('ESTIMADO', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Volver al app' }).click()
   await expect(page).toHaveURL(cita)
-  await expect(page.getByRole('heading', { name: 'El trabajo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'El trabajo', exact: true })).toBeVisible()
 
   // El cliente (sin cuenta) no ve ese botón
   const token = (await state()).work_orders[0].public_token as string
@@ -506,7 +507,7 @@ test('directorio: el mecánico pide salir, el admin lo aprueba y abre; un dueño
   await expect(page.getByText('Mi Sueño').first()).toBeVisible()
   await expect(page.getByLabel(/problema/i).first()).toHaveValue('El Yamaha 150 no sube de revoluciones')
   await page.getByRole('button', { name: /Guardar/ }).click()
-  await expect(page.getByRole('heading', { name: 'El trabajo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'El trabajo', exact: true })).toBeVisible()
   const after = (await state()).service_requests.find((r) => r.id === sr.id)!
   expect(after.status).toBe('scheduled')
   await expect(page.getByRole('status').filter({ hasText: 'pidió cita' })).toHaveCount(0)
@@ -882,7 +883,7 @@ test('factura rápida: lo que se escribe sin precio también va en la factura (c
   await expect(page.getByText('Factura #0001')).toBeVisible()
   const s = await state()
   expect(s.work_order_parts.map((x) => x.description)).toEqual(['Servicio de 100 horas', 'Cambio de filtros de gasolina', 'Lavado del motor'])
-  await page.getByRole('link', { name: /Ver \/ imprimir factura/ }).click()
+  await page.getByRole('link', { name: /Ver factura o PDF/ }).click()
   await expect(page.getByRole('cell', { name: 'Lavado del motor' })).toBeVisible()
   await expect(page.getByText('Incluido')).toHaveCount(2)
 })
@@ -906,4 +907,32 @@ test('link de prueba (/demo): entra sin registro a un taller de ejemplo, con avi
   // Crear mi cuenta: sale de la prueba y abre el registro
   await page.getByRole('button', { name: 'Crear mi cuenta' }).click()
   await expect(page.getByRole('heading', { name: /Crear mi cuenta/ })).toBeVisible()
+})
+
+test('facturas: lista de todas las facturas con buscador, y la factura se saca en PDF', async ({ page }) => {
+  await login(page)
+  await openExampleAppointment(page)
+  await page.getByRole('button', { name: /Mano de obra por hora/ }).click()
+  await page.getByLabel('Horas').fill('1')
+  await page.getByLabel('Horas').blur()
+  await expect(page.getByText('Falta la prueba en el agua.')).toBeVisible() // mientras se trabaja, avisa
+  await page.getByRole('button', { name: 'Hacer factura' }).click()
+  await expect(page.getByText('Factura #0001')).toBeVisible()
+  // Ya facturado: la pantalla se ordena para cobrar, sin avisos de trabajo
+  await expect(page.getByText('Falta la prueba en el agua.')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Detalles del trabajo' })).toBeVisible()
+
+  await page.goto('/trabajos')
+  await page.getByRole('link', { name: /Todas las facturas/ }).click()
+  await expect(page.getByText('#0001')).toBeVisible()
+  await expect(page.getByText('Debe $94.78')).toBeVisible()
+  await page.getByLabel('Buscar factura').fill('zzz')
+  await expect(page.getByText('No sale ninguna')).toBeVisible()
+  await page.getByLabel('Buscar factura').fill('ana')
+  await page.getByRole('link', { name: /#0001/ }).click()
+
+  await expect(page.getByText('FACTURA #0001')).toBeVisible()
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: /Factura en PDF/ }).click()
+  expect((await download).suggestedFilename()).toBe('Factura-0001-Ana-Ejemplo.pdf')
 })

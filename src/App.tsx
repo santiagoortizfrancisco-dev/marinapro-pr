@@ -29,6 +29,7 @@ import PublicProfileSettings from './pages/mechanic/PublicProfileSettings'
 import RequestDetail from './pages/mechanic/RequestDetail'
 import PasswordSettings from './pages/mechanic/PasswordSettings'
 import QuickInvoice from './pages/mechanic/QuickInvoice'
+import Invoices from './pages/mechanic/Invoices'
 import Home from './pages/mechanic/Home'
 import AppLock from './components/AppLock'
 import MyBoats from './pages/client/MyBoats'
@@ -72,6 +73,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/inicio" element={<Home />} />
+          <Route path="/facturas" element={<Invoices />} />
           <Route path="/agenda" element={<Agenda />} />
           <Route path="/citas/nueva" element={<AppointmentForm />} />
           <Route path="/citas/:id" element={<AppointmentDetail />} />

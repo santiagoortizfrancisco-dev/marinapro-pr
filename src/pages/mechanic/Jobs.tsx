@@ -41,6 +41,12 @@ export default function Jobs() {
     <>
       <PageTitle>Cobros</PageTitle>
 
+      <Link to="/facturas" className={`${CARD} mb-4 flex min-h-14 items-center gap-3 px-3 py-2 text-navy-900 active:bg-slate-50`}>
+        <IconBadge icon={Receipt} tone="violet" size="sm" />
+        <span className="flex-1 text-lg font-extrabold">Todas las facturas</span>
+        <span className="text-sm font-bold text-slate-500">Ver o PDF ›</span>
+      </Link>
+
       {/* Lo que me deben */}
       <div className={`${CARD} mb-6 flex items-center gap-4 p-4`}>
         <IconBadge icon={HandCoins} tone="orange" size="lg" />

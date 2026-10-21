@@ -68,6 +68,26 @@ function Section({ title, icon, tone = 'navy', children, right, summary, closed 
   )
 }
 
+/** Renglón dentro de una tarjeta: título y resumen; se abre con un toque. */
+function Row({ icon: Icon, title, summary, children, defaultOpen = false }: {
+  icon: LucideIcon; title: string; summary?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left active:bg-slate-50">
+        <Icon size={22} className="shrink-0 text-navy-700" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-bold text-slate-900">{title}</span>
+          {!open && summary && <span className="block truncate text-sm text-slate-600">{summary}</span>}
+        </span>
+        <ChevronDown size={20} className={`shrink-0 text-slate-400 transition ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="px-3 pb-4">{children}</div>}
+    </div>
+  )
+}
+
 /** Texto que se guarda solo al salir del campo. */
 function AutoText({ label, hint, value, onSave, rows = 3 }: { label: string; hint?: string; value: string | null; onSave: (v: string | null) => void; rows?: number }) {
   const [v, setV] = useState(value ?? '')
@@ -214,6 +234,94 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
   const st = WORK_ORDER_STATUS[wo.status]
 
+  // Ya tiene factura: la pantalla se ordena para cobrar
+  const billed = Boolean(invoice)
+  const cobrarBlock = (
+  <Section title="Cobrar" icon={HandCoins} tone="green">
+      <div className="space-y-3">
+        {/* Una sola cuenta: total, lo que ha pagado y lo que falta */}
+        <div className="rounded-2xl bg-white p-4 ring-2 ring-slate-200">
+          <div className="flex items-center justify-between text-lg">
+            <span className="font-bold text-slate-700">{invoice ? `Factura #${invoice.number}` : 'Total'}</span>
+            <span className="font-extrabold text-navy-900">{formatMoney(due)}</span>
+          </div>
+          {payments.map((pay) => (
+            <div key={pay.id} className="flex items-center gap-2 text-base text-emerald-800">
+              <span className="min-w-0 flex-1 truncate">
+                {!invoice || pay.paid_at < invoice.created_at ? 'Depósito' : 'Abono'} {formatDate(pay.paid_at).slice(0, 5)} · {({ ath_movil: 'ATH', cash: 'Efectivo', check: 'Cheque', other: 'Otro' } as const)[pay.method]}
+              </span>
+              <b className="shrink-0">−{formatMoney(Number(pay.amount))}</b>
+              {!invoice?.paid_at ? (
+                <button type="button" disabled={busy} onClick={() => removePayment(pay)} aria-label={`Quitar pago de ${formatMoney(Number(pay.amount))}`}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl font-bold text-slate-400 active:bg-slate-100">×</button>
+              ) : <span className="w-2" />}
+            </div>
+          ))}
+          {invoice?.paid_at ? (
+            <p className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-50 p-2 text-lg font-extrabold text-emerald-800">
+              <CheckCircle2 /> Pagada el {formatDate(invoice.paid_at)}
+            </p>
+          ) : (
+            <div className="mt-2 flex items-center justify-between border-t-2 border-slate-200 pt-2">
+              <span className="text-lg font-extrabold text-navy-900">{payments.length ? 'Balance' : 'Falta cobrar'}</span>
+              <span className="text-2xl font-extrabold text-navy-900" aria-label="Balance">{formatMoney(balance)}</span>
+            </div>
+          )}
+        </div>
+
+        {!invoice?.paid_at && (
+          <>
+            <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700! active:bg-emerald-800!"><HandCoins /> Recibir pago o depósito</Button>
+
+            {!invoice ? (
+              <Button variant="secondary" disabled={busy} onClick={makeInvoice}><Receipt /> {busy ? 'Haciendo factura…' : 'Hacer factura'}</Button>
+            ) : (
+              <>
+                {invoiceOutdated && (
+                  <Button variant="secondary" disabled={busy} onClick={makeInvoice}>Actualizar factura con el total nuevo ({formatMoney(totals.total)})</Button>
+                )}
+                {client.phone && (
+                  <LinkButton href={whatsappLink(client.phone, invoiceMsg)} external variant="whatsapp"><WhatsAppIcon size={24} /> Enviar factura por WhatsApp</LinkButton>
+                )}
+                <LinkButton href={`/d/${invoice.public_token}?pago=${way}`}><ExternalLink size={20} /> Ver factura o PDF</LinkButton>
+              </>
+            )}
+
+            {/* Lo que dice la factura sobre cómo pagar: casi nunca se cambia */}
+            <details>
+              <summary className="cursor-pointer py-2 text-base font-bold text-navy-700">
+                Pago en la factura: {way === 'ath' ? 'solo ATH' : way === 'cash' || !mech.ath_movil_number ? 'efectivo' : 'ATH o efectivo'}
+              </summary>
+              {mech.ath_movil_number ? (
+                <Choice
+                  columns={1}
+                  value={way}
+                  onChange={setPayWay}
+                  options={[
+                    { value: 'any', label: 'ATH Móvil o efectivo', icon: HandCoins, tone: 'teal' },
+                    { value: 'ath', label: 'Solo ATH Móvil', icon: AthIcon as unknown as LucideIcon, tone: 'orange' },
+                    { value: 'cash', label: 'Efectivo o cheque', icon: Banknote, tone: 'green' },
+                  ]}
+                />
+              ) : (
+                <Link to="/mas/negocio" className="block rounded-xl bg-slate-100 p-3 text-base text-slate-700">
+                  Para cobrar también por ATH Móvil, pon tu número en <b className="text-navy-700 underline">Más → Mi negocio</b>.
+                </Link>
+              )}
+            </details>
+          </>
+        )}
+
+        {invoice?.paid_at && (
+          <>
+            <LinkButton href={`/d/${invoice.public_token}`}><ExternalLink size={20} /> Ver factura o PDF</LinkButton>
+            <Button variant="ghost" disabled={busy} onClick={unmarkPaid}>Desmarcar pagada</Button>
+          </>
+        )}
+      </div>
+    </Section>
+  )
+
   return (
     <>
       {embedded ? (
@@ -234,115 +342,128 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
       )}
       {saved && <div className="fixed left-1/2 top-20 z-30 -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white">{saved}</div>}
 
-      {/* Al terminar: ¿cuándo le toca el próximo servicio? (se puede saltar) */}
-      {['done', 'invoiced', 'paid'].includes(wo.status) && (
-        data.next ? (
-          <p className="mb-3 flex items-center gap-2 rounded-xl bg-sun-400/15 p-3 text-base font-semibold text-navy-900">
-            <CalendarClock size={20} className="shrink-0" /> Próximo servicio: {data.next.service_type} · {formatDate(data.next.due_date)}
-          </p>
-        ) : !skipNext && (
-          <div className="mb-3">
-            <NextService
-              boatId={boat.id}
-              workOrderId={wo.id}
-              defaultService={parts.find((p) => p.kind === 'service')?.description ?? 'Mantenimiento'}
-              onSaved={reload}
-              onSkip={() => setSkipNext(true)}
-            />
-          </div>
-        )
-      )}
-
-      {warnings.length > 0 && (
-        <div className="mb-2 rounded-xl bg-amber-50 p-3 text-base text-amber-900">
-          {warnings.map((w) => <div key={w} className="flex gap-2"><AlertTriangle size={20} className="mt-0.5 shrink-0" /> {w}</div>)}
+      {/* Recién terminado: ¿cuándo le toca el próximo servicio? (se puede saltar) */}
+      {wo.status === 'done' && !invoice && !data.next && !skipNext && (
+        <div className="mb-3">
+          <NextService boatId={boat.id} workOrderId={wo.id} defaultService={parts.find((p) => p.kind === 'service')?.description ?? 'Mantenimiento'} onSaved={reload} onSkip={() => setSkipNext(true)} />
         </div>
       )}
 
-      {!locked && wo.status !== 'invoiced' && (
+      {/* Ya facturado: lo primero es cobrar */}
+      {billed && cobrarBlock}
+
+      {!billed && !locked && (
         <Section title="¿En qué va?" icon={ListChecks} tone="navy">
           <Choice columns={3} value={wo.status} onChange={setStatus} options={WORK_STEPS} />
         </Section>
       )}
 
-      <Section title="El problema" icon={Wrench} tone="amber" closed={Boolean(wo.complaint || wo.diagnosis || wo.work_done)} summary={wo.work_done || wo.diagnosis || wo.complaint}>
-        <div className="space-y-4">
-          <AutoText label="Lo que dice el cliente" value={wo.complaint} onSave={(v) => patch({ complaint: v })} />
-          <AutoText label="Diagnóstico (lo que encontraste)" value={wo.diagnosis} onSave={(v) => patch({ diagnosis: v })} rows={4} />
-          <AutoText label="Lo que se hizo" hint="Sale en la factura para el cliente" value={wo.work_done} onSave={(v) => patch({ work_done: v })} rows={4} />
+      {/* Avisos solo mientras se trabaja */}
+      {!billed && warnings.length > 0 && (
+        <div className="mt-4 rounded-xl bg-amber-50 p-3 text-base text-amber-900">
+          {warnings.map((w) => <div key={w} className="flex gap-2"><AlertTriangle size={20} className="mt-0.5 shrink-0" /> {w}</div>)}
         </div>
-      </Section>
+      )}
 
-      <Section title="Mano de obra por hora" icon={Clock} tone="blue" closed summary={Number(wo.labor_hours) > 0 ? `${Number(wo.labor_hours)} h × ${formatMoney(Number(wo.labor_rate))} = ${formatMoney(totals.hours)}` : 'Si cobras por hora (si no, usa + Servicio)'}>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Horas">
-            <Input inputMode="decimal" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} onBlur={() => patch({ labor_hours: num(laborHours) ?? 0 })} />
-          </Field>
-          <Field label="Tarifa por hora ($)">
-            <Input inputMode="decimal" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} onBlur={() => patch({ labor_rate: num(laborRate) ?? 0 })} />
-          </Field>
-        </div>
-        <p className="mt-2 text-right text-lg font-bold text-navy-900">{formatMoney(totals.hours)}</p>
-        <p className="text-right text-sm text-slate-500">Si cobras por trabajo y no por hora, déjalo en 0 y usa “+ Añadir lo que cobras”.</p>
-      </Section>
-
-      <Section title="Servicios y piezas" icon={Package} tone="teal">
-        <button onClick={() => { setEditPart(null); setPartOpen(true) }} className="mb-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900">
-          <Plus size={22} /> Añadir lo que cobras
-        </button>
-        {parts.length === 0 && <p className="text-base text-slate-600">Todavía no hay servicios ni piezas.</p>}
-        <div className="space-y-2">
+      {/* Lo que cobras: líneas, horas y el total, todo junto */}
+      <section className="mt-6">
+        <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><IconBadge icon={Package} tone="teal" size="sm" /> Lo que cobras</h2>
+        {!locked && (
+          <button onClick={() => { setEditPart(null); setPartOpen(true) }}
+            className={`mb-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl text-lg font-bold ${billed ? 'border-2 border-navy-800 bg-white text-navy-800 active:bg-navy-50' : 'bg-navy-800 text-white active:bg-navy-900'}`}>
+            <Plus size={22} /> Añadir lo que cobras
+          </button>
+        )}
+        <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+          {parts.length === 0 && <p className="p-3 text-base text-slate-600">Todavía no hay nada. Toca “Añadir lo que cobras”.</p>}
           {[...parts].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'service' ? -1 : 1)).map((p) => (
-            <button key={p.id} onClick={() => { setEditPart(p); setPartOpen(true) }} className="flex w-full items-start gap-3 rounded-2xl border-2 border-slate-200 bg-white p-3 text-left active:bg-slate-50">
-              {p.kind === 'service' ? <Wrench size={22} className="mt-0.5 shrink-0 text-navy-700" /> : <Package size={22} className="mt-0.5 shrink-0 text-navy-700" />}
-              <div className="min-w-0 flex-1">
-                <div className="text-base font-bold text-slate-900">{p.description}</div>
-                <div className="text-sm text-slate-600">
-                  {p.kind === 'service'
-                    ? ['Servicio', Number(p.qty) !== 1 && `${Number(p.qty)} × ${formatMoney(Number(p.unit_cost))}`].filter(Boolean).join(' · ')
-                    : [p.part_number, `${Number(p.qty)} × ${p.supplied_by === 'client' ? 'del cliente' : formatMoney(Number(p.unit_cost))}`, !p.received_at && (p.eta ? `llega ${formatDate(p.eta)}` : 'falta que llegue')].filter(Boolean).join(' · ')}
-                </div>
-              </div>
-              <div className="text-right text-base font-bold text-slate-900">{p.supplied_by === 'client' ? <span className="text-sm text-slate-500">No se cobra</span> : Number(p.unit_cost) === 0 ? <span className="text-sm text-slate-500">Incluido</span> : formatMoney(Number(p.qty) * Number(p.unit_cost))}</div>
+            <button key={p.id} disabled={locked} onClick={() => { setEditPart(p); setPartOpen(true) }} className="flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left active:bg-slate-50">
+              {p.kind === 'service' ? <Wrench size={20} className="shrink-0 text-navy-700" /> : <Package size={20} className="shrink-0 text-navy-700" />}
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-bold text-slate-900">{p.description}</span>
+                {(Number(p.qty) !== 1 || p.part_number || (p.kind !== 'service' && !p.received_at)) && (
+                  <span className="block text-sm text-slate-600">
+                    {[p.part_number, Number(p.qty) !== 1 && `${Number(p.qty)} × ${formatMoney(Number(p.unit_cost))}`, p.kind !== 'service' && !p.received_at && (p.eta ? `llega ${formatDate(p.eta)}` : 'falta que llegue')].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </span>
+              <span className="shrink-0 text-right text-base font-bold text-slate-900">{p.supplied_by === 'client' ? <span className="text-sm text-slate-500">No se cobra</span> : Number(p.unit_cost) === 0 ? <span className="text-sm text-slate-500">Incluido</span> : formatMoney(Number(p.qty) * Number(p.unit_cost))}</span>
             </button>
           ))}
-        </div>
-      </Section>
-
-      <Section title="Fotos" icon={Camera} tone="violet" closed summary={photos.length ? `${photos.length} ${photos.length === 1 ? 'foto' : 'fotos'}` : 'Antes, pieza vieja, pieza nueva, después'}>
-        <PhotoSection workOrderId={wo.id} photos={photos} onChange={reload} />
-      </Section>
-
-      <Section title="Prueba en el agua" icon={Waves} tone="blue" closed summary={!wo.sea_trial_required ? 'No hace falta' : wo.sea_trial_method === 'not_allowed' ? 'El cliente no la permitió' : wo.sea_trial_done ? 'Hecha ✓' : 'Pendiente'}>
-        <div className="space-y-3">
-          <Toggle checked={wo.sea_trial_required} onChange={(v) => patch({ sea_trial_required: v })} label="Este trabajo necesita prueba en el agua" hint="Motor, propulsión o electricidad" />
-          {wo.sea_trial_required && (
-            <>
-              <Choice columns={1} value={wo.sea_trial_method} onChange={(v) => patch({ sea_trial_method: v, sea_trial_done: v === 'not_allowed' ? false : wo.sea_trial_done })} options={SEA_TRIAL_METHODS} />
-              {wo.sea_trial_method && wo.sea_trial_method !== 'not_allowed' && (
-                <Toggle checked={wo.sea_trial_done} onChange={(v) => patch({ sea_trial_done: v })} label="Prueba hecha y todo bien" />
-              )}
-              <AutoText label="Notas de la prueba" value={wo.sea_trial_notes} onSave={(v) => patch({ sea_trial_notes: v })} rows={2} />
-            </>
+          <Row icon={Clock} title="Mano de obra por hora" summary={Number(wo.labor_hours) > 0 ? `${Number(wo.labor_hours)} h × ${formatMoney(Number(wo.labor_rate))} = ${formatMoney(totals.hours)}` : 'Solo si cobras por hora'}>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Horas">
+                <Input inputMode="decimal" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} onBlur={() => patch({ labor_hours: num(laborHours) ?? 0 })} />
+              </Field>
+              <Field label="Tarifa por hora ($)">
+                <Input inputMode="decimal" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} onBlur={() => patch({ labor_rate: num(laborRate) ?? 0 })} />
+              </Field>
+            </div>
+            <p className="mt-2 text-right text-lg font-bold text-navy-900">{formatMoney(totals.hours)}</p>
+          </Row>
+          <dl className="px-3 py-2 text-base">
+            <div className="flex justify-between py-0.5 text-slate-600"><dt>Mano de obra y servicios</dt><dd>{formatMoney(totals.labor)}</dd></div>
+            <div className="flex justify-between py-0.5 text-slate-600"><dt>Piezas</dt><dd>{formatMoney(totals.parts)}</dd></div>
+            <div className="flex justify-between py-0.5 text-slate-600"><dt>IVU {percent(mech.ivu_rate)}</dt><dd>{formatMoney(totals.ivu)}</dd></div>
+            <div className="mt-1 flex justify-between border-t-2 border-slate-200 pt-2 text-2xl font-extrabold text-navy-900"><dt>TOTAL</dt><dd>{formatMoney(totals.total)}</dd></div>
+          </dl>
+          {!locked && (
+            <details className="px-3">
+              <summary className="cursor-pointer py-3 text-base font-bold text-navy-700">Cambiar el IVU</summary>
+              <div className="space-y-2 pb-3">
+                <Toggle checked={wo.charge_ivu_labor} onChange={(v) => patch({ charge_ivu_labor: v })} label="Cobrar IVU en mano de obra" />
+                <Toggle checked={wo.charge_ivu_parts} onChange={(v) => patch({ charge_ivu_parts: v })} label="Cobrar IVU en piezas" />
+              </div>
+            </details>
           )}
         </div>
-      </Section>
+      </section>
 
-      <Section title="Total" icon={Calculator} tone="navy">
-        <dl className="rounded-2xl border-2 border-slate-200 bg-white px-4 text-lg">
-          <div className="flex justify-between border-b border-slate-200 py-2"><dt>Mano de obra y servicios</dt><dd>{formatMoney(totals.labor)}</dd></div>
-          <div className="flex justify-between border-b border-slate-200 py-2"><dt>Piezas</dt><dd>{formatMoney(totals.parts)}</dd></div>
-          <div className="flex justify-between border-b border-slate-200 py-2"><dt>IVU {percent(mech.ivu_rate)}</dt><dd>{formatMoney(totals.ivu)}</dd></div>
-          <div className="flex justify-between py-3 text-2xl font-extrabold text-navy-900"><dt>TOTAL</dt><dd>{formatMoney(totals.total)}</dd></div>
-        </dl>
-        <details className="mt-2">
-          <summary className="cursor-pointer py-2 text-base font-bold text-navy-700">Cambiar el IVU</summary>
-          <div className="space-y-2">
-            <Toggle checked={wo.charge_ivu_labor} onChange={(v) => patch({ charge_ivu_labor: v })} label="Cobrar IVU en mano de obra" />
-            <Toggle checked={wo.charge_ivu_parts} onChange={(v) => patch({ charge_ivu_parts: v })} label="Cobrar IVU en piezas" />
-          </div>
-        </details>
-      </Section>
+      {/* Detalles del trabajo: cada cosa en su renglón, se abre con un toque */}
+      <section className="mt-6">
+        <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><IconBadge icon={Wrench} tone="amber" size="sm" /> Detalles del trabajo</h2>
+        <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+          <Row icon={Wrench} title="El problema" summary={wo.work_done || wo.diagnosis || wo.complaint || 'Lo que dice el cliente y lo que encontraste'} defaultOpen={!billed && !(wo.complaint || wo.diagnosis || wo.work_done)}>
+            <div className="space-y-4">
+              <AutoText label="Lo que dice el cliente" value={wo.complaint} onSave={(v) => patch({ complaint: v })} />
+              <AutoText label="Diagnóstico (lo que encontraste)" value={wo.diagnosis} onSave={(v) => patch({ diagnosis: v })} rows={4} />
+              <AutoText label="Lo que se hizo" hint="Sale en la factura para el cliente" value={wo.work_done} onSave={(v) => patch({ work_done: v })} rows={4} />
+            </div>
+          </Row>
+          <Row icon={Camera} title="Fotos" summary={photos.length ? `${photos.length} ${photos.length === 1 ? 'foto' : 'fotos'}` : 'Antes, pieza vieja, pieza nueva, después'}>
+            <PhotoSection workOrderId={wo.id} photos={photos} onChange={reload} />
+          </Row>
+          <Row icon={Waves} title="Prueba en el agua" summary={!wo.sea_trial_required ? 'No hace falta' : wo.sea_trial_method === 'not_allowed' ? 'El cliente no la permitió' : wo.sea_trial_done ? 'Hecha ✓' : 'Pendiente'}>
+            <div className="space-y-3">
+              <Toggle checked={wo.sea_trial_required} onChange={(v) => patch({ sea_trial_required: v })} label="Este trabajo necesita prueba en el agua" hint="Motor, propulsión o electricidad" />
+              {wo.sea_trial_required && (
+                <>
+                  <Choice columns={1} value={wo.sea_trial_method} onChange={(v) => patch({ sea_trial_method: v, sea_trial_done: v === 'not_allowed' ? false : wo.sea_trial_done })} options={SEA_TRIAL_METHODS} />
+                  {wo.sea_trial_method && wo.sea_trial_method !== 'not_allowed' && (
+                    <Toggle checked={wo.sea_trial_done} onChange={(v) => patch({ sea_trial_done: v })} label="Prueba hecha y todo bien" />
+                  )}
+                  <AutoText label="Notas de la prueba" value={wo.sea_trial_notes} onSave={(v) => patch({ sea_trial_notes: v })} rows={2} />
+                </>
+              )}
+            </div>
+          </Row>
+          {['done', 'invoiced', 'paid'].includes(wo.status) && (
+            data.next ? (
+              <div className="flex min-h-14 items-center gap-3 px-3 py-2">
+                <CalendarClock size={22} className="shrink-0 text-navy-700" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-base font-bold text-slate-900">Próximo servicio</span>
+                  <span className="block truncate text-sm text-slate-600">{data.next.service_type} · {formatDate(data.next.due_date)}</span>
+                </span>
+              </div>
+            ) : (billed || skipNext) && (
+              <Row icon={CalendarClock} title="Recordarle el próximo servicio" summary="Te avisa cuando le toque">
+                <NextService boatId={boat.id} workOrderId={wo.id} defaultService={parts.find((p) => p.kind === 'service')?.description ?? 'Mantenimiento'} onSaved={reload} />
+              </Row>
+            )
+          )}
+        </div>
+      </section>
 
       {!invoice && <Section title="Estimado" icon={FileText} tone="amber">
         {wo.estimate_approved_at ? (
@@ -372,89 +493,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         )}
       </Section>}
 
-      <Section title="Cobrar" icon={HandCoins} tone="green">
-        <div className="space-y-3">
-          {/* Una sola cuenta: total, lo que ha pagado y lo que falta */}
-          <div className="rounded-2xl bg-white p-4 ring-2 ring-slate-200">
-            <div className="flex items-center justify-between text-lg">
-              <span className="font-bold text-slate-700">{invoice ? `Factura #${invoice.number}` : 'Total'}</span>
-              <span className="font-extrabold text-navy-900">{formatMoney(due)}</span>
-            </div>
-            {payments.map((pay) => (
-              <div key={pay.id} className="flex items-center gap-2 text-base text-emerald-800">
-                <span className="min-w-0 flex-1 truncate">
-                  {!invoice || pay.paid_at < invoice.created_at ? 'Depósito' : 'Abono'} {formatDate(pay.paid_at).slice(0, 5)} · {({ ath_movil: 'ATH', cash: 'Efectivo', check: 'Cheque', other: 'Otro' } as const)[pay.method]}
-                </span>
-                <b className="shrink-0">−{formatMoney(Number(pay.amount))}</b>
-                {!invoice?.paid_at ? (
-                  <button type="button" disabled={busy} onClick={() => removePayment(pay)} aria-label={`Quitar pago de ${formatMoney(Number(pay.amount))}`}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl font-bold text-slate-400 active:bg-slate-100">×</button>
-                ) : <span className="w-2" />}
-              </div>
-            ))}
-            {invoice?.paid_at ? (
-              <p className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-50 p-2 text-lg font-extrabold text-emerald-800">
-                <CheckCircle2 /> Pagada el {formatDate(invoice.paid_at)}
-              </p>
-            ) : (
-              <div className="mt-2 flex items-center justify-between border-t-2 border-slate-200 pt-2">
-                <span className="text-lg font-extrabold text-navy-900">{payments.length ? 'Balance' : 'Falta cobrar'}</span>
-                <span className="text-2xl font-extrabold text-navy-900" aria-label="Balance">{formatMoney(balance)}</span>
-              </div>
-            )}
-          </div>
-
-          {!invoice?.paid_at && (
-            <>
-              <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700! active:bg-emerald-800!"><HandCoins /> Recibir pago o depósito</Button>
-
-              {!invoice ? (
-                <Button variant="secondary" disabled={busy} onClick={makeInvoice}><Receipt /> {busy ? 'Haciendo factura…' : 'Hacer factura'}</Button>
-              ) : (
-                <>
-                  {invoiceOutdated && (
-                    <Button variant="secondary" disabled={busy} onClick={makeInvoice}>Actualizar factura con el total nuevo ({formatMoney(totals.total)})</Button>
-                  )}
-                  {client.phone && (
-                    <LinkButton href={whatsappLink(client.phone, invoiceMsg)} external variant="whatsapp"><WhatsAppIcon size={24} /> Enviar factura por WhatsApp</LinkButton>
-                  )}
-                  <LinkButton href={`/d/${invoice.public_token}?pago=${way}`}><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
-                </>
-              )}
-
-              {/* Lo que dice la factura sobre cómo pagar: casi nunca se cambia */}
-              <details>
-                <summary className="cursor-pointer py-2 text-base font-bold text-navy-700">
-                  Pago en la factura: {way === 'ath' ? 'solo ATH' : way === 'cash' || !mech.ath_movil_number ? 'efectivo' : 'ATH o efectivo'}
-                </summary>
-                {mech.ath_movil_number ? (
-                  <Choice
-                    columns={1}
-                    value={way}
-                    onChange={setPayWay}
-                    options={[
-                      { value: 'any', label: 'ATH Móvil o efectivo', icon: HandCoins, tone: 'teal' },
-                      { value: 'ath', label: 'Solo ATH Móvil', icon: AthIcon as unknown as LucideIcon, tone: 'orange' },
-                      { value: 'cash', label: 'Efectivo o cheque', icon: Banknote, tone: 'green' },
-                    ]}
-                  />
-                ) : (
-                  <Link to="/mas/negocio" className="block rounded-xl bg-slate-100 p-3 text-base text-slate-700">
-                    Para cobrar también por ATH Móvil, pon tu número en <b className="text-navy-700 underline">Más → Mi negocio</b>.
-                  </Link>
-                )}
-              </details>
-            </>
-          )}
-
-          {invoice?.paid_at && (
-            <>
-              <LinkButton href={`/d/${invoice.public_token}`}><ExternalLink size={20} /> Ver / imprimir factura</LinkButton>
-              <Button variant="ghost" disabled={busy} onClick={unmarkPaid}>Desmarcar pagada</Button>
-            </>
-          )}
-        </div>
-      </Section>
+      {!billed && cobrarBlock}
 
       <PaySheet open={payOpen} balance={balance} title={invoice ? 'Recibir pago' : 'Recibir pago o depósito'} onClose={() => setPayOpen(false)} onPay={receive} />
 
