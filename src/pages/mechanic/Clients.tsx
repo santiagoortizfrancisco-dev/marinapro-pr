@@ -1,10 +1,11 @@
+import { Link } from 'react-router'
 import { useMemo, useState } from 'react'
 import { Search, UserPlus, Users } from 'lucide-react'
 import { db } from '../../lib/db'
 import { must, useLoad } from '../../lib/useLoad'
 import { formatMoney } from '../../lib/format'
 import { balanceOf, loadMoney, owed } from '../../lib/money'
-import { EmptyState, ErrorBox, Fab, Initials, Input, Loading, PageTitle, RowLink } from '../../components/ui'
+import { EmptyState, ErrorBox, Initials, Input, Loading, PageTitle, RowLink } from '../../components/ui'
 
 interface Row {
   id: string
@@ -49,6 +50,10 @@ export default function Clients() {
     <>
       <PageTitle subtitle={data ? `${data.length} ${data.length === 1 ? 'cliente' : 'clientes'}` : undefined}>Clientes</PageTitle>
 
+      <Link to="/clientes/nuevo" className="mb-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900">
+        <UserPlus size={22} /> Añadir cliente
+      </Link>
+
       {data && data.length > 0 && (
         <div className="relative mb-4">
           <Search size={22} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -60,7 +65,7 @@ export default function Clients() {
       {error && <ErrorBox message={error} onRetry={reload} />}
 
       {data && data.length === 0 && (
-        <EmptyState icon={Users} title="Todavía no tienes clientes" text="Toca “Añadir cliente” abajo para añadir el primero, con su bote y sus motores." />
+        <EmptyState icon={Users} title="Todavía no tienes clientes" text="Toca “Añadir cliente” arriba para añadir el primero, con su bote y sus motores." />
       )}
       {data && data.length > 0 && list.length === 0 && <p className="py-6 text-center text-base text-slate-600">Nadie con “{q}”.</p>}
 
@@ -76,7 +81,6 @@ export default function Clients() {
         ))}
       </div>
 
-      <Fab to="/clientes/nuevo" label="Añadir cliente" icon={UserPlus} />
     </>
   )
 }

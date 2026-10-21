@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { ChevronDown, Star, Trash2 } from 'lucide-react'
+import { Star, Trash2 } from 'lucide-react'
 import { db } from '../lib/db'
 import { formatMoney } from '../lib/format'
 import type { Part } from '../lib/types'
@@ -127,18 +127,28 @@ export default function PartSheet({ open, workOrderId, part, onClose, onSaved }:
   const lineTotal = (num(f.qty) ?? 0) * (num(f.unit_cost) ?? 0)
 
   return (
-    <Sheet open={open} title={part ? 'Cambiar' : 'Añadir lo que cobras'} onClose={onClose}>
+    <Sheet open={open} title={part ? 'Cambiar la línea' : 'Añadir a la factura'} onClose={onClose}>
       <form onSubmit={save} className="max-h-[70vh] space-y-4 overflow-y-auto pb-2">
+        {/* Un renglón de factura: descripción, cantidad y precio */}
         <div>
-          <Field label="¿Qué es?" hint="Un servicio o una pieza. Ej.: Cambio de impeller, Impeller, Mano de obra">
+          <div className="grid grid-cols-[1fr_3.5rem_5.5rem] gap-1 rounded-t-lg bg-navy-50 px-2 py-2 text-xs font-bold uppercase tracking-wide text-navy-800">
+            <span>Descripción</span><span className="text-center">Cant.</span><span className="pr-2 text-right">Precio</span>
+          </div>
+          <div className="grid grid-cols-[1fr_3.5rem_5.5rem] items-center gap-1 border-b border-slate-200 px-1">
             <Input
+              aria-label="Descripción"
               autoComplete="off"
               value={f.description}
               onChange={(e) => { set('description', e.target.value); setShowSuggestions(true) }}
               onFocus={() => setShowSuggestions(true)}
-              placeholder="Lo que hiciste o lo que pusiste"
+              placeholder="Cambio de impeller"
+              className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-2! text-base!"
             />
-          </Field>
+            <Input aria-label="Cantidad" inputMode="decimal" value={f.qty} onChange={(e) => set('qty', e.target.value)} className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-1! text-center" />
+            {f.byClient
+              ? <span className="pr-2 text-right text-sm font-semibold text-slate-500">No se cobra</span>
+              : <Input aria-label="Precio" inputMode="decimal" value={f.unit_cost} onChange={(e) => set('unit_cost', e.target.value)} placeholder="$0.00" className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-2! text-right font-semibold" />}
+          </div>
           {showSuggestions && suggestions.length > 0 && (
             <div className="mt-1 overflow-hidden rounded-xl border-2 border-slate-200 bg-white" role="listbox" aria-label="Sugerencias">
               {suggestions.map((c) => (
@@ -150,28 +160,24 @@ export default function PartSheet({ open, workOrderId, part, onClose, onSaved }:
               ))}
             </div>
           )}
+          <div className="flex justify-between px-2 pt-2 text-base">
+            <span className="text-slate-600">Total de la línea</span>
+            <b className="text-navy-900">{f.byClient ? 'No se cobra' : lineTotal > 0 ? formatMoney(lineTotal) : 'Incluido'}</b>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Cantidad">
-            <Input inputMode="decimal" value={f.qty} onChange={(e) => set('qty', e.target.value)} />
-          </Field>
-          {!f.byClient && (
-            <Field label="Precio ($)">
-              <Input inputMode="decimal" value={f.unit_cost} onChange={(e) => set('unit_cost', e.target.value)} placeholder="0.00" />
-            </Field>
-          )}
-        </div>
-        {!f.byClient && lineTotal > 0 && <p className="text-right text-lg font-bold text-navy-900">Total: {formatMoney(lineTotal)}</p>}
-
-        <Toggle checked={f.byClient} onChange={(v) => set('byClient', v)} label="Lo trajo el cliente (no se cobra)" hint="Solo se garantiza la instalación" />
-
-        <button type="button" onClick={() => setDetails((v) => !v)} aria-expanded={details}
-          className="flex min-h-12 w-full items-center justify-between rounded-xl bg-slate-100 px-4 text-base font-bold text-slate-700">
-          Más detalles de la pieza (opcional) <ChevronDown className={`transition ${details ? 'rotate-180' : ''}`} />
+        {/* Pieza que trajo el cliente: un renglón sencillo, no un cuadro grande */}
+        <button type="button" role="switch" aria-checked={f.byClient} onClick={() => set('byClient', !f.byClient)}
+          className="flex min-h-12 w-full items-center gap-3 px-1 text-left">
+          <span className={`flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition ${f.byClient ? 'bg-navy-800' : 'bg-slate-300'}`}>
+            <span className={`h-5 w-5 rounded-full bg-white shadow transition ${f.byClient ? 'translate-x-5' : ''}`} />
+          </span>
+          <span className="text-base text-slate-800">Lo trajo el cliente (no se cobra)</span>
         </button>
-        {details && (
-          <div className="space-y-4">
+
+        <details open={details} onToggle={(e) => setDetails((e.target as HTMLDetailsElement).open)}>
+          <summary className="cursor-pointer px-1 py-1 text-base font-bold text-navy-700">Más detalles de la pieza (opcional)</summary>
+          <div className="mt-3 space-y-4">
             <Field label="Número de parte">
               <Input value={f.part_number} onChange={(e) => set('part_number', e.target.value.toUpperCase())} placeholder="6CE-44352-00" />
             </Field>
@@ -183,7 +189,7 @@ export default function PartSheet({ open, workOrderId, part, onClose, onSaved }:
             </Field>
             <Toggle checked={f.received} onChange={(v) => set('received', v)} label="Ya la tengo" />
           </div>
-        )}
+        </details>
 
         {error && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}
         <Button type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar'}</Button>

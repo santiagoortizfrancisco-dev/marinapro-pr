@@ -161,14 +161,14 @@ test('el trabajo: horas y piezas calculan el total con IVU; la pieza del cliente
   await expect(page.getByText('$170.00').first()).toBeVisible()
 
   await page.getByRole('button', { name: /Añadir lo que cobras/ }).click()
-  await page.getByPlaceholder('Lo que hiciste o lo que pusiste').fill('Impeller')
+  await page.getByRole('dialog').getByLabel('Descripción', { exact: true }).fill('Impeller')
   await page.getByPlaceholder('0.00').fill('50')
   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await page.getByRole('button', { name: /Añadir lo que cobras/ }).click()
   await page.getByRole('switch', { name: /Lo trajo el cliente/ }).click()
-  await page.getByPlaceholder('Lo que hiciste o lo que pusiste').fill('Aceite del cliente')
+  await page.getByRole('dialog').getByLabel('Descripción', { exact: true }).fill('Aceite del cliente')
   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
-  await expect(page.getByText('No se cobra')).toBeVisible()
+  await expect(page.getByText('No se cobra', { exact: true }).first()).toBeVisible()
   // 170 + 50 = 220; IVU 11.5% = 25.30; total 245.30
   await expect(page.getByText('$245.30').first()).toBeVisible()
 })
@@ -178,7 +178,7 @@ test('servicios y piezas: sugerencias de la lista común, el precio se guarda y 
   await openExampleAppointment(page)
   // Servicio desde la lista común
   await page.getByRole('button', { name: /Añadir lo que cobras/ }).click()
-  await page.getByPlaceholder('Lo que hiciste o lo que pusiste').fill('imp')
+  await page.getByRole('dialog').getByLabel('Descripción', { exact: true }).fill('imp')
   await page.getByRole('option', { name: /Cambio de impeller/ }).click()
   await page.getByPlaceholder('0.00').fill('120')
   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
@@ -191,7 +191,7 @@ test('servicios y piezas: sugerencias de la lista común, el precio se guarda y 
 
   // La próxima vez: sale con su precio
   await page.getByRole('button', { name: /Añadir lo que cobras/ }).click()
-  await page.getByPlaceholder('Lo que hiciste o lo que pusiste').fill('camb')
+  await page.getByRole('dialog').getByLabel('Descripción', { exact: true }).fill('camb')
   await expect(page.getByRole('option', { name: /Cambio de impeller.*\$120\.00/ })).toBeVisible()
   await page.getByRole('option', { name: /Cambio de impeller/ }).click()
   await expect(page.getByPlaceholder('0.00')).toHaveValue('120')
@@ -199,9 +199,9 @@ test('servicios y piezas: sugerencias de la lista común, el precio se guarda y 
 
   // Una pieza que el mecánico escribe nueva también se guarda
   await page.getByRole('button', { name: /Añadir lo que cobras/ }).click()
-  await page.getByPlaceholder('Lo que hiciste o lo que pusiste').fill('Kit de sellos Lewmar')
+  await page.getByRole('dialog').getByLabel('Descripción', { exact: true }).fill('Kit de sellos Lewmar')
   await page.getByPlaceholder('0.00').fill('38')
-  await page.getByRole('button', { name: /Más detalles de la pieza/ }).click()
+  await page.getByText('Más detalles de la pieza (opcional)').click()
   await page.getByPlaceholder('6CE-44352-00').fill('LW-123')
   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await expect(page.getByText('Kit de sellos Lewmar')).toBeVisible()
@@ -224,7 +224,7 @@ test('mantenimiento: al terminar el trabajo pregunta cuándo le toca, y el bote 
   await login(page)
   await openExampleAppointment(page)
   await page.getByRole('button', { name: /Añadir lo que cobras/ }).click()
-  await page.getByPlaceholder('Lo que hiciste o lo que pusiste').fill('Cambio de impeller')
+  await page.getByRole('dialog').getByLabel('Descripción', { exact: true }).fill('Cambio de impeller')
   await page.getByPlaceholder('0.00').fill('120')
   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await page.getByRole('button', { name: 'Terminado', exact: true }).click()
@@ -705,10 +705,11 @@ test('factura rápida: sin cita, con cliente nuevo; Ya me pagó deja la factura 
   await expect(page.getByLabel('Precio 1')).toHaveValue('100')
 })
 
-test('Inicio: al entrar salen los 4 botones grandes y lo de hoy', async ({ page }) => {
+test('Inicio: al entrar salen los botones grandes y lo de hoy (Añadir cliente vive en Clientes)', async ({ page }) => {
   await login(page)
   await expect(page.getByRole('heading', { name: /¡Buen(os|as) (días|tardes|noches)/ })).toBeVisible()
-  for (const name of ['Hacer cita', 'Factura rápida', 'Añadir cliente', 'Me deben']) {
+  await expect(page.getByRole('link', { name: 'Añadir cliente' })).toHaveCount(0)
+  for (const name of ['Hacer cita', 'Factura rápida', 'Me deben']) {
     await expect(page.getByRole('link', { name: new RegExp(name) }).first()).toBeVisible()
   }
   await expect(page.getByRole('link', { name: /Ver agenda/ })).toBeVisible()
