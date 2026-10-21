@@ -40,7 +40,7 @@ function Tile({ to, icon: Icon, label, sub, from, color, badge }: { to: string; 
         <Post sign="+" />
       </span>
       <span
-        className="relative flex min-h-32 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-black/25 px-3 pb-6 pt-3 text-center text-white shadow-lg [text-shadow:0_1px_2px_rgba(0,0,0,0.3)]"
+        className="relative flex h-44 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-black/25 px-3 pb-6 pt-3 text-center text-white shadow-lg [text-shadow:0_1px_2px_rgba(0,0,0,0.3)]"
         style={{ backgroundImage: `linear-gradient(160deg, ${from} 0%, ${color} 100%)` }}
       >
         {/* brillo de metal y las rayitas de la batería */}
