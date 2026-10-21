@@ -672,7 +672,7 @@ test('factura rápida: sin cita, con cliente nuevo; Ya me pagó deja la factura 
   await page.getByPlaceholder('Teléfono / WhatsApp').fill('787-555-0155')
   await page.getByLabel('Descripción 1').fill('Cambio de impeller')
   await page.getByLabel('Precio 1').fill('100')
-  await page.getByRole('button', { name: /Añadir otra cosa/ }).click() // sin escoger pieza o servicio
+  await page.getByRole('button', { name: /Añadir línea/ }).click() // sin escoger pieza o servicio
   await expect(page.getByLabel('Descripción 2')).toBeFocused()
   await page.getByLabel('Descripción 2').fill('Impeller')
   await page.getByLabel('Precio 2').fill('40')
@@ -870,11 +870,11 @@ test('factura rápida: lo que se escribe sin precio también va en la factura (c
   await page.getByPlaceholder('Nombre del cliente *').fill('Luis Prueba')
   await page.getByLabel('Descripción 1').fill('Servicio de 100 horas')
   await page.getByLabel('Precio 1').fill('300')
-  await page.getByRole('button', { name: /Añadir otra cosa/ }).click()
+  await page.getByRole('button', { name: /Añadir línea/ }).click()
   await page.getByLabel('Descripción 2').fill('Cambio de filtros de gasolina')
-  await page.getByRole('button', { name: /Añadir otra cosa/ }).click()
+  await page.getByRole('button', { name: /Añadir línea/ }).click()
   await page.getByLabel('Descripción 3').fill('Lavado del motor')
-  await page.getByRole('button', { name: /Añadir otra cosa/ }).click()
+  await page.getByRole('button', { name: /Añadir línea/ }).click()
   await page.getByLabel('Precio 4').fill('25')
   await page.getByRole('button', { name: 'Hacer factura' }).click()
   await expect(page.getByRole('alert')).toContainText('línea 4')

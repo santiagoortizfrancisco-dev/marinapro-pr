@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
-import { CheckCircle2, ExternalLink, Package, Plus, Search, Ship, Trash2, UserPlus, Wrench, X, Zap } from 'lucide-react'
+import { useNavigate } from 'react-router'
+import { CheckCircle2, ExternalLink, Plus, Search, Ship, Trash2, UserPlus, X, Zap } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import { db } from '../../lib/db'
 import { addPayment } from '../../lib/money'
-import { formatMoney } from '../../lib/format'
+import { formatDate, formatMoney } from '../../lib/format'
 import { whatsappLink } from '../../lib/links'
 import { computeTotals, percent } from '../../lib/totals'
 import type { Invoice } from '../../lib/types'
@@ -13,7 +13,7 @@ import { useMechanic } from '../../lib/useMechanic'
 import { WhatsAppIcon } from '../../components/BrandIcons'
 import type { CatalogItem } from '../../components/PartSheet'
 import PaySheet from '../../components/PaySheet'
-import { BackTitle, Button, ErrorBox, Field, Input, LinkButton, Loading, Toggle } from '../../components/ui'
+import { BackTitle, Button, ErrorBox, Input, LinkButton, Loading } from '../../components/ui'
 
 interface ClientRow { id: string; full_name: string; phone: string | null; boats: { id: string; name: string }[] }
 type Pick = { kind: 'boat'; boatId: string; clientId: string } | { kind: 'client'; clientId: string } | { kind: 'new' } | null
@@ -225,111 +225,130 @@ export default function QuickInvoice() {
 
   return (
     <>
-      <BackTitle subtitle="Sin cita ni estimado: cobra en el momento">Factura rápida</BackTitle>
-      <div className="space-y-5">
-        {/* 1. ¿A quién? */}
-        <Field label="1. ¿A quién le cobras?">
-          {pick && pick.kind !== 'new' && chosen ? (
-            <div className="flex min-h-14 items-center gap-3 rounded-xl border-2 border-navy-800 bg-navy-50 px-4 py-2">
-              <Ship size={24} className="shrink-0 text-navy-700" />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-lg font-bold text-navy-900">{chosen.full_name}</div>
-                <div className="truncate text-base text-slate-600">{chosenBoat?.name ?? 'Bote nuevo'}</div>
-              </div>
-              <button type="button" onClick={() => setPick(null)} aria-label="Cambiar cliente" className="flex h-12 w-12 items-center justify-center text-slate-600"><X /></button>
-            </div>
-          ) : pick?.kind === 'new' ? (
-            <div className="space-y-3 rounded-xl border-2 border-navy-200 bg-navy-50 p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-bold text-navy-900">Cliente nuevo</span>
-                <button type="button" onClick={() => setPick(null)} aria-label="Cancelar cliente nuevo" className="flex h-10 w-10 items-center justify-center text-slate-600"><X /></button>
-              </div>
-              <Input autoComplete="off" value={newClient.full_name} onChange={(e) => setNewClient({ ...newClient, full_name: e.target.value })} placeholder="Nombre del cliente *" />
-              <Input type="tel" inputMode="tel" value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} placeholder="Teléfono / WhatsApp" />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="relative">
-                <Search size={22} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                <Input type="search" aria-label="Buscar cliente" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente, bote o teléfono" className="pl-12" />
-              </div>
-              {results.map((r) => (
-                <button key={r.key} type="button" onClick={() => setPick(r.pick)} className="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-left active:bg-slate-50">
-                  <Ship size={22} className="shrink-0 text-navy-700" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-base font-bold text-slate-900">{r.title}</span>
-                    {r.sub && <span className="block truncate text-sm text-slate-600">{r.sub}</span>}
-                  </span>
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => { setPick({ kind: 'new' }); setNewClient({ full_name: /\d/.test(search) ? '' : search, phone: /\d/.test(search) ? search : '' }) }}
-                className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-700 text-lg font-bold text-navy-800 active:bg-navy-50"
-              >
-                <UserPlus /> Cliente nuevo
-              </button>
-            </div>
-          )}
-        </Field>
-        {pick && pick.kind !== 'boat' && (
-          <Field label="Bote o jet ski (opcional)">
-            <Input value={boatName} onChange={(e) => setBoatName(e.target.value)} placeholder="Si lo dejas vacío: “Bote de …”" />
-          </Field>
-        )}
+      <BackTitle>Factura rápida</BackTitle>
 
-        {/* 2. Qué se hizo */}
-        <Field label="2. ¿Qué hiciste?" hint="Sale en la factura. Si lo dejas vacío, se usan las líneas de abajo.">
-          <Input value={workDone} onChange={(e) => setWorkDone(e.target.value)} placeholder="Cambio de impeller y prueba del motor" />
-        </Field>
-
-        {/* 3. Lo que se cobra */}
-        <div role="group" aria-label="Lo que cobras">
-          <span className="mb-1.5 block text-base font-semibold text-slate-800">3. ¿Qué cobras? (lo que hiciste y lo que pusiste)</span>
-          <div className="space-y-3">
-            {lines.map((l, i) => (
-              <div key={l.key} className="rounded-2xl bg-white p-3 shadow-[0_6px_24px_-14px_rgba(8,47,73,0.35)] ring-1 ring-slate-200/80">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="text-sm font-bold text-slate-500">{i + 1}.</span>
-                  {lines.length > 1 && (
-                    <button type="button" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} aria-label={`Quitar línea ${i + 1}`} className="ml-auto flex h-10 w-10 items-center justify-center text-slate-400">
-                      <Trash2 size={18} />
-                    </button>
-                  )}
-                </div>
-                <div className="grid grid-cols-[1fr_6rem] gap-2">
-                  <Input id={`qi-desc-${l.key}`} aria-label={`Descripción ${i + 1}`} list="qi-todo" value={l.desc} onChange={(e) => setLine(l.key, { desc: e.target.value })} placeholder={i === 0 ? 'Ej.: Cambio de impeller' : 'Ej.: Impeller'} />
-                  <Input aria-label={`Precio ${i + 1}`} inputMode="decimal" value={l.price} onChange={(e) => setLine(l.key, { price: e.target.value })} placeholder="$" className="text-right" />
-                </div>
-              </div>
-            ))}
+      {/* Como una factura de papel: cliente, líneas con su precio y el total */}
+      <div className="overflow-hidden rounded-2xl bg-white shadow-[0_6px_24px_-14px_rgba(8,47,73,0.35)] ring-1 ring-slate-200">
+        <div className="flex h-2" aria-hidden="true"><span className="flex-[3] bg-navy-800" /><span className="flex-1 bg-[#F37021]" /></div>
+        <div className="space-y-5 p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-2xl font-extrabold tracking-wide text-navy-900">FACTURA</div>
+              <div className="truncate text-sm text-slate-500">{mech.business_name}</div>
+            </div>
+            <div className="shrink-0 text-right text-base font-semibold text-slate-600">{formatDate(new Date().toISOString())}</div>
           </div>
-          <datalist id="qi-todo">{[...new Set([...suggestions('service'), ...suggestions('part')])].map((n) => <option key={n} value={n} />)}</datalist>
-          <button type="button" onClick={() => addLine('service')}
-            className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-navy-800 bg-white text-lg font-bold text-navy-800 active:bg-navy-50">
-            <Plus size={22} /> Añadir otra cosa
-          </button>
-        </div>
 
-        {/* Total */}
-        <div className="rounded-2xl bg-navy-900 p-4 text-white">
-          <div className="flex justify-between text-base text-white/80"><span>Subtotal</span><span>{formatMoney(totals.labor + totals.parts)}</span></div>
-          <div className="flex justify-between text-base text-white/80"><span>IVU {percent(mech.ivu_rate)}</span><span>{formatMoney(totals.ivu)}</span></div>
-          <div className="mt-1 flex items-center justify-between"><span className="text-lg font-extrabold">TOTAL</span><span className="text-3xl font-extrabold text-orange-300">{formatMoney(totals.total)}</span></div>
-        </div>
-        <Toggle checked={ivu} onChange={setIvu} label={`Cobrar IVU (${percent(mech.ivu_rate)})`} />
+          {/* Cliente */}
+          <div>
+            <div className="mb-1 text-xs font-bold uppercase tracking-wide text-navy-700">Cliente</div>
+            {pick && pick.kind !== 'new' && chosen ? (
+              <div className="flex min-h-14 items-center gap-3 rounded-xl border-2 border-navy-800 bg-navy-50 px-3 py-2">
+                <Ship size={22} className="shrink-0 text-navy-700" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-lg font-bold text-navy-900">{chosen.full_name}</div>
+                  <div className="truncate text-sm text-slate-600">{chosenBoat?.name ?? 'Bote nuevo'}</div>
+                </div>
+                <button type="button" onClick={() => setPick(null)} aria-label="Cambiar cliente" className="flex h-12 w-12 items-center justify-center text-slate-600"><X /></button>
+              </div>
+            ) : pick?.kind === 'new' ? (
+              <div className="space-y-2 rounded-xl border-2 border-navy-200 bg-navy-50 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-base font-bold text-navy-900">Cliente nuevo</span>
+                  <button type="button" onClick={() => setPick(null)} aria-label="Cancelar cliente nuevo" className="flex h-10 w-10 items-center justify-center text-slate-600"><X /></button>
+                </div>
+                <Input autoComplete="off" value={newClient.full_name} onChange={(e) => setNewClient({ ...newClient, full_name: e.target.value })} placeholder="Nombre del cliente *" />
+                <Input type="tel" inputMode="tel" value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} placeholder="Teléfono / WhatsApp" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search size={22} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Input type="search" aria-label="Buscar cliente" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente, bote o teléfono" className="pl-12" />
+                </div>
+                {results.map((r) => (
+                  <button key={r.key} type="button" onClick={() => setPick(r.pick)} className="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-left active:bg-slate-50">
+                    <Ship size={22} className="shrink-0 text-navy-700" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-base font-bold text-slate-900">{r.title}</span>
+                      {r.sub && <span className="block truncate text-sm text-slate-600">{r.sub}</span>}
+                    </span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => { setPick({ kind: 'new' }); setNewClient({ full_name: /\d/.test(search) ? '' : search, phone: /\d/.test(search) ? search : '' }) }}
+                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-700 text-base font-bold text-navy-800 active:bg-navy-50"
+                >
+                  <UserPlus size={20} /> Cliente nuevo
+                </button>
+              </div>
+            )}
+            {pick && pick.kind !== 'boat' && (
+              <Input aria-label="Bote o jet ski" className="mt-2" value={boatName} onChange={(e) => setBoatName(e.target.value)} placeholder="Bote o jet ski (opcional)" />
+            )}
+          </div>
 
-        {error && <p role="alert" className="rounded-xl bg-red-100 p-3 text-base font-semibold text-red-800">{error}</p>}
+          {/* Líneas: descripción y precio */}
+          <div role="group" aria-label="Lo que cobras">
+            <div className="grid grid-cols-[1fr_5.5rem_1.75rem] gap-1 rounded-t-lg bg-navy-50 px-2 py-2 text-xs font-bold uppercase tracking-wide text-navy-800">
+              <span>Descripción</span><span className="pr-2 text-right">Precio</span><span />
+            </div>
+            <div className="divide-y divide-slate-200 border-b border-slate-200">
+              {lines.map((l, i) => (
+                <div key={l.key} className="grid grid-cols-[1fr_5.5rem_1.75rem] items-center gap-1 px-1">
+                  <Input id={`qi-desc-${l.key}`} aria-label={`Descripción ${i + 1}`} list="qi-todo" value={l.desc} onChange={(e) => setLine(l.key, { desc: e.target.value })} placeholder={i === 0 ? 'Cambio de impeller' : 'Otra cosa'} className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-2! text-base!" />
+                  <Input aria-label={`Precio ${i + 1}`} inputMode="decimal" value={l.price} onChange={(e) => setLine(l.key, { price: e.target.value })} placeholder="$0.00" className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-2! text-right font-semibold" />
+                  {lines.length > 1 ? (
+                    <button type="button" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} aria-label={`Quitar línea ${i + 1}`} className="flex h-12 w-7 items-center justify-center text-slate-400 active:text-red-600">
+                      <Trash2 size={20} />
+                    </button>
+                  ) : <span />}
+                </div>
+              ))}
+            </div>
+            <datalist id="qi-todo">{[...new Set([...suggestions('service'), ...suggestions('part')])].map((n) => <option key={n} value={n} />)}</datalist>
+            <button type="button" onClick={() => addLine('service')} className="mt-2 flex min-h-12 items-center gap-2 px-1 text-base font-bold text-navy-800 active:text-navy-900">
+              <Plus size={20} /> Añadir línea
+            </button>
+            <p className="text-sm text-slate-500">Si una línea no tiene precio, sale como “Incluido”.</p>
+          </div>
 
-        <div className="space-y-3 pb-4">
-          <Button disabled={busy} onClick={() => createAll()}><Zap /> {busy ? 'Haciendo factura…' : 'Hacer factura'}</Button>
-          <Button disabled={busy} onClick={() => { const p = check(); if (p) setError(p); else setPayOpen(true) }} className="bg-emerald-700! active:bg-emerald-800!">
-            <CheckCircle2 /> Ya me pagó
-          </Button>
-          <p className="text-center text-sm text-slate-500">¿Te dio solo una parte o un depósito? Toca “Ya me pagó” y cambia la cantidad.</p>
-          <p className="text-center text-sm text-slate-500">Para trabajos grandes con estimado, usa <Link to="/citas/nueva" className="font-bold text-navy-700 underline">Hacer cita</Link>.</p>
+          {/* Total */}
+          <dl className="border-t-2 border-slate-200 pt-3 text-base">
+            <div className="flex justify-between py-0.5 text-slate-600"><dt>Subtotal</dt><dd>{formatMoney(totals.labor + totals.parts)}</dd></div>
+            <div className="flex items-center justify-between py-0.5 text-slate-600">
+              <dt className="flex items-center gap-2">
+                IVU {percent(mech.ivu_rate)}
+                <button type="button" role="switch" aria-checked={ivu} aria-label={`Cobrar IVU (${percent(mech.ivu_rate)})`} onClick={() => setIvu(!ivu)}
+                  className={`flex h-7 w-12 items-center rounded-full p-1 transition ${ivu ? 'bg-navy-800' : 'bg-slate-300'}`}>
+                  <span className={`h-5 w-5 rounded-full bg-white shadow transition ${ivu ? 'translate-x-5' : ''}`} />
+                </button>
+              </dt>
+              <dd>{formatMoney(totals.ivu)}</dd>
+            </div>
+            <div className="mt-2 flex items-center justify-between rounded-xl bg-navy-900 px-4 py-3 text-white">
+              <dt className="text-lg font-extrabold">TOTAL</dt>
+              <dd className="text-3xl font-extrabold text-orange-300">{formatMoney(totals.total)}</dd>
+            </div>
+          </dl>
+
+          <details>
+            <summary className="cursor-pointer py-1 text-base font-bold text-navy-700">Nota en la factura (opcional)</summary>
+            <Input className="mt-2" aria-label="Nota en la factura" value={workDone} onChange={(e) => setWorkDone(e.target.value)} placeholder="Ej.: Cambio de impeller y prueba del motor" />
+          </details>
         </div>
       </div>
+
+      {error && <p role="alert" className="mt-4 rounded-xl bg-red-100 p-3 text-base font-semibold text-red-800">{error}</p>}
+
+      <div className="mt-4 space-y-3 pb-2">
+        <Button disabled={busy} onClick={() => createAll()}><Zap /> {busy ? 'Haciendo…' : 'Hacer factura'}</Button>
+        <Button disabled={busy} onClick={() => { const p = check(); if (p) setError(p); else setPayOpen(true) }} className="bg-emerald-700! active:bg-emerald-800!">
+          <CheckCircle2 /> Ya me pagó
+        </Button>
+      </div>
+      <p className="pb-4 text-center text-sm text-slate-500">¿Te dio una parte? Toca “Ya me pagó” y cambia la cantidad.</p>
 
       <PaySheet open={payOpen} balance={totals.total} title="¿Cuánto te pagó?" onClose={() => setPayOpen(false)} onPay={(method, amount) => createAll(amount, method)} />
     </>
