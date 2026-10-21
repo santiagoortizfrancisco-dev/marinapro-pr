@@ -1,3 +1,4 @@
+import { JOB_IDEAS, useWords } from '../../lib/trade'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { CheckCircle2, ExternalLink, Plus, Search, Ship, Trash2, UserPlus, X, Zap } from 'lucide-react'
@@ -31,6 +32,7 @@ const newLine = (kind: Line['kind'] = 'service'): Line => ({ key: nextKey++, kin
  * Queda guardado como un trabajo terminado con su factura, igual que los demás.
  */
 export default function QuickInvoice() {
+  const tw = useWords()
   const navigate = useNavigate()
   const { session, profile } = useAuth()
   const { data: mech, loading, error: mechError } = useMechanic()
@@ -146,7 +148,7 @@ export default function QuickInvoice() {
       }
       const first = owner.split(' ')[0] || 'cliente'
       if (!boatId) {
-        const b = await db().from('boats').insert({ client_id: clientId, name: boatName.trim() || `Bote de ${first}` }).select('id').single()
+        const b = await db().from('boats').insert({ client_id: clientId, name: boatName.trim() || tw.itemOf(first) }).select('id').single()
         if (b.error) throw b.error
         boatId = (b.data as { id: string }).id
       }
@@ -181,7 +183,7 @@ export default function QuickInvoice() {
       if (paid > 0) await addPayment(woId, paid, method)
       const { data: invoice } = await db().from('invoices').select('*').eq('id', inv.data as string).single()
       setPayOpen(false)
-      setDone({ woId, invoice: invoice as Invoice, phone, first, boat: boatName.trim() || chosenBoat?.name || `Bote de ${first}`, paid })
+      setDone({ woId, invoice: invoice as Invoice, phone, first, boat: boatName.trim() || chosenBoat?.name || tw.itemOf(first), paid })
     } catch (e) {
       console.error(e)
       setError('No se pudo hacer la factura. Revisa la señal e intenta otra vez.')
@@ -201,7 +203,7 @@ export default function QuickInvoice() {
     const left = Math.max(0, Math.round((total - done.paid) * 100) / 100)
     const payText = done.paid > 0 && left <= 0.004 ? ' ¡Gracias por tu pago!'
       : (done.paid > 0 ? ` Recibí ${formatMoney(done.paid)}; queda un balance de ${formatMoney(left)}.` : '') + (mech.ath_movil_number ? ` Puedes pagar por ATH Móvil al ${mech.ath_movil_number}, o en efectivo o cheque.` : ' El pago es en efectivo o cheque.')
-    const msg = `Hola ${done.first}, aquí está la factura #${done.invoice.number} del bote ${done.boat} por ${formatMoney(Number(done.invoice.total))}: ${link}?pago=${way} .${payText} ${profile?.full_name ?? ''}`.trim()
+    const msg = `Hola ${done.first}, aquí está la factura #${done.invoice.number} ${tw.delItem} ${done.boat} por ${formatMoney(Number(done.invoice.total))}: ${link}?pago=${way} .${payText} ${profile?.full_name ?? ''}`.trim()
     return (
       <>
         <BackTitle to="/trabajos">Factura rápida</BackTitle>
@@ -247,7 +249,7 @@ export default function QuickInvoice() {
                 <Ship size={22} className="shrink-0 text-navy-700" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-lg font-bold text-navy-900">{chosen.full_name}</div>
-                  <div className="truncate text-sm text-slate-600">{chosenBoat?.name ?? 'Bote nuevo'}</div>
+                  <div className="truncate text-sm text-slate-600">{chosenBoat?.name ?? tw.newItem}</div>
                 </div>
                 <button type="button" onClick={() => setPick(null)} aria-label="Cambiar cliente" className="flex h-12 w-12 items-center justify-center text-slate-600"><X /></button>
               </div>
@@ -264,7 +266,7 @@ export default function QuickInvoice() {
               <div className="space-y-2">
                 <div className="relative">
                   <Search size={22} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <Input type="search" aria-label="Buscar cliente" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente, bote o teléfono" className="pl-12" />
+                  <Input type="search" aria-label="Buscar cliente" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Buscar cliente, ${tw.item} o teléfono`} className="pl-12" />
                 </div>
                 {results.map((r) => (
                   <button key={r.key} type="button" onClick={() => setPick(r.pick)} className="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-left active:bg-slate-50">
@@ -285,7 +287,7 @@ export default function QuickInvoice() {
               </div>
             )}
             {pick && pick.kind !== 'boat' && (
-              <Input aria-label="Bote o jet ski" className="mt-2" value={boatName} onChange={(e) => setBoatName(e.target.value)} placeholder="Bote o jet ski (opcional)" />
+              <Input aria-label={tw.Item} className="mt-2" value={boatName} onChange={(e) => setBoatName(e.target.value)} placeholder={tw.marina ? 'Bote o jet ski (opcional)' : `${tw.Item} (opcional)`} />
             )}
           </div>
 
@@ -297,7 +299,7 @@ export default function QuickInvoice() {
             <div className="divide-y divide-slate-200 border-b border-slate-200">
               {lines.map((l, i) => (
                 <div key={l.key} className="grid grid-cols-[1fr_5.5rem_1.75rem] items-center gap-1 px-1">
-                  <Input id={`qi-desc-${l.key}`} aria-label={`Descripción ${i + 1}`} list="qi-todo" value={l.desc} onChange={(e) => setLine(l.key, { desc: e.target.value })} placeholder={i === 0 ? 'Cambio de impeller' : 'Otra cosa'} className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-2! text-base!" />
+                  <Input id={`qi-desc-${l.key}`} aria-label={`Descripción ${i + 1}`} list="qi-todo" value={l.desc} onChange={(e) => setLine(l.key, { desc: e.target.value })} placeholder={i === 0 ? JOB_IDEAS[tw.trade][0] : 'Otra cosa'} className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-2! text-base!" />
                   <Input aria-label={`Precio ${i + 1}`} inputMode="decimal" value={l.price} onChange={(e) => setLine(l.key, { price: e.target.value })} placeholder="$0.00" className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-2! text-right font-semibold" />
                   {lines.length > 1 ? (
                     <button type="button" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} aria-label={`Quitar línea ${i + 1}`} className="flex h-12 w-7 items-center justify-center text-slate-400 active:text-red-600">
@@ -335,7 +337,7 @@ export default function QuickInvoice() {
 
           <details>
             <summary className="cursor-pointer py-1 text-base font-bold text-navy-700">Nota en la factura (opcional)</summary>
-            <Input className="mt-2" aria-label="Nota en la factura" value={workDone} onChange={(e) => setWorkDone(e.target.value)} placeholder="Ej.: Cambio de impeller y prueba del motor" />
+            <Input className="mt-2" aria-label="Nota en la factura" value={workDone} onChange={(e) => setWorkDone(e.target.value)} placeholder={`Ej.: ${JOB_IDEAS[tw.trade][0]}`} />
           </details>
         </div>
       </div>

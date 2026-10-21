@@ -13,11 +13,11 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon-180x180.png'],
+      includeAssets: ['favicon-48.png', 'favicon.svg', 'apple-touch-icon-180x180.png', 'logo-ff.svg'],
       manifest: {
-        name: 'Salt Marine Repair',
-        short_name: 'Salt Marine',
-        description: 'Agenda, trabajos y facturas para mecánicos marinos (botes y jet skis) en Puerto Rico',
+        name: 'FacturaFácil PR',
+        short_name: 'FacturaFácil',
+        description: 'Citas, facturas y cobros desde el celular para negocios de servicio en Puerto Rico',
         lang: 'es-PR',
         start_url: '/',
         display: 'standalone',

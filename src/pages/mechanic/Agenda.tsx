@@ -1,3 +1,4 @@
+import { useWords } from '../../lib/trade'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Calendar, CalendarPlus, ChevronLeft, ChevronRight, MapPin, Plus, User, Wrench, Zap } from 'lucide-react'
@@ -61,6 +62,7 @@ function monthGrid(day: string): string[] {
 }
 
 export default function Agenda() {
+  const w = useWords()
   const [params, setParams] = useSearchParams()
   const today = todayPR()
   const day = params.get('dia') ?? today
@@ -253,9 +255,9 @@ export default function Agenda() {
                   {(s.a.service_requests?.description || s.a.title) && (
                     <span className="mt-1 flex gap-1.5 text-base text-slate-800"><Wrench size={16} className="mt-1 shrink-0 text-slate-400" /><span className="line-clamp-2">{s.a.service_requests?.description || s.a.title}</span></span>
                   )}
-                  {(s.a.boats.marina_name || s.a.boats.town) && (
+                  {((w.marina && s.a.boats.marina_name) || s.a.boats.town) && (
                     <span className="mt-2 inline-flex max-w-full items-start gap-1 rounded-xl bg-slate-100 px-2.5 py-1 text-sm text-slate-600">
-                      <MapPin size={14} className="mt-0.5 shrink-0" /> <span>{[s.a.boats.marina_name ?? labelOf(LOCATION_TYPES, s.a.boats.location_type), s.a.boats.slip_number, s.a.boats.town].filter(Boolean).join(' · ')}</span>
+                      <MapPin size={14} className="mt-0.5 shrink-0" /> <span>{(w.marina ? [s.a.boats.marina_name ?? labelOf(LOCATION_TYPES, s.a.boats.location_type), s.a.boats.slip_number, s.a.boats.town] : [s.a.boats.town]).filter(Boolean).join(' · ')}</span>
                     </span>
                   )}
                 </span>

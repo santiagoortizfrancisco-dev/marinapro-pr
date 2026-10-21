@@ -62,7 +62,7 @@ export async function addPayment(workOrderId: string, amount: number, method: No
 }
 
 /** Mensaje amable para recordarle al cliente que pague, con el link de la factura. */
-export function reminderMessage(r: MoneyRow, ath: string | null, signature: string) {
+export function reminderMessage(r: MoneyRow, ath: string | null, signature: string, delItem = 'del bote') {
   const first = r.boats.clients.full_name.split(' ')[0]
   const way = ath ? 'any' : 'cash'
   const link = `${window.location.origin}/d/${r.invoice!.public_token}?pago=${way}`
@@ -71,5 +71,5 @@ export function reminderMessage(r: MoneyRow, ath: string | null, signature: stri
   const amount = paid > 0
     ? `de ${formatMoney(Number(r.invoice!.total))}; ya pagaste ${formatMoney(paid)} y queda un balance de ${formatMoney(balanceOf(r))}`
     : `por ${formatMoney(Number(r.invoice!.total))}`
-  return `Hola ${first}, te recuerdo la factura #${r.invoice!.number} del bote ${r.boats.name} ${amount}: ${link} .${pay} ¡Gracias! ${signature}`.trim()
+  return `Hola ${first}, te recuerdo la factura #${r.invoice!.number} ${delItem} ${r.boats.name} ${amount}: ${link} .${pay} ¡Gracias! ${signature}`.trim()
 }

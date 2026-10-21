@@ -1,3 +1,4 @@
+import { useWords } from '../../lib/trade'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { db } from '../../lib/db'
@@ -9,6 +10,7 @@ interface BoatOption { id: string; name: string; clients: { full_name: string } 
 
 /** Crea un trabajo (desde una cita, desde un bote o escogiendo el bote) y abre su pantalla. */
 export default function JobNew() {
+  const w = useWords()
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const { session } = useAuth()
@@ -83,12 +85,12 @@ export default function JobNew() {
     <>
       <BackTitle>Trabajo nuevo</BackTitle>
       {boats.length === 0 ? (
-        <p className="rounded-xl bg-sun-400/30 p-4 text-base">Primero añade un cliente con su bote en la pestaña <b>Clientes</b>.</p>
+        <p className="rounded-xl bg-sun-400/30 p-4 text-base">{`Primero añade un cliente con su ${w.item} en `}<b>Clientes</b>.</p>
       ) : (
         <div className="space-y-4">
-          <Field label="¿De qué bote?">
+          <Field label={`¿De qué ${w.item}?`}>
             <Select value={boatId} onChange={(e) => setBoatId(e.target.value)}>
-              <option value="">Escoge el bote</option>
+              <option value="">{`Escoge ${w.elItem}`}</option>
               {boats.map((b) => <option key={b.id} value={b.id}>{b.clients.full_name} — {b.name}</option>)}
             </Select>
           </Field>

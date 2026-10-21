@@ -1,3 +1,4 @@
+import { useWords } from '../../lib/trade'
 import { useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import { balanceOf, loadMoney } from '../../lib/money'
@@ -12,6 +13,7 @@ function plain(s: string) {
 
 /** Todas las facturas hechas (la más nueva primero). Se abre la factura para verla o sacarla en PDF. */
 export default function Invoices() {
+  const w = useWords()
   const { data, loading, error, reload } = useLoad(loadMoney, [])
   const [search, setSearch] = useState('')
   const list = useMemo(() => {
@@ -30,7 +32,7 @@ export default function Invoices() {
       <BackTitle subtitle="Tócala para verla o sacarla en PDF">Todas las facturas</BackTitle>
       <div className="relative mb-3">
         <Search size={22} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-        <Input type="search" aria-label="Buscar factura" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cliente, bote o número" className="pl-12" />
+        <Input type="search" aria-label="Buscar factura" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Cliente, ${w.item} o número`} className="pl-12" />
       </div>
       {list.length === 0 && <EmptyState icon={Receipt} title={search ? 'No sale ninguna' : 'Todavía no hay facturas'} text={search ? 'Prueba con otro nombre o número.' : 'Cuando hagas una factura sale aquí.'} />}
       <div className="space-y-2">

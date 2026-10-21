@@ -60,7 +60,8 @@ test('mecánico nuevo entra por primera vez con su email: pone nombre y compañ�
   await page.getByLabel('Email o usuario').fill('Nuevo@Prueba.test')
   await page.locator('input[autocomplete=current-password]').fill(PASSWORD)
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page.getByRole('heading', { name: /Bienvenido a Salt Marine Repair/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Bienvenido a FacturaFácil PR/ })).toBeVisible()
+  await page.getByRole('radio', { name: /Botes y jet skis/ }).click()
   await page.getByLabel('Tu nombre completo *').fill('Luis Prueba')
   await page.getByLabel('Nombre de tu compañía').fill('Luis Marine Service')
   await page.getByRole('button', { name: 'Empezar' }).click()
@@ -237,7 +238,7 @@ test('mantenimiento: al terminar el trabajo pregunta cuándo le toca, y el bote 
   await page.getByRole('button', { name: 'Terminado', exact: true }).click()
   // El recuadro sale y se puede saltar o guardar
   await expect(page.getByText('¿Cuándo le toca el próximo servicio?')).toBeVisible()
-  await expect(page.getByPlaceholder('Cambio de aceite e impeller')).toHaveValue('Cambio de impeller')
+  await expect(page.getByLabel('¿Qué le toca?')).toHaveValue('Cambio de impeller')
   await page.getByRole('button', { name: '6 meses' }).click()
   await page.getByRole('button', { name: 'Guardar recordatorio' }).click()
   await expect(page.getByText('Próximo servicio', { exact: true })).toBeVisible()
@@ -257,7 +258,7 @@ test('Le toca servicio: sale en Inicio con Avisarle por WhatsApp y Hacer cita', 
   // recordatorio para dentro de 5 días, desde la ficha del bote
   await page.goto('/botes/b1')
   await page.getByRole('button', { name: 'Recordatorio' }).click()
-  await page.getByPlaceholder('Cambio de aceite e impeller').fill('Cambio de aceite')
+  await page.getByLabel('¿Qué le toca?').fill('Cambio de aceite')
   await page.getByRole('button', { name: 'Otra fecha' }).click()
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Puerto_Rico' }).format(new Date())
   const d = new Date(`${today}T00:00:00Z`)
@@ -642,6 +643,7 @@ test('registro: un mecánico crea su cuenta solo, espera aprobación, el admin l
   await nuevo.getByLabel('Tu nombre completo *').fill('Pedro Mecánico')
   await nuevo.getByLabel('Nombre de tu compañía').fill('Pedro Marine')
   await nuevo.getByLabel('Teléfono / WhatsApp *').fill('787-555-0444')
+  await nuevo.getByRole('radio', { name: /Plomería/ }).click() // a qué se dedica
   await nuevo.getByLabel('Tu email *').fill('pedro@marine.test')
   await nuevo.getByLabel('Tu PIN').fill('482913')
   await nuevo.getByLabel('Repite el PIN').fill('482913')
@@ -898,6 +900,7 @@ test('factura rápida: lo que se escribe sin precio también va en la factura (c
 
 test('link de prueba (/demo): entra sin registro a un taller de ejemplo, con aviso amarillo y "Crear mi cuenta"', async ({ page }) => {
   await page.goto('/demo')
+  await page.getByRole('radio', { name: /Botes y jet skis/ }).click() // primero: ¿a qué te dedicas?
   await expect(page.getByText('Taller de Prueba').first()).toBeVisible()
   await expect(page.getByText(/Estás probando el app con datos de ejemplo/)).toBeVisible()
   await expect(page.getByRole('link', { name: /Factura rápida/ }).first()).toBeVisible() // Inicio con los 4 botones
@@ -943,4 +946,22 @@ test('facturas: lista de todas las facturas con buscador, y la factura se saca e
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: /Factura en PDF/ }).click()
   expect((await download).suggestedFilename()).toBe('Factura-0001-Ana-Ejemplo.pdf')
+})
+
+test('FacturaFácil: un técnico de aire acondicionado ve sus palabras (equipo), sin botes ni prueba en el agua', async ({ page }) => {
+  await page.goto('/demo')
+  await expect(page.getByText('¿A qué te dedicas?')).toBeVisible()
+  await page.getByRole('radio', { name: /Aire acondicionado/ }).click()
+  await expect(page.locator('header').getByText('FacturaFácil PR')).toBeVisible()
+  await expect(page.locator('header img').first()).toHaveAttribute('src', '/logo-ff.svg')
+  expect((await state()).mechanics.find((m) => m.business_name === 'Negocio de Prueba')?.business_type).toBe('ac')
+
+  await page.getByRole('link', { name: 'Clientes', exact: true }).click()
+  await expect(page.getByPlaceholder('Buscar nombre, equipo, pueblo o teléfono')).toBeVisible()
+  await page.getByRole('link', { name: /Ana Martínez/ }).click()
+  await expect(page.getByRole('heading', { name: 'Equipos' })).toBeVisible()
+  await page.getByRole('link', { name: /Equipo/ }).first().click()
+  await expect(page.getByRole('heading', { name: 'Equipo nuevo' })).toBeVisible()
+  await expect(page.getByText('Muelle / Slip')).toHaveCount(0)
+  await expect(page.getByText('Número de registro (DRNA)')).toHaveCount(0)
 })

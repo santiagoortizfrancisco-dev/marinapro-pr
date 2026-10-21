@@ -1,3 +1,5 @@
+import TradePicker from '../../components/TradePicker'
+import { useSetTrade, type Trade } from '../../lib/trade'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Check, ImagePlus, Trash2 } from 'lucide-react'
 import { BRAND_COLORS, DEFAULT_BRAND, logoUrl, notifyBrandChanged } from '../../lib/brand'
@@ -20,6 +22,8 @@ export default function BusinessSettings() {
     ivu_on_labor: true, ivu_on_parts: true, warranty_days: '', next_invoice_number: '', policies_text: '',
   })
   const [busy, setBusy] = useState(false)
+  const [trade, setTradeLocal] = useState<Trade>('marine')
+  const setTrade = useSetTrade()
   const [color, setColor] = useState(DEFAULT_BRAND)
   const [logoPath, setLogoPath] = useState<string | null>(null)
   const [logoBusy, setLogoBusy] = useState(false)
@@ -30,6 +34,7 @@ export default function BusinessSettings() {
   useEffect(() => {
     if (!m) return
     setColor(m.brand_color || DEFAULT_BRAND)
+    setTradeLocal(((m as { business_type?: Trade }).business_type) ?? 'marine')
     setLogoPath(m.logo_path)
     setF({
       full_name: profile?.full_name ?? '', phone: profile?.phone ?? '', town: profile?.town ?? '',
@@ -58,6 +63,7 @@ export default function BusinessSettings() {
         next_invoice_number: Math.max(1, Math.floor(num(f.next_invoice_number) ?? 1)),
         policies_text: f.policies_text.trim(),
         brand_color: color,
+        business_type: trade,
         // Si cambian las políticas, sube la versión (los estimados aprobados guardan la versión que aceptaron)
         policies_version: policiesChanged ? m.policies_version + 1 : m.policies_version,
       }).eq('profile_id', session!.user.id),
@@ -67,6 +73,7 @@ export default function BusinessSettings() {
       setSaveError('No se pudo guardar. Intenta otra vez.')
       return
     }
+    setTrade(trade)
     await refreshProfile()
     notifyBrandChanged()
     navigate('/mas')
@@ -146,8 +153,11 @@ export default function BusinessSettings() {
             ))}
           </div>
         </Field>
+        <Field label="¿A qué te dedicas?" hint="Cambia las palabras del app: bote, carro, equipo o propiedad">
+          <TradePicker value={trade} onChange={setTradeLocal} />
+        </Field>
         <Field label="Nombre del negocio">
-          <Input value={f.business_name} onChange={(e) => set('business_name', e.target.value)} placeholder="Rivera Marine Service" />
+          <Input value={f.business_name} onChange={(e) => set('business_name', e.target.value)} placeholder="Rivera Service" />
         </Field>
         <Field label="Tu nombre *">
           <Input required value={f.full_name} onChange={(e) => set('full_name', e.target.value)} />

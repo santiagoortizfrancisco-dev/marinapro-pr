@@ -35,7 +35,7 @@ function reset() {
     mechanics: [{
       profile_id: U, business_name: 'JQR Boat Repair', ath_movil_number: '787-555-0100', labor_rate_hour: 85, ivu_rate: 0.115,
       ivu_on_labor: true, ivu_on_parts: true, warranty_days: 90, policies_text: 'Garantía de mano de obra: 90 días.', policies_version: 1,
-      next_invoice_number: 1, logo_path: '/brands/jqr-boat-repair.jpg', brand_color: '#0b0b0f', created_at: now,
+      next_invoice_number: 1, business_type: 'marine', logo_path: '/brands/jqr-boat-repair.jpg', brand_color: '#0b0b0f', created_at: now,
       listed: false, approved: false, slug: null, public_description: null, public_towns: [], public_services: [], public_brands: [], public_locations: [],
     }],
     settings: { directory_open: false },
@@ -301,11 +301,11 @@ const RPC = {
     else db.catalog_items.push({ id: randomUUID(), mechanic_id: caller, kind: p_kind, name, category: null, last_price: p_price ?? null, use_count: 1 })
     return null
   },
-  start_trial: () => {
+  start_trial: ({ p_type } = {}) => {
     if (!signups[caller]?.is_anonymous) throw Object.assign(new Error('Solo para la prueba'), { status: 400 })
     if (db.mechanics.some((m) => m.profile_id === caller)) return null
     Object.assign(db.profiles.find((x) => x.id === caller), { role: 'mechanic', full_name: 'Taller de Prueba', phone: '787-555-0100', town: 'Fajardo', trial: true, access: 'approved' })
-    db.mechanics.push({ ...db.mechanics[0], profile_id: caller, business_name: 'Taller de Prueba', logo_path: null, brand_color: '#0b1220', listed: false, approved: false, slug: null })
+    db.mechanics.push({ ...db.mechanics[0], profile_id: caller, business_type: p_type ?? 'marine', business_name: (p_type ?? 'marine') === 'marine' ? 'Taller de Prueba' : 'Negocio de Prueba', logo_path: null, brand_color: '#0b1220', listed: false, approved: false, slug: null })
     db.clients.push({ id: randomUUID(), mechanic_id: caller, profile_id: null, full_name: 'Ana Martínez (ejemplo)', phone: '787-555-0111', email: null, town: 'Fajardo', address: null, preferred_contact: 'whatsapp', notes: 'PRUEBA', created_at: new Date().toISOString() })
     return null
   },

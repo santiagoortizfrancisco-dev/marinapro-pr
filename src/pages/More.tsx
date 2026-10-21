@@ -1,3 +1,4 @@
+import { TRADES, useWords } from '../lib/trade'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Briefcase, ChevronRight, Globe, KeyRound, LifeBuoy, ListChecks, ShieldCheck } from 'lucide-react'
@@ -10,6 +11,7 @@ import { CARD, IconBadge, PageTitle } from '../components/ui'
 
 export default function More() {
   const { profile, session } = useAuth()
+  const words = useWords()
   const now = new Date()
   // El enlace de Admin solo le sale al dueño del app
   const { data: isAdmin } = useLoad(async () => {
@@ -105,7 +107,7 @@ export default function More() {
         {row('Email', profile?.email ?? session?.user.email)}
         {row('Teléfono', profile?.phone)}
         {row('Pueblo', profile?.town)}
-        {row('Tipo de cuenta', profile?.role === 'mechanic' ? 'Mecánico' : 'Dueño de bote')}
+        {row('Tipo de negocio', TRADES.find((t) => t.value === words.trade)?.label)}
       </section>
 
       <h2 className="mb-2 mt-6 text-lg font-bold text-navy-900">Formatos</h2>
@@ -115,7 +117,7 @@ export default function More() {
         {row('Ejemplo de dinero', formatMoney(1234.56))}
       </section>
 
-      <p className="mt-8 text-center text-sm text-slate-500">Salt Marine Repair · versión {__APP_VERSION__}</p>
+      <p className="mt-8 text-center text-sm text-slate-500">{words.appName} · versión {__APP_VERSION__}</p>
     </>
   )
 }

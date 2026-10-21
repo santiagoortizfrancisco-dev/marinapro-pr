@@ -1,3 +1,4 @@
+import { useWords } from '../../lib/trade'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { CheckCircle2, ChevronDown, FileText, HandCoins, Receipt, Zap } from 'lucide-react'
@@ -14,6 +15,7 @@ import { CARD, EmptyState, ErrorBox, Fab, IconBadge, Loading, PageTitle } from '
 
 /** Cobros: solo dinero. Quién me debe, qué falta facturar y lo cobrado este mes. */
 export default function Jobs() {
+  const w = useWords()
   const { profile } = useAuth()
   const { data: mech } = useMechanic()
   const { data, loading, error, reload } = useLoad(loadMoney, [])
@@ -77,7 +79,7 @@ export default function Jobs() {
                 </Link>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   {r.boats.clients.phone ? (
-                    <a href={whatsappLink(r.boats.clients.phone, reminderMessage(r, mech?.ath_movil_number ?? null, profile?.full_name ?? ''))} target="_blank" rel="noreferrer"
+                    <a href={whatsappLink(r.boats.clients.phone, reminderMessage(r, mech?.ath_movil_number ?? null, profile?.full_name ?? '', w.delItem))} target="_blank" rel="noreferrer"
                       className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-[#25D366] text-base font-bold text-white">
                       <WhatsAppIcon size={20} /> Recordarle
                     </a>

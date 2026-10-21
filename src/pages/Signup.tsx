@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { PR_TOWNS } from '../lib/towns'
 import { onlyPin, weakPin } from '../lib/pin'
 import { Button, Choice, Field, Input, Select } from '../components/ui'
+import TradePicker from '../components/TradePicker'
+import type { Trade } from '../lib/trade'
 
 /**
  * El mecánico se registra solo desde el link. Su cuenta queda "por aprobar":
@@ -12,6 +14,7 @@ import { Button, Choice, Field, Input, Select } from '../components/ui'
  */
 export default function Signup({ onBack, onWaitEmail }: { onBack: () => void; onWaitEmail: (email: string) => void }) {
   const [f, setF] = useState({ full_name: '', business_name: '', phone: '', town: '', email: '' })
+  const [trade, setTrade] = useState<Trade | null>(null)
   const [kind, setKind] = useState<'pin' | 'password'>('pin')
   const [secret, setSecret] = useState('')
   const [repeat, setRepeat] = useState('')
@@ -27,6 +30,7 @@ export default function Signup({ onBack, onWaitEmail }: { onBack: () => void; on
     setError('')
     if (f.full_name.trim().length < 2) return setError('Escribe tu nombre.')
     if (f.phone.replace(/\D/g, '').length < 7) return setError('Escribe tu teléfono.')
+    if (!trade) return setError('Escoge a qué te dedicas.')
     if (!/^\S+@\S+\.\S+$/.test(f.email.trim())) return setError('Escribe un email correcto.')
     if (isPin) {
       if (!/^\d{6}$/.test(secret)) return setError('El PIN tiene que ser de 6 números.')
@@ -41,7 +45,7 @@ export default function Signup({ onBack, onWaitEmail }: { onBack: () => void; on
       password: secret,
       options: {
         emailRedirectTo: window.location.origin,
-        data: { signup: true, full_name: f.full_name.trim(), business_name: f.business_name.trim(), phone: f.phone.trim(), town: f.town },
+        data: { signup: true, full_name: f.full_name.trim(), business_name: f.business_name.trim(), phone: f.phone.trim(), town: f.town, business_type: trade },
       },
     })
     setBusy(false)
@@ -63,12 +67,15 @@ export default function Signup({ onBack, onWaitEmail }: { onBack: () => void; on
   return (
     <form onSubmit={submit} className="space-y-4">
       <h2 className="flex items-center gap-2 text-2xl font-bold text-navy-900"><UserPlus /> Crear mi cuenta</h2>
-      <p className="text-base text-slate-600">Para mecánicos marinos (botes y jet skis). Cuando la apruebemos, te avisamos y ya puedes usar el app.</p>
+      <p className="text-base text-slate-600">Para cualquier negocio de servicio. Cuando la aprobemos, te avisamos y ya puedes usar el app.</p>
+      <Field label="¿A qué te dedicas? *">
+        <TradePicker value={trade} onChange={setTrade} />
+      </Field>
       <Field label="Tu nombre completo *" icon={User}>
         <Input autoComplete="name" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} />
       </Field>
       <Field label="Nombre de tu compañía" icon={Building2} tone="teal" hint="Sale arriba en el app y en tus facturas">
-        <Input value={f.business_name} onChange={(e) => set('business_name', e.target.value)} placeholder="Rivera Marine Service" />
+        <Input value={f.business_name} onChange={(e) => set('business_name', e.target.value)} placeholder="Rivera Service" />
       </Field>
       <Field label="Teléfono / WhatsApp *" icon={Phone} tone="green">
         <Input type="tel" inputMode="tel" autoComplete="tel" value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="787-555-0123" />

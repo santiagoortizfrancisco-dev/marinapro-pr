@@ -1,3 +1,4 @@
+import { useWords } from '../../lib/trade'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { CalendarClock, Check, MapPin, Navigation, Phone, Ship, XCircle } from 'lucide-react'
@@ -19,6 +20,7 @@ const SELECT = '*, service_requests(description), boats(id, name, location_type,
 
 /** La visita completa: la cita arriba y, debajo, su trabajo (problema, piezas, fotos, factura). */
 export default function AppointmentDetail() {
+  const w = useWords()
   const { id } = useParams()
   const navigate = useNavigate()
   const { profile, session } = useAuth()
@@ -48,10 +50,10 @@ export default function AppointmentDetail() {
   const b = a.boats
   const c = b.clients
   const st = APPOINTMENT_STATUS[a.status]
-  const where = [b.marina_name, b.slip_number && (b.location_type === 'water_slip' ? `muelle ${b.slip_number}` : b.slip_number), b.town].filter(Boolean).join(', ')
+  const where = [w.marina ? b.marina_name : null, w.marina ? b.slip_number && (b.location_type === 'water_slip' ? `muelle ${b.slip_number}` : b.slip_number) : null, b.town].filter(Boolean).join(', ')
   const firstName = c.full_name.split(' ')[0]
   const message =
-    `Hola ${firstName}, te confirmo la cita para el bote ${b.name} el ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)}` +
+    `Hola ${firstName}, te confirmo la cita para ${w.elItem} ${b.name} el ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)}` +
     (where ? ` en ${where}` : '') +
     (a.title ? `. Trabajo: ${a.title}` : '') +
     `. Cualquier cambio me avisas. ${profile?.full_name ?? ''}`.trimEnd()

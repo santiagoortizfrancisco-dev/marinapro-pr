@@ -1,3 +1,4 @@
+import { useWords } from '../../lib/trade'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useState } from 'react'
 import { Calendar, CheckCircle2, HandCoins, Mail, Pencil, Phone, Ship } from 'lucide-react'
@@ -16,6 +17,7 @@ import ConfirmDelete from '../../components/ConfirmDelete'
 import { BackTitle, ErrorBox, InfoList, LinkButton, Loading, RowLink, SectionHeader } from '../../components/ui'
 
 export default function ClientDetail() {
+  const w = useWords()
   const { id } = useParams()
   const navigate = useNavigate()
   const { profile } = useAuth()
@@ -70,7 +72,7 @@ export default function ClientDetail() {
                 </Link>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   {c.phone ? (
-                    <a href={whatsappLink(c.phone, reminderMessage(r, mech?.ath_movil_number ?? null, profile?.full_name ?? ''))} target="_blank" rel="noreferrer"
+                    <a href={whatsappLink(c.phone, reminderMessage(r, mech?.ath_movil_number ?? null, profile?.full_name ?? '', w.delItem))} target="_blank" rel="noreferrer"
                       className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-[#25D366] text-base font-bold text-white">
                       <WhatsAppIcon size={20} /> Recordarle
                     </a>
@@ -98,8 +100,8 @@ export default function ClientDetail() {
         <Pencil size={18} /> Editar datos del cliente
       </Link>
 
-      <SectionHeader title="Botes" addTo={`/botes/nuevo?cliente=${c.id}`} addLabel="Bote" />
-      {boats.length === 0 && <p className="text-base text-slate-600">Todavía no tiene botes. Toca “Bote” para añadirlo.</p>}
+      <SectionHeader title={w.Items} addTo={`/botes/nuevo?cliente=${c.id}`} addLabel={w.Item} />
+      {boats.length === 0 && <p className="text-base text-slate-600">{`Todavía no tiene ${w.items}. Toca “${w.Item}” para añadir${w.elItem.startsWith('la') ? 'la' : 'lo'}.`}</p>}
       <div className="space-y-2">
         {boats.map((b) => (
           <RowLink
@@ -107,7 +109,7 @@ export default function ClientDetail() {
             to={`/botes/${b.id}`}
             icon={Ship}
             title={b.name}
-            subtitle={[[b.make, b.model, b.year].filter(Boolean).join(' '), b.marina_name ?? labelOf(LOCATION_TYPES, b.location_type)].filter(Boolean).join(' · ')}
+            subtitle={[[b.make, b.model, b.year].filter(Boolean).join(' '), w.marina ? b.marina_name ?? labelOf(LOCATION_TYPES, b.location_type) : b.town].filter(Boolean).join(' · ')}
           />
         ))}
       </div>
@@ -153,7 +155,7 @@ export default function ClientDetail() {
       <ConfirmDelete
         label="Borrar cliente"
         question={`¿Borrar a ${c.full_name}?`}
-        detail="Se borran también sus botes, motores, equipos y citas. Esto no se puede deshacer."
+        detail={`Se borran también sus ${w.items}${w.engines ? ', motores, equipos' : ''} y citas. Esto no se puede deshacer.`}
         onConfirm={async () => {
           must(await db().from('clients').delete().eq('id', c.id))
           navigate('/clientes', { replace: true })

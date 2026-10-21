@@ -1,3 +1,4 @@
+import { JOB_IDEAS, useWords } from '../lib/trade'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Star, Trash2 } from 'lucide-react'
 import { db } from '../lib/db'
@@ -38,6 +39,7 @@ export default function PartSheet({ open, workOrderId, part, onClose, onSaved }:
   onClose: () => void
   onSaved: () => void
 }) {
+  const words = useWords()
   const [f, setF] = useState<Form>(EMPTY)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -141,7 +143,7 @@ export default function PartSheet({ open, workOrderId, part, onClose, onSaved }:
               value={f.description}
               onChange={(e) => { set('description', e.target.value); setShowSuggestions(true) }}
               onFocus={() => setShowSuggestions(true)}
-              placeholder="Cambio de impeller"
+              placeholder={JOB_IDEAS[words.trade][0]}
               className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-2! text-base!"
             />
             <Input aria-label="Cantidad" inputMode="decimal" value={f.qty} onChange={(e) => set('qty', e.target.value)} className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-1! text-center" />

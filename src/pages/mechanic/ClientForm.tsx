@@ -1,3 +1,4 @@
+import { useWords } from '../../lib/trade'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { type LucideIcon, Home, Mail, MapPin, MessageCircle, Phone, StickyNote, User } from 'lucide-react'
@@ -20,6 +21,7 @@ const CONTACT_ICONS = {
 const EMPTY: Form = { full_name: '', phone: '', email: '', town: '', address: '', preferred_contact: 'whatsapp', notes: '' }
 
 export default function ClientForm() {
+  const w = useWords()
   const { id } = useParams()
   const navigate = useNavigate()
   const { session } = useAuth()
@@ -68,7 +70,7 @@ export default function ClientForm() {
 
   return (
     <>
-      <BackTitle subtitle={id ? undefined : 'Después de guardar añades su bote'}>{id ? 'Editar cliente' : 'Cliente nuevo'}</BackTitle>
+      <BackTitle subtitle={id ? undefined : `Después de guardar añades su ${w.item}`}>{id ? 'Editar cliente' : 'Cliente nuevo'}</BackTitle>
       <form onSubmit={save} className="space-y-4">
         <Field label="Nombre completo *" icon={User}>
           <Input required autoComplete="off" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} placeholder="Ana Martínez" />
@@ -94,7 +96,7 @@ export default function ClientForm() {
         <Field label="Notas" icon={StickyNote} tone="amber" hint="Ej.: paga con ATH Móvil, llamar después de las 5">
           <Textarea value={f.notes} onChange={(e) => set('notes', e.target.value)} />
         </Field>
-        <FormActions busy={busy} error={error} saveLabel={id ? 'Guardar cambios' : 'Guardar y añadir bote'} />
+        <FormActions busy={busy} error={error} saveLabel={id ? 'Guardar cambios' : `Guardar y añadir ${w.item}`} />
       </form>
     </>
   )

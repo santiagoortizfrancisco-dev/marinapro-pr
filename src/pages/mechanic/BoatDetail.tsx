@@ -1,3 +1,4 @@
+import { useWords } from '../../lib/trade'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Calendar, CalendarClock, Cog, Cpu, MapPin, Navigation, Pencil, Plus, User, X } from 'lucide-react'
@@ -12,6 +13,7 @@ import NextService from '../../components/NextService'
 import { BackTitle, ErrorBox, InfoList, LinkButton, Loading, RowLink, SectionHeader } from '../../components/ui'
 
 export default function BoatDetail() {
+  const w = useWords()
   const { id } = useParams()
   const navigate = useNavigate()
   const [addingNext, setAddingNext] = useState(false)
@@ -28,7 +30,7 @@ export default function BoatDetail() {
   }, [id])
 
   if (loading) return <Loading />
-  if (error || !data) return <ErrorBox message={error || 'No se encontró el bote.'} onRetry={reload} />
+  if (error || !data) return <ErrorBox message={error || `No se encontró ${w.elItem}.`} onRetry={reload} />
   const { boat: b, engines, equipment, appts, jobs, next: nextServices } = data
   const done = jobs.filter((j) => ['done', 'invoiced', 'paid'].includes(j.status))
   const lastService = done.length ? done.map((j) => j.completed_at ?? j.created_at).sort().at(-1)! : null
@@ -70,19 +72,20 @@ export default function BoatDetail() {
       <div className="mt-4">
         <InfoList
           rows={[
-            ['Largo', b.length_ft ? `${b.length_ft} pies` : null],
-            ['Color', b.hull_color],
-            ['Registro (DRNA)', b.registration_number],
+            ['Largo', w.marina && b.length_ft ? `${b.length_ft} pies` : null],
+            ['Color', w.marina ? b.hull_color : null],
+            [w.trade === 'auto' ? 'Tablilla' : 'Registro (DRNA)', b.registration_number],
             ['Marbete vence', b.marbete_expires ? <span className={marbeteVencido ? 'text-red-700' : ''}>{formatDate(b.marbete_expires)}{marbeteVencido ? ' (vencido)' : ''}</span> : null],
-            ['HIN', b.hull_id],
+            ['HIN', w.marina ? b.hull_id : null],
             ['Notas', b.notes],
           ]}
         />
       </div>
       <Link to={`/botes/${b.id}/editar`} className="mt-3 flex min-h-12 items-center justify-center gap-2 text-base font-bold text-navy-700">
-        <Pencil size={18} /> Editar bote y ubicación
+        <Pencil size={18} /> {`Editar ${w.item} y ubicación`}
       </Link>
 
+      {w.engines && <>
       <SectionHeader title="Motores" addTo={`/botes/${b.id}/motores/nuevo`} addLabel="Motor" />
       {engines.length === 0 && <p className="text-base text-slate-600">Sin motores todavía.</p>}
       <div className="space-y-2">
@@ -110,9 +113,10 @@ export default function BoatDetail() {
           />
         ))}
       </div>
+      </>}
 
       <SectionHeader title="Citas" addTo={`/citas/nueva?bote=${b.id}`} addLabel="Cita" />
-      {appts.length === 0 && <p className="text-base text-slate-600">No hay citas para este bote.</p>}
+      {appts.length === 0 && <p className="text-base text-slate-600">{`No hay citas para ${w.item === 'propiedad' ? 'esta' : 'este'} ${w.item}.`}</p>}
       <div className="space-y-2">
         {appts.map((a) => (
           <RowLink key={a.id} to={`/citas/${a.id}`} icon={Calendar} title={`${formatLongDate(a.starts_at)} · ${formatTime(a.starts_at)}`} subtitle={[a.title, a.service_requests?.description].filter(Boolean).join(' · ') || undefined} />
@@ -159,7 +163,7 @@ export default function BoatDetail() {
           Último servicio: <b>{formatDate(lastService)}</b> ({ago(lastService)})
         </p>
       )}
-      {jobs.length === 0 && <p className="text-base text-slate-600">Todavía no hay trabajos en este bote.</p>}
+      {jobs.length === 0 && <p className="text-base text-slate-600">{`Todavía no hay trabajos en ${w.item === 'propiedad' ? 'esta' : 'este'} ${w.item}.`}</p>}
       <div className="space-y-2">
         {jobs.map((j) => {
           const services = j.work_order_parts.filter((p) => p.kind === 'service').map((p) => p.description)
@@ -179,9 +183,9 @@ export default function BoatDetail() {
       </div>
 
       <ConfirmDelete
-        label="Borrar bote"
-        question={`¿Borrar el bote ${b.name}?`}
-        detail="Se borran también sus motores, equipos y citas. Esto no se puede deshacer."
+        label={`Borrar ${w.item}`}
+        question={`¿Borrar ${w.elItem} ${b.name}?`}
+        detail={`Se borran también sus ${w.engines ? 'motores, equipos y ' : ''}citas. Esto no se puede deshacer.`}
         onConfirm={async () => {
           must(await db().from('boats').delete().eq('id', b.id))
           navigate(`/clientes/${b.client_id}`, { replace: true })

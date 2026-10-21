@@ -1,3 +1,4 @@
+import { useWords } from '../lib/trade'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { Bell, Calendar, Home, LogOut, Menu, MessageSquareWarning, Receipt, Repeat, Ship, Wrench, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -42,6 +43,7 @@ const CLIENT_TABS: Tab[] = [
 
 export default function Layout() {
   const { profile, session, demo, enterDemo, signOut } = useAuth()
+  const words = useWords()
   const isMechanic = profile?.role === 'mechanic'
   const tabs = isMechanic ? MECHANIC_TABS : CLIENT_TABS
   const navigate = useNavigate()
@@ -107,11 +109,11 @@ export default function Layout() {
           {brand.logo ? (
             <img src={brand.logo} alt="" className="h-12 w-12 shrink-0 rounded-xl bg-black object-contain" />
           ) : (
-            <img src="/logo.svg" alt="" className="h-11 w-11 shrink-0 rounded-xl" />
+            <img src={words.appLogo} alt="" className="h-11 w-11 shrink-0 rounded-xl" />
           )}
           <div className="min-w-0 flex-1 leading-tight">
             <div className="text-sm font-bold uppercase tracking-wide text-white/85">
-              Salt Marine Repair{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-white">DEMO</span>}
+              {words.appName}{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-white">DEMO</span>}
             </div>
             <div className="text-[11px] leading-tight text-white/60">Powered by Francisco Santiago (Joy)</div>
             <div className="truncate text-lg font-bold">{brand.name || (isMechanic ? 'Mecánico' : 'Dueño de bote')}</div>

@@ -1,3 +1,4 @@
+import { useWords } from '../lib/trade'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { BellRing, CalendarPlus, X } from 'lucide-react'
@@ -30,6 +31,7 @@ function whenText(due: string) {
 
 /** "Le toca servicio": recordatorios que vencen en 30 días (o ya se pasaron) y marbetes por vencer. */
 export default function DueServices() {
+  const words = useWords()
   const { profile } = useAuth()
   const [all, setAll] = useState(false)
   const limit = addDays(todayPR(), 30)
@@ -70,8 +72,8 @@ export default function DueServices() {
           const w = whenText(d.due)
           const first = d.clientName.split(' ')[0]
           const msg = d.scheduleId
-            ? `Hola ${first}, a tu bote ${d.boatName} le toca: ${d.what}. ¿Te separo un día para hacerlo? ${profile?.full_name ?? ''}`.trim()
-            : `Hola ${first}, el marbete de tu bote ${d.boatName} vence el ${formatDate(d.due)}. Si quieres, aprovechamos y le damos servicio antes. ${profile?.full_name ?? ''}`.trim()
+            ? `Hola ${first}, a tu ${words.item} ${d.boatName} le toca: ${d.what}. ¿Te separo un día para hacerlo? ${profile?.full_name ?? ''}`.trim()
+            : `Hola ${first}, el marbete de tu ${words.item} ${d.boatName} vence el ${formatDate(d.due)}. Si quieres, aprovechamos y le damos servicio antes. ${profile?.full_name ?? ''}`.trim()
           return (
             <div key={d.key} className="rounded-xl bg-white p-3">
               <div className="flex items-start gap-2">

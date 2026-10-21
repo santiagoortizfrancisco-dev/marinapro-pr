@@ -1,3 +1,4 @@
+import { JOB_IDEAS, PROBLEM_EXAMPLE, useWords } from '../../lib/trade'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { ChevronDown, ChevronUp, Search, Ship, UserPlus, X } from 'lucide-react'
@@ -16,13 +17,6 @@ interface ClientRow { id: string; full_name: string; phone: string | null; town:
 /** Lo que se escogió: un bote que ya existe, un bote nuevo para un cliente que ya existe, o cliente y bote nuevos. */
 type Target = { kind: 'boat'; boatId: string } | { kind: 'newBoat'; clientId: string } | { kind: 'new' } | null
 
-const JOB_SUGGESTIONS = [
-  'Servicio de 100 horas', 'Cambio de aceite y filtros', 'Diagnóstico', 'Cambio de impeller', 'Cambio de bujías',
-  'Servicio de pata (lower unit)', 'Revisión eléctrica', 'Instalación de GPS / electrónica', 'Reparación de windlass',
-  'Servicio de generador', 'Servicio de aire acondicionado', 'Cambio de baterías', 'Reparación de bomba de achique',
-  'Servicio de dirección hidráulica', 'Prueba en el agua',
-]
-
 function plain(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
@@ -37,6 +31,7 @@ function defaultTime(day: string, hora: string | null): string {
 }
 
 export default function AppointmentForm() {
+  const w = useWords()
   const { id } = useParams()
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -117,7 +112,7 @@ export default function AppointmentForm() {
       const match = (s: string | null) => !term || plain(s ?? '').includes(term)
       const phoneMatch = digits.length >= 3 && (c.phone ?? '').replace(/\D/g, '').includes(digits)
       if (c.boats.length === 0) {
-        if (match(c.full_name) || phoneMatch) rows.push({ key: c.id, title: c.full_name, sub: 'Sin bote todavía · añadir bote', pick: { kind: 'newBoat', clientId: c.id } })
+        if (match(c.full_name) || phoneMatch) rows.push({ key: c.id, title: c.full_name, sub: `${w.noItem} · añadir ${w.item}`, pick: { kind: 'newBoat', clientId: c.id } })
       }
       for (const b of c.boats) {
         if (match(c.full_name) || match(b.name) || phoneMatch) rows.push({ key: b.id, title: `${b.name} · ${c.full_name}`, sub: [c.phone, c.town].filter(Boolean).join(' · '), pick: { kind: 'boat', boatId: b.id } })
@@ -130,16 +125,16 @@ export default function AppointmentForm() {
     if (!pick || !clients) return null
     if (pick.kind === 'boat') {
       for (const c of clients) for (const b of c.boats) if (b.id === pick.boatId) return { title: b.name, sub: c.full_name }
-      return { title: 'Bote', sub: '' }
+      return { title: w.Item, sub: '' }
     }
-    if (pick.kind === 'newBoat') return { title: 'Bote nuevo', sub: clients.find((c) => c.id === pick.clientId)?.full_name ?? '' }
+    if (pick.kind === 'newBoat') return { title: w.newItem, sub: clients.find((c) => c.id === pick.clientId)?.full_name ?? '' }
     return null
   }, [pick, clients])
 
   async function save(e: FormEvent) {
     e.preventDefault()
     setError('')
-    if (!pick) return setError('Escoge el cliente y el bote, o toca “Cliente nuevo”.')
+    if (!pick) return setError(`Escoge el cliente y ${w.elItem}, o toca “Cliente nuevo”.`)
     if (pick.kind === 'new' && !newClient.full_name.trim()) return setError('Escribe el nombre del cliente.')
     setBusy(true)
     try {
@@ -154,7 +149,7 @@ export default function AppointmentForm() {
       if (pick.kind !== 'boat') {
         const town = pick.kind === 'new' ? blank(newClient.town) : clients?.find((c) => c.id === clientId)?.town ?? null
         const owner = pick.kind === 'new' ? newClient.full_name : clients?.find((c) => c.id === clientId)?.full_name ?? ''
-        const boatName = newBoatName.trim() || `Bote de ${owner.trim().split(' ')[0] || 'cliente'}`
+        const boatName = newBoatName.trim() || w.itemOf(owner.trim().split(' ')[0] || 'cliente')
         const b = await db().from('boats').insert({ client_id: clientId, name: boatName, town }).select('id').single()
         if (b.error) throw b.error
         boatId = (b.data as { id: string }).id
@@ -204,7 +199,7 @@ export default function AppointmentForm() {
       <BackTitle>{id ? 'Mover / editar cita' : 'Cita nueva'}</BackTitle>
       <form onSubmit={save} className="space-y-4">
         {/* ¿Para quién? */}
-        <Field label="Cliente y bote *">
+        <Field label={`Cliente y ${w.item} *`}>
           {chosen ? (
             <div className="flex min-h-14 items-center gap-3 rounded-xl border-2 border-navy-800 bg-navy-50 px-4 py-2">
               <Ship size={24} className="shrink-0 text-navy-700" />
@@ -235,7 +230,7 @@ export default function AppointmentForm() {
             <div className="space-y-2">
               <div className="relative">
                 <Search size={22} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                <Input type="search" aria-label="Buscar cliente" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente, bote o teléfono" className="pl-12" />
+                <Input type="search" aria-label="Buscar cliente" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Buscar cliente, ${w.item} o teléfono`} className="pl-12" />
               </div>
               {results.map((r) => (
                 <button key={r.key} type="button" onClick={() => setPick(r.pick)} className="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-left active:bg-slate-50">
@@ -258,13 +253,13 @@ export default function AppointmentForm() {
           )}
         </Field>
         {pick && pick.kind !== 'boat' && (
-          <Field label="Nombre del bote o jet ski (opcional)" hint="Si lo dejas vacío se guarda como “Bote de …”. Lo demás lo llenas después.">
-            <Input value={newBoatName} onChange={(e) => setNewBoatName(e.target.value)} placeholder="La Tranquila" />
+          <Field label={w.marina ? 'Nombre del bote o jet ski (opcional)' : `Nombre ${w.delItem} (opcional)`} hint={`Si lo dejas vacío se guarda como “${w.itemOf('…')}”. Lo demás lo llenas después.`}>
+            <Input value={newBoatName} onChange={(e) => setNewBoatName(e.target.value)} placeholder={w.itemExample} />
           </Field>
         )}
 
         <Field label="¿Qué problema tiene?" hint="Lo que te dice el cliente">
-          <Textarea rows={3} value={problem} onChange={(e) => setProblem(e.target.value)} placeholder="El motor de babor no arranca en frío" />
+          <Textarea rows={3} value={problem} onChange={(e) => setProblem(e.target.value)} placeholder={PROBLEM_EXAMPLE[w.trade]} />
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
@@ -297,13 +292,15 @@ export default function AppointmentForm() {
             </Field>
 
             <Field label="¿Qué se va a hacer?">
-              <Input list="jobs" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Servicio de 100 horas" />
+              <Input list="jobs" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={JOB_IDEAS[w.trade][0]} />
             </Field>
-            <Suggestions id="jobs" values={JOB_SUGGESTIONS} />
-            <Field label="¿En qué?">
-              <MultiChoice value={systems} onChange={setSystems} options={WORK_AREAS} />
-            </Field>
-            <Field label="Notas" hint="Piezas que llevar, llaves, contacto en la marina">
+            <Suggestions id="jobs" values={JOB_IDEAS[w.trade]} />
+            {w.marina && (
+              <Field label="¿En qué?">
+                <MultiChoice value={systems} onChange={setSystems} options={WORK_AREAS} />
+              </Field>
+            )}
+            <Field label="Notas" hint={w.marina ? 'Piezas que llevar, llaves, contacto en la marina' : 'Materiales que llevar, llaves, a quién buscar'}>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
             </Field>
           </div>

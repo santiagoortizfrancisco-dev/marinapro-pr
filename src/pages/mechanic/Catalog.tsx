@@ -1,3 +1,4 @@
+import { JOB_IDEAS, useWords } from '../../lib/trade'
 import { useState, type FormEvent } from 'react'
 import { Package, Plus, Trash2, Wrench } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
@@ -8,6 +9,7 @@ import { BackTitle, Button, ErrorBox, Input, Loading } from '../../components/ui
 
 /** Las piezas y servicios del mecánico, con su precio. Se llenan solas al usarlas en un trabajo. */
 export default function Catalog() {
+  const w = useWords()
   const { session } = useAuth()
   const [tab, setTab] = useState<'service' | 'part'>('service')
   const [name, setName] = useState('')
@@ -67,7 +69,7 @@ export default function Catalog() {
 
 
       <form onSubmit={add} className="mb-5 grid grid-cols-[1fr_6.5rem] gap-2">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={tab === 'service' ? 'Cambio de impeller' : 'Impeller'} aria-label={tab === 'service' ? 'Servicio nuevo' : 'Pieza nueva'} />
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={tab === 'service' ? JOB_IDEAS[w.trade][0] : 'Pieza o material'} aria-label={tab === 'service' ? 'Servicio nuevo' : 'Pieza nueva'} />
         <Input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="$ precio" aria-label="Precio" />
         <Button type="submit" className="col-span-2" disabled={!blank(name)}><Plus /> Añadir {tab === 'service' ? 'servicio' : 'pieza'}</Button>
       </form>

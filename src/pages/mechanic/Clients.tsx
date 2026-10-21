@@ -1,3 +1,4 @@
+import { useWords } from '../../lib/trade'
 import { Link } from 'react-router'
 import { useMemo, useState } from 'react'
 import { Search, UserPlus, Users } from 'lucide-react'
@@ -21,6 +22,7 @@ function plain(s: string) {
 }
 
 export default function Clients() {
+  const w = useWords()
   const [q, setQ] = useState('')
   const { data, loading, error, reload } = useLoad(
     async () => must(await db().from('clients').select('id, full_name, phone, town, boats(name)').order('full_name')) as Row[],
@@ -57,7 +59,7 @@ export default function Clients() {
       {data && data.length > 0 && (
         <div className="relative mb-4">
           <Search size={22} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nombre, bote, pueblo o teléfono" className="pl-12" />
+          <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Buscar nombre, ${w.item}, pueblo o teléfono`} className="pl-12" />
         </div>
       )}
 
@@ -65,7 +67,7 @@ export default function Clients() {
       {error && <ErrorBox message={error} onRetry={reload} />}
 
       {data && data.length === 0 && (
-        <EmptyState icon={Users} title="Todavía no tienes clientes" text="Toca “Añadir cliente” arriba para añadir el primero, con su bote y sus motores." />
+        <EmptyState icon={Users} title="Todavía no tienes clientes" text={`Toca “Añadir cliente” arriba para añadir el primero, con su ${w.item}${w.engines ? ' y sus motores' : ''}.`} />
       )}
       {data && data.length > 0 && list.length === 0 && <p className="py-6 text-center text-base text-slate-600">Nadie con “{q}”.</p>}
 
@@ -76,7 +78,7 @@ export default function Clients() {
             to={`/clientes/${c.id}`}
             lead={<Initials name={c.full_name} />}
             title={c.full_name}
-            subtitle={<>{debts?.get(c.id) ? <span className="font-extrabold text-red-700">Debe {formatMoney(debts.get(c.id)!)} · </span> : null}{[c.boats.map((b) => b.name).join(', ') || 'Sin bote todavía', c.town].filter(Boolean).join(' · ')}</>}
+            subtitle={<>{debts?.get(c.id) ? <span className="font-extrabold text-red-700">Debe {formatMoney(debts.get(c.id)!)} · </span> : null}{[c.boats.map((b) => b.name).join(', ') || w.noItem, c.town].filter(Boolean).join(' · ')}</>}
           />
         ))}
       </div>

@@ -1,3 +1,4 @@
+import { useWords } from '../lib/trade'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { AlertTriangle, Banknote, Calculator, ChevronDown, Camera, CheckCircle2, Clock, CreditCard, ExternalLink, FileText, HandCoins, ListChecks, MessageCircle, Package, Plus, Receipt, Ship, Smartphone, ThumbsUp, Waves, Wrench, CalendarClock, ScrollText, type LucideIcon } from 'lucide-react'
@@ -104,6 +105,7 @@ function AutoText({ label, hint, value, onSave, rows = 3 }: { label: string; hin
  * Se muestra dentro de la cita (embedded) o solo, para trabajos sin cita.
  */
 export default function JobPanel({ woId: id, embedded = false }: { woId: string; embedded?: boolean }) {
+  const w = useWords()
   const navigate = useNavigate()
   const { session, profile } = useAuth()
   const [partOpen, setPartOpen] = useState(false)
@@ -217,18 +219,18 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   const boughtParts = parts.some((p) => p.kind !== 'service')
   if (boughtParts && !photos.some((p) => p.kind === 'old_part')) warnings.push('Falta foto de la pieza vieja.')
   if (boughtParts && !photos.some((p) => p.kind === 'new_part')) warnings.push('Falta foto de la pieza nueva.')
-  if (wo.sea_trial_required && wo.sea_trial_method !== 'not_allowed' && !wo.sea_trial_done) warnings.push('Falta la prueba en el agua.')
-  if (wo.sea_trial_method === 'not_allowed') warnings.push('Sin prueba en el agua: la garantía queda anulada (sale en la factura).')
+  if (w.seaTrial && wo.sea_trial_required && wo.sea_trial_method !== 'not_allowed' && !wo.sea_trial_done) warnings.push('Falta la prueba en el agua.')
+  if (w.seaTrial && wo.sea_trial_method === 'not_allowed') warnings.push('Sin prueba en el agua: la garantía queda anulada (sale en la factura).')
   if (parts.some((p) => p.kind !== 'service' && !p.received_at)) warnings.push('Hay piezas que todavía no han llegado.')
 
-  const estimateMsg = `Hola ${firstName}, te envío el estimado para el bote ${boat.name}: total ${formatMoney(totals.total)}. Lo puedes ver aquí: ${link(wo.public_token)} . Si estás de acuerdo, contéstame "aprobado". ${profile?.full_name ?? ''}`.trim()
+  const estimateMsg = `Hola ${firstName}, te envío el estimado para ${w.elItem} ${boat.name}: total ${formatMoney(totals.total)}. Lo puedes ver aquí: ${link(wo.public_token)} . Si estás de acuerdo, contéstame "aprobado". ${profile?.full_name ?? ''}`.trim()
   const way = payWay ?? (mech.ath_movil_number ? 'any' : 'cash')
   const payText =
     way === 'ath' && mech.ath_movil_number ? ` Puedes pagar por ATH Móvil al ${mech.ath_movil_number}.`
     : way === 'any' && mech.ath_movil_number ? ` Puedes pagar por ATH Móvil al ${mech.ath_movil_number}, o en efectivo o cheque.`
     : ' El pago es en efectivo o cheque.'
   const invoiceMsg = invoice
-    ? `Hola ${firstName}, aquí está la factura #${invoice.number} del bote ${boat.name} por ${formatMoney(Number(invoice.total))}` + (paid > 0 && balance > 0 ? ` (ya pagaste ${formatMoney(paid)}; balance ${formatMoney(balance)})` : '') + `: ${link(invoice.public_token)}?pago=${way} .` + payText + ` ¡Gracias! ${profile?.full_name ?? ''}`
+    ? `Hola ${firstName}, aquí está la factura #${invoice.number} ${w.delItem} ${boat.name} por ${formatMoney(Number(invoice.total))}` + (paid > 0 && balance > 0 ? ` (ya pagaste ${formatMoney(paid)}; balance ${formatMoney(balance)})` : '') + `: ${link(invoice.public_token)}?pago=${way} .` + payText + ` ¡Gracias! ${profile?.full_name ?? ''}`
     : ''
   const invoiceOutdated = invoice && !invoice.paid_at && Math.abs(Number(invoice.total) - totals.total) > 0.004
 
@@ -433,7 +435,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
           <Row icon={Camera} title="Fotos" summary={photos.length ? `${photos.length} ${photos.length === 1 ? 'foto' : 'fotos'}` : 'Antes, pieza vieja, pieza nueva, después'}>
             <PhotoSection workOrderId={wo.id} photos={photos} onChange={reload} />
           </Row>
-          <Row icon={Waves} title="Prueba en el agua" summary={!wo.sea_trial_required ? 'No hace falta' : wo.sea_trial_method === 'not_allowed' ? 'El cliente no la permitió' : wo.sea_trial_done ? 'Hecha ✓' : 'Pendiente'}>
+          {w.seaTrial && <Row icon={Waves} title="Prueba en el agua" summary={!wo.sea_trial_required ? 'No hace falta' : wo.sea_trial_method === 'not_allowed' ? 'El cliente no la permitió' : wo.sea_trial_done ? 'Hecha ✓' : 'Pendiente'}>
             <div className="space-y-3">
               <Toggle checked={wo.sea_trial_required} onChange={(v) => patch({ sea_trial_required: v })} label="Este trabajo necesita prueba en el agua" hint="Motor, propulsión o electricidad" />
               {wo.sea_trial_required && (
@@ -446,7 +448,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                 </>
               )}
             </div>
-          </Row>
+          </Row>}
           {['done', 'invoiced', 'paid'].includes(wo.status) && (
             data.next ? (
               <div className="flex min-h-14 items-center gap-3 px-3 py-2">

@@ -1,3 +1,4 @@
+import { JOB_IDEAS, useWords } from '../lib/trade'
 import { useState } from 'react'
 import { CalendarClock } from 'lucide-react'
 import { db } from '../lib/db'
@@ -23,6 +24,7 @@ export default function NextService({ boatId, workOrderId, defaultService, onSav
   onSkip?: () => void
   title?: string
 }) {
+  const w = useWords()
   const [service, setService] = useState(defaultService ?? 'Mantenimiento')
   const [when, setWhen] = useState<(typeof WHEN)[number]['value']>('6')
   const [date, setDate] = useState(addMonths(todayPR(), 6))
@@ -50,7 +52,7 @@ export default function NextService({ boatId, workOrderId, defaultService, onSav
       <h3 className="mb-3 flex items-center gap-2 text-lg font-extrabold text-navy-900"><CalendarClock size={22} /> {title}</h3>
       <div className="space-y-3">
         <Field label="¿Qué le toca?">
-          <Input value={service} onChange={(e) => setService(e.target.value)} placeholder="Cambio de aceite e impeller" />
+          <Input value={service} onChange={(e) => setService(e.target.value)} placeholder={JOB_IDEAS[w.trade][0]} />
         </Field>
         <Choice value={when} onChange={setWhen} options={WHEN} />
         {when === 'date' && (

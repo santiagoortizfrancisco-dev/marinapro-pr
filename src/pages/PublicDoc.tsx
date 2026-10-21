@@ -1,3 +1,4 @@
+import { wordsFor, type Trade } from '../lib/trade'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 import { ArrowLeft, CheckCircle2, FileDown, Printer } from 'lucide-react'
@@ -18,7 +19,7 @@ interface Doc {
   date: string
   paid_at: string | null
   payment_method: string | null
-  business: { name: string; owner: string | null; phone: string | null; email: string | null; town: string | null; ath_movil: string | null; logo_path: string | null; brand_color: string | null }
+  business: { business_type?: string; name: string; owner: string | null; phone: string | null; email: string | null; town: string | null; ath_movil: string | null; logo_path: string | null; brand_color: string | null }
   client: { name: string }
   boat: { name: string; make: string | null; model: string | null; year: number | null; marina: string | null; slip: string | null; town: string | null }
   work: {
@@ -75,7 +76,7 @@ function ApproveBox({ token, doc, color, onApproved }: { token: string; doc: Doc
     onApproved((data as { approved_at: string }).approved_at)
   }
 
-  const question = `Hola, tengo una pregunta sobre el estimado del bote ${doc.boat.name} (${formatMoney(Number(doc.totals.total))}).`
+  const question = `Hola, tengo una pregunta sobre el estimado ${wordsFor(doc.business.business_type as Trade | undefined).delItem} ${doc.boat.name} (${formatMoney(Number(doc.totals.total))}).`
   return (
     <div className="mt-5 space-y-3 rounded-2xl border-2 p-4 print:hidden" style={{ borderColor: color }}>
       {!confirming ? (
@@ -154,13 +155,14 @@ export default function PublicDoc() {
   if (state === 'missing' || !doc) return <p className="p-8 text-center text-lg">No se encontró este documento. Pide el link otra vez.</p>
 
   const t = doc.totals
+  const words = wordsFor(doc.business.business_type as Trade | undefined)
   const color = doc.business.brand_color || DEFAULT_BRAND
   const logo = logoUrl(doc.business.logo_path)
   const isInvoice = doc.kind === 'invoice'
   const ivuOn = [t.ivu_on_labor && 'mano de obra', t.ivu_on_parts && 'piezas'].filter(Boolean).join(' y ')
   const payments = doc.payments ?? []
   const balance = Math.max(0, Math.round((Number(t.total) - payments.reduce((x, py) => x + Number(py.amount), 0)) * 100) / 100)
-  const boatLine = [[doc.boat.make, doc.boat.model, doc.boat.year].filter(Boolean).join(' '), [doc.boat.marina, doc.boat.slip && `muelle ${doc.boat.slip}`, doc.boat.town].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
+  const boatLine = [[doc.boat.make, doc.boat.model, doc.boat.year].filter(Boolean).join(' '), [words.marina ? doc.boat.marina : null, words.marina && doc.boat.slip ? `muelle ${doc.boat.slip}` : null, doc.boat.town].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
 
   return (
     <div className="min-h-full bg-slate-100 py-4 print:bg-white print:py-0">
@@ -204,7 +206,7 @@ export default function PublicDoc() {
             <div className="font-semibold">{doc.client.name}</div>
           </div>
           <div>
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">Bote</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">{words.Item}</div>
             <div className="font-semibold">{doc.boat.name}</div>
             {boatLine && <div className="text-slate-600">{boatLine}</div>}
           </div>
@@ -298,7 +300,7 @@ export default function PublicDoc() {
         )}
 
         {/* Prueba en el agua y garantía */}
-        {doc.work.sea_trial_required && (
+        {words.seaTrial && doc.work.sea_trial_required && (
           <section className="mt-5 text-base">
             <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">Prueba en el agua</div>
             {doc.work.sea_trial_method === 'not_allowed' ? (
@@ -328,7 +330,7 @@ export default function PublicDoc() {
         </div>
         </div>
         <footer className="flex items-center justify-center gap-2 border-t border-slate-100 bg-slate-50 py-3 text-xs text-slate-500">
-          <img src="/logo.svg" alt="" className="h-5 w-5 rounded" /> Hecho con Salt Marine Repair · Powered by Francisco Santiago (Joy)
+          <img src={words.appLogo} alt="" className="h-5 w-5 rounded" /> Hecho con {words.appName} · Powered by Francisco Santiago (Joy)
         </footer>
       </article>
     </div>

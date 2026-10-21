@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import ChooseRole from './pages/ChooseRole'
 import PendingApproval from './pages/PendingApproval'
 import StartTrial from './pages/StartTrial'
+import { TradeProvider } from './lib/trade'
 import More from './pages/More'
 import Agenda from './pages/mechanic/Agenda'
 import AppointmentForm from './pages/mechanic/AppointmentForm'
@@ -69,6 +70,7 @@ export default function App() {
 
   if (profile.role === 'mechanic') {
     return (
+      <TradeProvider>
       <AppLock>
       <Routes>
         <Route element={<Layout />}>
@@ -104,6 +106,7 @@ export default function App() {
         </Route>
       </Routes>
       </AppLock>
+      </TradeProvider>
     )
   }
 

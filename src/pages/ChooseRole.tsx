@@ -4,15 +4,18 @@ import { useAuth } from '../auth/AuthProvider'
 import { supabase } from '../lib/supabase'
 import { PR_TOWNS } from '../lib/towns'
 import { Button, Field, Input, Select } from '../components/ui'
+import TradePicker from '../components/TradePicker'
+import type { Trade } from '../lib/trade'
 
 /** Primera vez que entra. Fase 1: todos son mecánicos (la app del cliente llega en la Fase 2). */
 export default function ChooseRole() {
   const { refreshProfile, signOut, profile, session } = useAuth()
-  const meta = (session?.user.user_metadata ?? {}) as { signup?: boolean; full_name?: string; business_name?: string; phone?: string; town?: string }
+  const meta = (session?.user.user_metadata ?? {}) as { signup?: boolean; full_name?: string; business_name?: string; phone?: string; town?: string; business_type?: Trade }
   const [fullName, setFullName] = useState(meta.full_name ?? profile?.full_name ?? '')
   const [businessName, setBusinessName] = useState(meta.business_name ?? '')
   const [phone, setPhone] = useState(meta.phone ?? '')
   const [town, setTown] = useState(meta.town ?? '')
+  const [trade, setTrade] = useState<Trade>(meta.business_type ?? 'general')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -37,6 +40,11 @@ export default function ChooseRole() {
       p_town: town || null,
       p_business_name: businessName.trim() || null,
     })
+    if (!error) {
+      // A qué se dedica: cambia las palabras del app (bote, carro, equipo, propiedad…)
+      await supabase.from('mechanics').update({ business_type: trade }).eq('profile_id', session!.user.id)
+      try { localStorage.setItem('tipo-de-negocio', trade) } catch { /* sin memoria: no pasa nada */ }
+    }
     setBusy(false)
     if (error) setError('No se pudo guardar. Intenta otra vez.')
     else await refreshProfile()
@@ -45,7 +53,7 @@ export default function ChooseRole() {
   return (
     <div className="safe-top safe-bottom mx-auto max-w-md px-6 py-8">
       <Wrench size={44} className="text-navy-800" />
-      <h1 className="mt-3 text-2xl font-extrabold text-navy-900">¡Bienvenido a Salt Marine Repair!</h1>
+      <h1 className="mt-3 text-2xl font-extrabold text-navy-900">¡Bienvenido a FacturaFácil PR!</h1>
       <p className="mt-1 text-base text-slate-600">Antes de empezar, el nombre de tu compañía. El logo lo subes después en Más → Mi negocio.</p>
 
       <form onSubmit={save} className="mt-6 space-y-4">
@@ -53,10 +61,13 @@ export default function ChooseRole() {
           <Input required autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
         </Field>
         <Field label="Nombre de tu compañía" hint="Sale arriba en el app y en tus facturas">
-          <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Rivera Marine Service" />
+          <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Rivera Service" />
         </Field>
         <Field label="Teléfono">
           <Input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="787-555-0123" />
+        </Field>
+        <Field label="¿A qué te dedicas?">
+          <TradePicker value={trade} onChange={setTrade} />
         </Field>
         <Field label="Pueblo">
           <Select value={town} onChange={(e) => setTown(e.target.value)}>

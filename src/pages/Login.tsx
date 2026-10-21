@@ -112,10 +112,11 @@ export default function Login() {
   return (
     <div className="flex min-h-full flex-col bg-navy-900">
       <div className="safe-top px-6 pb-8 pt-12 text-center text-white">
-        <img src="/logo.svg" alt="" className="mx-auto h-20 w-20 rounded-2xl" />
-        <h1 className="mt-4 text-[1.7rem] font-extrabold leading-tight">Salt Marine Repair</h1>
+        <img src="/logo-ff.svg" alt="" className="mx-auto h-20 w-20 rounded-2xl" />
+        <h1 className="mt-4 text-[1.7rem] font-extrabold leading-tight">FacturaFácil PR</h1>
         <p className="text-xs text-white/60">Powered by Francisco Santiago (Joy)</p>
-        <p className="mt-1 text-lg text-navy-100">Para mecánicos marinos: botes y jet skis</p>
+        <p className="mt-1 text-lg text-navy-100">Citas, facturas y cobros desde el celular</p>
+        <p className="mt-1 text-sm text-navy-100/80">Botes · Aire acondicionado · Plomería · Electricidad · Autos · y más</p>
       </div>
 
       <div className="safe-bottom flex-1 rounded-t-3xl bg-white px-6 py-8">

@@ -459,3 +459,20 @@ test('link de prueba: el visitante anónimo recibe su propio taller de ejemplo, 
   assert.equal((await db.query(`select count(*)::int n from clients where mechanic_id = '${V}'`)).rows[0].n, 0)
   assert.equal((await db.query(`select count(*)::int n from clients where mechanic_id = '${W}'`)).rows[0].n, 3, 'la prueba nueva sigue')
 })
+
+test('FacturaFácil: cada negocio dice a qué se dedica; los de antes quedan como botes; la prueba arma el oficio escogido', async () => {
+  assert.equal((await one(A, `select business_type from mechanics where profile_id = '${A}'`)).business_type, 'marine')
+  await as(A, `update mechanics set business_type = 'plumbing' where profile_id = '${A}'`)
+  assert.equal((await one(A, `select business_type from mechanics where profile_id = '${A}'`)).business_type, 'plumbing')
+  assert.ok(await fails(() => as(A, `update mechanics set business_type = 'piloto' where profile_id = '${A}'`)), 'solo los oficios de la lista')
+  await as(A, `update mechanics set business_type = 'marine' where profile_id = '${A}'`)
+
+  const V = (await db.query(`insert into auth.users(is_anonymous) values (true) returning id`)).rows[0].id
+  await as(V, `select start_trial('ac')`)
+  assert.equal((await one(V, `select business_type from mechanics where profile_id = '${V}'`)).business_type, 'ac')
+  const items = (await as(V, `select name from boats order by name`)).map((r) => r.name)
+  assert.ok(items.includes('Unidad de la sala (24,000 BTU)'))
+  assert.equal((await one(V, `select count(*)::int n from engines`)).n, 0, 'sin motores fuera de botes')
+  const tok = (await one(V, `select public_token from invoices limit 1`)).public_token
+  assert.equal((await one(null, `select get_public_document('${tok}') d`, 'anon')).d.business.business_type, 'ac')
+})

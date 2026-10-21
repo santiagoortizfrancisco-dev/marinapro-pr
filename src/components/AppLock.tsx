@@ -1,3 +1,4 @@
+import { useWords } from '../lib/trade'
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Lock, LogOut } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider'
@@ -51,6 +52,7 @@ const idleTooLong = () => {
  */
 export default function AppLock({ children }: { children: ReactNode }) {
   const { session, signOut } = useAuth()
+  const words = useWords()
   const [locked, setLocked] = useState(idleTooLong)
   const [pin, setPin] = useState('')
   // Lo mismo que usa para entrar: PIN (teclado de números) o contraseña
@@ -98,8 +100,8 @@ export default function AppLock({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-col bg-navy-900">
       <div className="safe-top px-6 pb-8 pt-12 text-center text-white">
-        <img src="/logo.svg" alt="" className="mx-auto h-20 w-20 rounded-2xl" />
-        <h1 className="mt-4 text-[1.7rem] font-extrabold leading-tight">Salt Marine Repair</h1>
+        <img src={words.appLogo} alt="" className="mx-auto h-20 w-20 rounded-2xl" />
+        <h1 className="mt-4 text-[1.7rem] font-extrabold leading-tight">{words.appName}</h1>
         <p className="text-xs text-white/60">Powered by Francisco Santiago (Joy)</p>
       </div>
       <div className="safe-bottom flex-1 rounded-t-3xl bg-white px-6 py-8">
