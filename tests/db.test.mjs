@@ -44,7 +44,12 @@ before(async () => {
     alter default privileges in schema public grant all on tables to anon, authenticated;
     alter default privileges in schema public grant all on functions to anon, authenticated;`)
   const files = readdirSync(new URL('../supabase/migrations/', import.meta.url)).filter((f) => f.endsWith('.sql')).sort()
-  for (const f of files) await db.exec(sql(`migrations/${f}`))
+  for (const f of files) {
+    // Supabase (desde el 30/oct/2026): las tablas NUEVAS ya no dan permisos solas; cada migración nueva
+    // tiene que traer su GRANT. Las tablas de antes (0001–0016) ya los tienen en producción.
+    if (f >= '0017') await db.exec('alter default privileges in schema public revoke all on tables from anon, authenticated')
+    await db.exec(sql(`migrations/${f}`))
+  }
 
   A = (await db.query(`insert into auth.users(email) values ('a@prueba.test') returning id`)).rows[0].id
   B = (await db.query(`insert into auth.users(email) values ('b@prueba.test') returning id`)).rows[0].id
@@ -410,4 +415,11 @@ test('depósito que cubre todo: al hacer la factura sale Pagada', async () => {
   const inv = (await one(A, `select create_invoice('${w}') id`)).id
   assert.ok((await one(A, `select paid_at from invoices where id = '${inv}'`)).paid_at)
   assert.equal((await one(A, `select status from work_orders where id = '${w}'`)).status, 'paid')
+})
+
+test('tablas nuevas (Supabase desde 30/oct/2026): sin GRANT no se pueden usar; la de pagos sí tiene el suyo', async () => {
+  await db.exec('alter default privileges in schema public revoke all on tables from anon, authenticated; create table public.zz_prueba (id int)')
+  assert.ok(await fails(() => as(A, 'select * from zz_prueba')), 'una tabla nueva sin GRANT da "permission denied"')
+  await db.exec('drop table public.zz_prueba')
+  assert.ok((await as(A, 'select count(*)::int n from payments'))[0].n >= 0, 'payments tiene su GRANT')
 })
