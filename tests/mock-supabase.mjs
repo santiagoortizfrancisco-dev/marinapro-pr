@@ -202,6 +202,7 @@ const count = (list, fn) => list.filter(fn).length
 const RPC = {
   // En el Supabase de prueba, el admin es el usuario jqr (U); el mecánico nuevo (N) no
   is_app_admin: () => caller === U,
+  admin_trial_count: () => (caller === U ? { today: count(db.profiles, (x) => x.trial), last_7_days: count(db.profiles, (x) => x.trial) } : null),
   admin_overview: () => {
     if (caller !== U) throw Object.assign(new Error('Solo para el administrador'), { status: 400 })
     return db.profiles.map((p) => {

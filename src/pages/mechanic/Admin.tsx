@@ -1,4 +1,4 @@
-import { Building2, ShieldCheck } from 'lucide-react'
+import { Building2, FlaskConical, ShieldCheck } from 'lucide-react'
 import { db } from '../../lib/db'
 import { formatDate, formatMoney } from '../../lib/format'
 import { must, useLoad } from '../../lib/useLoad'
@@ -38,6 +38,8 @@ function ago(iso: string | null): string {
 /** Admin sencillo: quién usa el app y cuánto. Solo números; no se ven los clientes de los mecánicos. */
 export default function Admin() {
   const { data, loading, error, reload } = useLoad(async () => must(await db().rpc('admin_overview')) as Row[], [])
+  // Cuánta gente abrió el link de prueba (/demo): para saber si un anuncio o lo que se comparte funciona
+  const { data: trials } = useLoad(async () => (await db().rpc('admin_trial_count')).data as { today: number; last_7_days: number } | null, [])
 
   if (loading && !data) return <Loading />
   if (error || !data) return <ErrorBox message={error || 'No se pudo cargar.'} onRetry={reload} />
@@ -62,6 +64,24 @@ export default function Admin() {
           </div>
         ))}
       </div>
+
+      {trials && (
+        <div className="mb-5 flex items-center gap-3 rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200" aria-label="Pruebas del demo">
+          <FlaskConical className="shrink-0 text-amber-700" size={28} />
+          <div className="flex-1">
+            <div className="text-base font-extrabold text-amber-950">Pruebas del demo</div>
+            <div className="text-sm text-amber-900">Gente que abrió el link de prueba (no se sabe quién)</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-extrabold text-navy-900">{trials.today}</div>
+            <div className="text-xs font-bold text-slate-600">Hoy</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-extrabold text-navy-900">{trials.last_7_days}</div>
+            <div className="text-xs font-bold text-slate-600">7 días</div>
+          </div>
+        </div>
+      )}
 
       <AdminPending />
       <AdminMessages />

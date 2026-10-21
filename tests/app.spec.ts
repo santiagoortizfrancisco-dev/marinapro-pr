@@ -405,6 +405,7 @@ test('Admin: el dueño ve cuántos mecánicos hay y cuánto usa cada uno (sin lo
   await expect(page.getByText('JQR Boat Repair').last()).toBeVisible()
   await expect(page.getByText('No ha entrado')).toBeVisible() // el mecánico nuevo de prueba
   await expect(page.getByText('Ana Ejemplo')).toHaveCount(0) // los clientes de los mecánicos no salen
+  await expect(page.getByLabel('Pruebas del demo')).toContainText('Hoy') // cuánta gente abrió el link de prueba
 })
 
 test('Admin: un mecánico normal no ve el enlace de Admin', async ({ page }) => {
