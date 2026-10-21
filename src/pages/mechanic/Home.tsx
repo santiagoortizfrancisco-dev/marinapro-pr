@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
-import { CalendarDays, ChevronRight, Wrench, Zap, type LucideIcon } from 'lucide-react'
-import { GaugeIcon, PistonIcon, PropellerIcon } from '../../components/PartIcons'
+import { CalendarDays, ChevronRight, Users, Wrench, Zap, type LucideIcon } from 'lucide-react'
+import { GaugeIcon, PistonIcon, PropellerIcon, SparkPlugIcon } from '../../components/PartIcons'
 import { useAuth } from '../../auth/AuthProvider'
 import DueServices from '../../components/DueServices'
 import { db } from '../../lib/db'
@@ -83,7 +83,8 @@ export default function Home() {
       <div className="grid grid-cols-2 gap-x-3 gap-y-4">
         <Tile to="/citas/nueva" icon={PropellerIcon as unknown as LucideIcon} badge={<CalendarDays size={16} strokeWidth={2.5} />} label="Hacer cita" from="#3b82f6" color="#1e3a8a" />
         <Tile to="/cobrar" icon={GaugeIcon as unknown as LucideIcon} badge={<Zap size={16} strokeWidth={2.5} />} label="Factura rápida" from="#38bdf8" color="#0369a1" />
-        <div className="col-span-2"><Tile to="/trabajos" icon={PistonIcon as unknown as LucideIcon} label="Me deben" sub={data ? formatMoney(data.debt) : '…'} from="#fca5a5" color="#ef4444" /></div>
+        <Tile to="/clientes" icon={SparkPlugIcon as unknown as LucideIcon} badge={<Users size={16} strokeWidth={2.5} />} label="Clientes" from="#64748b" color="#0f172a" />
+        <Tile to="/trabajos" icon={PistonIcon as unknown as LucideIcon} label="Me deben" sub={data ? formatMoney(data.debt) : '…'} from="#fca5a5" color="#ef4444" />
       </div>
 
       {/* Hoy */}

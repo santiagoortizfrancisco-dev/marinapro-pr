@@ -25,6 +25,13 @@ async function login(page: Page) {
   await expect(page.getByText('JQR Boat Repair').first()).toBeVisible()
 }
 
+/** Clientes está en Inicio (no abajo). */
+async function goToClients(page: Page) {
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click()
+  await page.getByRole('link', { name: 'Clientes', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Clientes', exact: true })).toBeVisible()
+}
+
 /** Abre la cita de ejemplo (mañana 9:00) desde la Agenda. */
 async function openExampleAppointment(page: Page) {
   await page.goto(`/agenda?dia=${tomorrowPR()}`)
@@ -107,7 +114,7 @@ test('los botones principales se ven claros: Hacer cita, Añadir cliente y Factu
   await login(page)
   await page.getByRole('link', { name: 'Hacer cita' }).click()
   await expect(page.getByRole('heading', { name: 'Cita nueva' })).toBeVisible()
-  await page.getByRole('link', { name: 'Clientes' }).click()
+  await goToClients(page)
   await page.getByRole('link', { name: 'Añadir cliente' }).click()
   await expect(page.getByRole('heading', { name: 'Cliente nuevo' })).toBeVisible()
   await page.getByRole('link', { name: 'Cobros' }).click()
@@ -136,7 +143,7 @@ test('cita nueva desde un hueco libre, con cliente nuevo: crea cliente, bote, ci
   expect(s.boats.some((b) => b.name === 'Bote del Bot')).toBe(true)
   expect(s.work_orders.some((w) => w.complaint === 'No prende el GPS')).toBe(true)
 
-  await page.getByRole('link', { name: 'Clientes' }).click()
+  await goToClients(page)
   await expect(page.getByRole('heading', { name: 'Clientes' })).toBeVisible()
   await expect(page.getByRole('link', { name: /Pedro Prueba/ })).toBeVisible()
 })
@@ -378,7 +385,7 @@ test('factura: cómo pagar (efectivo, solo ATH, o los dos) cambia lo que ve el c
 
 test('cliente y bote: ficha con WhatsApp, bote con Waze, motores y equipos', async ({ page }) => {
   await login(page)
-  await page.getByRole('link', { name: 'Clientes' }).click()
+  await goToClients(page)
   await page.getByPlaceholder('Buscar nombre, bote, pueblo o teléfono').fill('tranquila')
   await page.getByRole('link', { name: /Ana Ejemplo/ }).click()
   await expect(page.getByRole('link', { name: /WhatsApp/ })).toHaveAttribute('href', /wa\.me\/17875550111/)
@@ -709,7 +716,7 @@ test('Inicio: al entrar salen los botones grandes y lo de hoy (Añadir cliente v
   await login(page)
   await expect(page.getByRole('heading', { name: /¡Buen(os|as) (días|tardes|noches)/ })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Añadir cliente' })).toHaveCount(0)
-  for (const name of ['Hacer cita', 'Factura rápida', 'Me deben']) {
+  for (const name of ['Hacer cita', 'Factura rápida', 'Clientes', 'Me deben']) {
     await expect(page.getByRole('link', { name: new RegExp(name) }).first()).toBeVisible()
   }
   await expect(page.getByRole('link', { name: /Ver agenda/ })).toBeVisible()
@@ -733,7 +740,7 @@ test('quién me debe: la factura sin pagar sale en Cobros, en Clientes ("Debe") 
   await expect(page.getByRole('link', { name: 'Recordarle' })).toHaveAttribute('href', /wa\.me\/17875550111\?text=.*factura/)
 
   // Clientes: etiqueta roja
-  await page.getByRole('link', { name: 'Clientes' }).click()
+  await goToClients(page)
   await expect(page.getByText('Debe $94.78')).toBeVisible()
 
   // El cliente: pagar desde su ficha
@@ -768,7 +775,7 @@ test('botón grande "Volver atrás": en Cobros regresa a Inicio, y en una pantal
   await page.getByRole('button', { name: 'Volver atrás' }).click()
   await expect(page.getByRole('heading', { name: /¡Buen(os|as)/ })).toBeVisible()
 
-  await page.getByRole('link', { name: 'Clientes' }).click()
+  await goToClients(page)
   await page.getByRole('link', { name: /Ana Ejemplo/ }).click()
   await page.getByRole('button', { name: 'Volver atrás' }).click()
   await expect(page.getByRole('heading', { name: 'Clientes' })).toBeVisible()

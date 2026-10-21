@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { Bell, Calendar, Home, LogOut, Menu, MessageSquareWarning, Receipt, Repeat, Ship, Users, Wrench, type LucideIcon } from 'lucide-react'
+import { Bell, Calendar, Home, LogOut, Menu, MessageSquareWarning, Receipt, Repeat, Ship, Wrench, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import type { Role } from '../lib/types'
@@ -29,7 +29,6 @@ interface Tab {
 const MECHANIC_TABS: Tab[] = [
   { to: '/inicio', label: 'Inicio', icon: Home },
   { to: '/agenda', label: 'Agenda', icon: Calendar, also: ['/citas'] },
-  { to: '/clientes', label: 'Clientes', icon: Users, also: ['/botes', '/motores', '/equipos'] },
   { to: '/trabajos', label: 'Cobros', icon: Receipt },
   { to: '/mas', label: 'Más', icon: Menu },
 ]
