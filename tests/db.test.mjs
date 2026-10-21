@@ -33,7 +33,7 @@ before(async () => {
   // Lo que Supabase trae por su cuenta
   await db.exec(`
     create role anon; create role authenticated; create schema auth;
-    create table auth.users (id uuid primary key default gen_random_uuid(), email text, last_sign_in_at timestamptz);
+    create table auth.users (id uuid primary key default gen_random_uuid(), email text, last_sign_in_at timestamptz, is_anonymous boolean not null default false, created_at timestamptz not null default now());
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.uid', true), '')::uuid $$;
     create schema storage; create table storage.buckets (id text primary key, name text, public boolean);
     create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
@@ -422,4 +422,40 @@ test('tablas nuevas (Supabase desde 30/oct/2026): sin GRANT no se pueden usar; l
   assert.ok(await fails(() => as(A, 'select * from zz_prueba')), 'una tabla nueva sin GRANT da "permission denied"')
   await db.exec('drop table public.zz_prueba')
   assert.ok((await as(A, 'select count(*)::int n from payments'))[0].n >= 0, 'payments tiene su GRANT')
+})
+
+test('link de prueba: el visitante anónimo recibe su propio taller de ejemplo, aprobado, sin ver lo de otros; no sale en Admin; se borra a los 7 días', async () => {
+  const V = (await db.query(`insert into auth.users(is_anonymous) values (true) returning id`)).rows[0].id
+  const W = (await db.query(`insert into auth.users(is_anonymous) values (true) returning id`)).rows[0].id
+  await as(V, `select start_trial()`)
+  await as(V, `select start_trial()`) // dos veces no duplica
+  const p = await one(V, `select role, access, trial, full_name from profiles where id = '${V}'`)
+  assert.deepEqual(p, { role: 'mechanic', access: 'approved', trial: true, full_name: 'Taller de Prueba' })
+  assert.equal((await one(V, `select count(*)::int n from clients`)).n, 3, 've solo sus 3 clientes de ejemplo')
+  assert.equal((await one(V, `select count(*)::int n from appointments`)).n, 2)
+  const inv = await as(V, `select number, paid_at is not null as paid from invoices order by number`)
+  assert.deepEqual(inv.map((i) => i.paid), [false, true], 'una factura con balance y una pagada')
+  assert.equal((await one(V, `select count(*)::int n from payments`)).n, 2)
+
+  // Otro visitante no ve lo del primero, y el primero no ve a los mecánicos reales
+  await as(W, `select start_trial()`)
+  assert.equal((await one(W, `select count(*)::int n from clients`)).n, 3)
+  assert.equal((await one(V, `select count(*)::int n from clients where mechanic_id = '${A}'`)).n, 0)
+  assert.equal((await one(A, `select count(*)::int n from clients where mechanic_id = '${V}'`)).n, 0)
+
+  // Un usuario normal no puede usar start_trial ni aprobarse solo
+  assert.ok(await fails(() => as(B, `select start_trial()`)))
+  assert.equal((await one(B, `select access from profiles where id = '${B}'`)).access, 'pending')
+
+  // Admin no cuenta las pruebas como mecánicos
+  await db.exec(`insert into app_admins(email) values ('a@prueba.test') on conflict do nothing`)
+  const ov = (await one(A, `select admin_overview() j`)).j
+  assert.ok(!ov.some((m) => m.id === V || m.id === W))
+  assert.equal((await one(A, `select admin_trial_count() j`)).j.last_7_days, 2)
+
+  // A los 7 días se borra todo lo de la prueba
+  await db.exec(`update auth.users set created_at = now() - interval '8 days' where id = '${V}'`)
+  assert.equal((await one(null, `select purge_old_trials() n`, 'postgres')).n, 1)
+  assert.equal((await db.query(`select count(*)::int n from clients where mechanic_id = '${V}'`)).rows[0].n, 0)
+  assert.equal((await db.query(`select count(*)::int n from clients where mechanic_id = '${W}'`)).rows[0].n, 3, 'la prueba nueva sigue')
 })

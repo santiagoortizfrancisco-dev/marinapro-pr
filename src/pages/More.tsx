@@ -53,7 +53,7 @@ export default function More() {
         </Link>
       )}
 
-      {profile?.role === 'mechanic' && (
+      {profile?.role === 'mechanic' && !session?.user.is_anonymous && (
         <Link to="/mas/perfil-publico" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
           <IconBadge icon={Globe} tone="blue" />
           <span className="flex-1">
@@ -79,14 +79,16 @@ export default function More() {
         </Link>
       )}
 
-      <Link to="/mas/clave" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
-        <IconBadge icon={KeyRound} tone="slate" />
-        <span className="flex-1">
-          <span className="block text-lg font-bold">Mi contraseña o PIN</span>
-          <span className="block text-sm text-slate-600">Cambia cómo entras al app</span>
-        </span>
-        <ChevronRight />
-      </Link>
+      {!session?.user.is_anonymous && (
+        <Link to="/mas/clave" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+          <IconBadge icon={KeyRound} tone="slate" />
+          <span className="flex-1">
+            <span className="block text-lg font-bold">Mi contraseña o PIN</span>
+            <span className="block text-sm text-slate-600">Cambia cómo entras al app</span>
+          </span>
+          <ChevronRight />
+        </Link>
+      )}
 
       <button onClick={() => setContactOpen(true)} className={`${CARD} mb-3 flex min-h-16 w-full items-center gap-3 px-3 py-2 text-left text-navy-900 transition active:scale-[0.99]`}>
         <IconBadge icon={LifeBuoy} tone="blue" />

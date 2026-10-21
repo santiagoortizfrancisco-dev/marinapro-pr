@@ -885,3 +885,24 @@ test('factura rápida: lo que se escribe sin precio también va en la factura (c
   await expect(page.getByRole('cell', { name: 'Lavado del motor' })).toBeVisible()
   await expect(page.getByText('Incluido')).toHaveCount(2)
 })
+
+test('link de prueba (/demo): entra sin registro a un taller de ejemplo, con aviso amarillo y "Crear mi cuenta"', async ({ page }) => {
+  await page.goto('/demo')
+  await expect(page.getByText('Taller de Prueba').first()).toBeVisible()
+  await expect(page.getByText(/Estás probando el app con datos de ejemplo/)).toBeVisible()
+  await expect(page.getByRole('link', { name: /Factura rápida/ }).first()).toBeVisible() // Inicio con los 4 botones
+  const s = await state()
+  const me = s.profiles.find((x) => x.trial)!
+  expect(me).toMatchObject({ role: 'mechanic', access: 'approved' })
+  expect(s.mechanics.some((m) => m.profile_id === me.id && m.business_name === 'Taller de Prueba')).toBe(true)
+
+  // En Más no sale cambiar PIN ni el perfil público
+  await page.getByRole('link', { name: 'Más' }).click()
+  await expect(page.getByText('Contactar al desarrollador')).toBeVisible()
+  await expect(page.getByText('Mi contraseña o PIN')).toHaveCount(0)
+  await expect(page.getByText('Mi perfil público')).toHaveCount(0)
+
+  // Crear mi cuenta: sale de la prueba y abre el registro
+  await page.getByRole('button', { name: 'Crear mi cuenta' }).click()
+  await expect(page.getByRole('heading', { name: /Crear mi cuenta/ })).toBeVisible()
+})

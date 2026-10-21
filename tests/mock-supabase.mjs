@@ -300,6 +300,14 @@ const RPC = {
     else db.catalog_items.push({ id: randomUUID(), mechanic_id: caller, kind: p_kind, name, category: null, last_price: p_price ?? null, use_count: 1 })
     return null
   },
+  start_trial: () => {
+    if (!signups[caller]?.is_anonymous) throw Object.assign(new Error('Solo para la prueba'), { status: 400 })
+    if (db.mechanics.some((m) => m.profile_id === caller)) return null
+    Object.assign(db.profiles.find((x) => x.id === caller), { role: 'mechanic', full_name: 'Taller de Prueba', phone: '787-555-0100', town: 'Fajardo', trial: true, access: 'approved' })
+    db.mechanics.push({ ...db.mechanics[0], profile_id: caller, business_name: 'Taller de Prueba', logo_path: null, brand_color: '#0b1220', listed: false, approved: false, slug: null })
+    db.clients.push({ id: randomUUID(), mechanic_id: caller, profile_id: null, full_name: 'Ana Martínez (ejemplo)', phone: '787-555-0111', email: null, town: 'Fajardo', address: null, preferred_contact: 'whatsapp', notes: 'PRUEBA', created_at: new Date().toISOString() })
+    return null
+  },
   create_invoice: ({ p_wo }) => {
     const wo = db.work_orders.find((w) => w.id === p_wo)
     if (!wo) throw Object.assign(new Error('No autorizado'), { status: 400 })
@@ -319,7 +327,7 @@ const RPC = {
 
 // ------------------------------------------------------------------------------------------
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
-const userFor = (id) => (signups[id] ? { ...USER, id, ...signups[id] } : { ...USER, id, email: id === N ? NEW_EMAIL : EMAIL })
+const userFor = (id) => (signups[id] ? { ...USER, id, is_anonymous: false, ...signups[id] } : { ...USER, id, is_anonymous: false, email: id === N ? NEW_EMAIL : EMAIL })
 const USER = { id: U, email: EMAIL, aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: new Date().toISOString() }
 function session(id = U) {
   const exp = Math.floor(Date.now() / 1000) + 3600
@@ -368,6 +376,13 @@ http.createServer((req, res) => {
       }
       if (url.pathname === '/auth/v1/signup') {
         const { email, password, data } = json()
+        if (!email) {
+          // Link de prueba: visitante anónimo (signInAnonymously)
+          const id = randomUUID()
+          signups[id] = { email: null, is_anonymous: true, user_metadata: data ?? {} }
+          db.profiles.push({ id, role: null, full_name: null, phone: null, email: null, town: null, access: 'pending', trial: false, created_at: new Date().toISOString() })
+          return send(200, session(id))
+        }
         const e = String(email).toLowerCase()
         if (e === EMAIL || e === NEW_EMAIL || Object.values(signups).some((u) => u.email === e)) return send(422, { code: 'user_already_exists', error_code: 'user_already_exists', msg: 'User already registered' })
         const id = randomUUID()

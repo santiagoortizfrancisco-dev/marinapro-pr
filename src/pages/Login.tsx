@@ -19,7 +19,9 @@ export default function Login() {
   const { enterDemo } = useAuth()
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
-  const [step, setStep] = useState<'password' | 'email' | 'code' | 'signup' | 'wait'>('password')
+  // ?registro=1 (desde "Crear mi cuenta" de la prueba) abre el registro directo
+  const [step, setStep] = useState<'password' | 'email' | 'code' | 'signup' | 'wait'>(() =>
+    new URLSearchParams(window.location.search).get('registro') === '1' ? 'signup' : 'password')
   const [waitEmail, setWaitEmail] = useState('')
   const [user, setUser] = useState(() => {
     try {

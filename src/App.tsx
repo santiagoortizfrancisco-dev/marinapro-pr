@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import Login from './pages/Login'
 import ChooseRole from './pages/ChooseRole'
 import PendingApproval from './pages/PendingApproval'
+import StartTrial from './pages/StartTrial'
 import More from './pages/More'
 import Agenda from './pages/mechanic/Agenda'
 import AppointmentForm from './pages/mechanic/AppointmentForm'
@@ -56,6 +57,10 @@ export default function App() {
       </div>
     )
   }
+
+  // Link de prueba: entra sin registro a un taller de ejemplo
+  if (pathname === '/demo' || pathname === '/prueba') return <StartTrial />
+  if (session?.user.is_anonymous && !profile?.role) return <StartTrial />
 
   if (!session && !demo) return <Login />
   if (!profile?.role) return <ChooseRole />

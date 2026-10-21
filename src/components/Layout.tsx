@@ -42,7 +42,7 @@ const CLIENT_TABS: Tab[] = [
 ]
 
 export default function Layout() {
-  const { profile, demo, enterDemo, signOut } = useAuth()
+  const { profile, session, demo, enterDemo, signOut } = useAuth()
   const isMechanic = profile?.role === 'mechanic'
   const tabs = isMechanic ? MECHANIC_TABS : CLIENT_TABS
   const navigate = useNavigate()
@@ -141,7 +141,7 @@ export default function Layout() {
 
       <Sheet open={sheet === 'signout'} title="¿Seguro que quieres salir?" onClose={() => setSheet(null)}>
         <p className="mb-5 text-base text-slate-600">
-          {demo ? 'Vas a volver a la pantalla de inicio del demo.' : 'Para volver a entrar vas a necesitar un código nuevo por email.'}
+          {demo ? 'Vas a volver a la pantalla de inicio del demo.' : session?.user.is_anonymous ? 'Se cierra la prueba. Para volver a probar, abre el link otra vez (empieza nueva).' : 'Para volver a entrar vas a necesitar tu PIN o contraseña.'}
         </p>
         <div className="space-y-3">
           <Button onClick={() => { setSheet(null); signOut() }}><LogOut /> Sí, salir</Button>
@@ -150,6 +150,17 @@ export default function Layout() {
       </Sheet>
 
       <Toast message={toast} />
+
+      {/* Link de prueba: avisa que es de ejemplo y lleva a crear la cuenta */}
+      {session?.user.is_anonymous && (
+        <div className="border-b-2 border-amber-300 bg-amber-100">
+          <div className="mx-auto flex max-w-xl items-center gap-3 px-4 py-2">
+            <p className="flex-1 text-sm font-semibold leading-snug text-amber-950">Estás probando el app con datos de ejemplo. Lo que hagas aquí se borra en 7 días.</p>
+            <button onClick={() => { signOut().then(() => window.location.assign('/?registro=1')) }}
+              className="min-h-12 shrink-0 rounded-xl bg-navy-800 px-3 text-base font-bold text-white active:bg-navy-900">Crear mi cuenta</button>
+          </div>
+        </div>
+      )}
 
       {isMechanic && !demo && <ApprovalAlerts />}
       {isMechanic && !demo && <RequestAlerts />}
