@@ -184,7 +184,7 @@ export default function Login() {
               </Button>
               <div className="border-t border-slate-200 pt-5">
                 <Button type="button" variant="secondary" onClick={() => { setStep('signup'); setError('') }}>
-                  <UserPlus /> ¿Eres mecánico? Crea tu cuenta
+                  <UserPlus /> ¿Tienes un negocio de servicio? Crea tu cuenta
                 </Button>
               </div>
             </form>
