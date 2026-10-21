@@ -32,9 +32,9 @@ export const paidSoFar = (payments: { amount: number }[]) => r2(payments.reduce(
 /** Lo que falta de la factura. */
 export const balanceOf = (r: MoneyRow) => (r.invoice && !r.invoice.paid_at ? Math.max(0, r2(Number(r.invoice.total) - paidSoFar(r.payments))) : 0)
 
-/** Facturas sin pagar del todo (la más vieja primero). */
+/** Facturas sin pagar del todo (la más nueva primero). */
 export const owed = (rows: MoneyRow[]) =>
-  rows.filter((r) => balanceOf(r) > 0.004).sort((a, b) => a.invoice!.created_at.localeCompare(b.invoice!.created_at))
+  rows.filter((r) => balanceOf(r) > 0.004).sort((a, b) => b.invoice!.created_at.localeCompare(a.invoice!.created_at))
 
 /** Trabajos terminados que todavía no tienen factura. */
 export const toInvoice = (rows: MoneyRow[]) => rows.filter((r) => r.status === 'done' && !r.invoice)
