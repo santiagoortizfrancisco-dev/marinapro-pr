@@ -60,7 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadProfile])
 
   const refreshProfile = useCallback(async () => {
-    if (session) await loadProfile(session.user.id)
+    // La sesión de este momento (no la de antes): la prueba entra y enseguida pide el perfil
+    const current = (await supabase?.auth.getSession())?.data.session ?? session
+    if (current) await loadProfile(current.user.id)
   }, [session, loadProfile])
 
   const enterDemo = useCallback((role: Role) => {

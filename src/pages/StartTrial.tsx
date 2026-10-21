@@ -31,6 +31,9 @@ export default function StartTrial() {
         }
         const { error } = await supabase.rpc('start_trial')
         if (error) throw error
+        // Dos veces por si el aviso de "entró" leyó el perfil antes de que el taller estuviera listo
+        await refreshProfile()
+        await new Promise((r) => setTimeout(r, 400))
         await refreshProfile()
         navigate('/inicio', { replace: true })
       } catch (e) {
