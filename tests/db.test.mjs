@@ -344,25 +344,19 @@ test('mensajes al desarrollador: el mecánico y alguien sin cuenta escriben; sol
   assert.ok(await fails(() => as(A, `select send_support_message('uno más')`)), 'máximo 5 por hora')
 })
 
-test('registro con aprobación: el nuevo queda por aprobar, no se aprueba solo, y el admin lo aprueba', async () => {
+test('registro sin aprobación: la cuenta nueva entra enseguida; el admin puede bloquearla y nadie se desbloquea solo', async () => {
   const C = (await db.query(`insert into auth.users(email) values ('nuevo@registro.test') returning id`)).rows[0].id
   await as(C, `select set_my_role('mechanic','Mecánico Nuevo','787-555-0300','Ponce','Nuevo Marine')`)
-  assert.equal((await one(C, `select access from profiles where id = '${C}'`)).access, 'pending')
-  // No se aprueba solo (ni con update directo ni con la función del admin)
-  await as(C, `update profiles set full_name = 'Otro' where id = '${C}'`).catch(() => {})
-  assert.ok(await fails(() => as(C, `update profiles set access = 'approved' where id = '${C}'`)))
-  assert.ok(await fails(() => as(C, `select admin_set_access('${C}', 'approved')`)))
-  assert.equal((await one(C, `select access from profiles where id = '${C}'`)).access, 'pending')
+  assert.equal((await one(C, `select access from profiles where id = '${C}'`)).access, 'approved')
+  assert.ok(await fails(() => as(C, `select admin_set_access('${C}', 'rejected')`)), 'solo el admin bloquea')
   assert.ok(await fails(() => as(A, `select admin_pending_accounts()`)), 'un mecánico no ve la lista')
 
   const admin = (await db.query(`select id from profiles where email = 'santiagoortizfrancisco@gmail.com'`)).rows[0].id
-  const list = (await one(admin, `select admin_pending_accounts() j`)).j
-  assert.ok(list.some((x) => x.id === C && x.business_name === 'Nuevo Marine' && x.phone === '787-555-0300'))
-  const before = (await one(admin, `select admin_pending_count() n`)).n
-  assert.ok(before >= 1)
+  await as(admin, `select admin_set_access('${C}', 'rejected')`)
+  assert.equal((await one(C, `select access from profiles where id = '${C}'`)).access, 'rejected')
+  await as(C, `update profiles set access = 'approved' where id = '${C}'`).catch(() => {})
+  assert.equal((await one(C, `select access from profiles where id = '${C}'`)).access, 'rejected', 'no se desbloquea solo')
   await as(admin, `select admin_set_access('${C}', 'approved')`)
-  assert.equal((await one(C, `select access from profiles where id = '${C}'`)).access, 'approved')
-  assert.equal((await one(admin, `select admin_pending_count() n`)).n, before - 1)
 })
 
 test('avisos al teléfono: sin pg_net ni canal no frenan nada (registro, directorio y mensajes siguen funcionando)', async () => {
@@ -445,7 +439,7 @@ test('link de prueba: el visitante anónimo recibe su propio taller de ejemplo, 
 
   // Un usuario normal no puede usar start_trial ni aprobarse solo
   assert.ok(await fails(() => as(B, `select start_trial()`)))
-  assert.equal((await one(B, `select access from profiles where id = '${B}'`)).access, 'pending')
+  assert.equal((await one(B, `select trial from profiles where id = '${B}'`)).trial, false, 'un usuario normal no se vuelve prueba')
 
   // Admin no cuenta las pruebas como mecánicos
   await db.exec(`insert into app_admins(email) values ('a@prueba.test') on conflict do nothing`)

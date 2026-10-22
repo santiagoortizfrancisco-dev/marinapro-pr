@@ -635,36 +635,24 @@ test('PIN: el mecánico cambia su contraseña por un PIN de 6 números y entra c
   await expect(page.locator('header').getByText('JQR Boat Repair')).toBeVisible()
 })
 
-test('registro: un mecánico crea su cuenta solo, espera aprobación, el admin lo aprueba y entra', async ({ page, browser }) => {
-  // 1) El mecánico nuevo, desde el link
+test('registro: crea su cuenta solo y entra enseguida, sin esperar aprobación', async ({ browser }) => {
   const nuevo = await browser.newPage()
   await nuevo.goto('http://localhost:4321/')
   await nuevo.getByRole('button', { name: /Crea tu cuenta/ }).click()
   await nuevo.getByLabel('Tu nombre completo *').fill('Pedro Mecánico')
-  await nuevo.getByLabel('Nombre de tu compañía').fill('Pedro Marine')
+  await nuevo.getByLabel('Nombre de tu compañía').fill('Pedro Plomería')
   await nuevo.getByLabel('Teléfono / WhatsApp *').fill('787-555-0444')
   await nuevo.getByRole('radio', { name: /Plomería/ }).click() // a qué se dedica
-  await nuevo.getByLabel('Tu email *').fill('pedro@marine.test')
+  await nuevo.getByLabel('Tu email *').fill('pedro@plomeria.test')
   await nuevo.getByLabel('Tu PIN').fill('482913')
   await nuevo.getByLabel('Repite el PIN').fill('482913')
   await nuevo.getByRole('button', { name: /Crear mi cuenta/ }).click()
-  await expect(nuevo.getByText(/Tu cuenta está/)).toBeVisible()
-  await expect(nuevo.getByRole('link', { name: 'Agenda', exact: true })).toHaveCount(0) // todavía no entra al app
-  const p = (await state()).profiles.find((x) => x.email === 'pedro@marine.test')!
-  expect(p).toMatchObject({ role: 'mechanic', full_name: 'Pedro Mecánico', access: 'pending' })
-
-  // 2) El admin lo ve y lo aprueba
-  await login(page)
-  await page.getByRole('link', { name: 'Más' }).click()
-  await expect(page.getByRole('link', { name: /Admin/ })).toContainText('1 por aprobar')
-  await page.getByRole('link', { name: /Admin/ }).click()
-  await expect(page.getByText('Pedro Marine').first()).toBeVisible()
-  await page.getByRole('button', { name: 'Aprobar' }).first().click()
-  await expect(page.getByText('Cuentas por aprobar')).toHaveCount(0)
-
-  // 3) El mecánico revisa y ya entra
-  await nuevo.getByRole('button', { name: /Ya me aprobaron/ }).click()
-  await expect(nuevo.locator('header').getByText('Pedro Marine')).toBeVisible()
+  await expect(nuevo.locator('header').getByText('Pedro Plomería')).toBeVisible()
+  await expect(nuevo.getByRole('link', { name: 'Agenda', exact: true })).toBeVisible()
+  const s = await state()
+  const p = s.profiles.find((x) => x.email === 'pedro@plomeria.test')!
+  expect(p).toMatchObject({ role: 'mechanic', full_name: 'Pedro Mecánico', access: 'approved' })
+  expect(s.mechanics.find((m) => m.profile_id === p.id)?.business_type).toBe('plumbing')
   await nuevo.close()
 })
 

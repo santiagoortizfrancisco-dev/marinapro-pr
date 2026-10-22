@@ -409,7 +409,7 @@ http.createServer((req, res) => {
         const id = randomUUID()
         signups[id] = { email: e, user_metadata: data ?? {} }
         passwords[id] = password
-        db.profiles.push({ id, role: null, full_name: null, phone: null, email: e, town: null, access: 'pending', created_at: new Date().toISOString() })
+        db.profiles.push({ id, role: null, full_name: null, phone: null, email: e, town: null, access: 'approved', created_at: new Date().toISOString() })
         return send(200, session(id))
       }
       if (url.pathname === '/auth/v1/user') {

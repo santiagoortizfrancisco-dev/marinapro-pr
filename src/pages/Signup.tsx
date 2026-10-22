@@ -67,7 +67,7 @@ export default function Signup({ onBack, onWaitEmail }: { onBack: () => void; on
   return (
     <form onSubmit={submit} className="space-y-4">
       <h2 className="flex items-center gap-2 text-2xl font-bold text-navy-900"><UserPlus /> Crear mi cuenta</h2>
-      <p className="text-base text-slate-600">Para cualquier negocio de servicio. Cuando la aprobemos, te avisamos y ya puedes usar el app.</p>
+      <p className="text-base text-slate-600">Para cualquier negocio de servicio. Toma un minuto y entras enseguida.</p>
       <Field label="¿A qué te dedicas? *">
         <TradePicker value={trade} onChange={setTrade} />
       </Field>
