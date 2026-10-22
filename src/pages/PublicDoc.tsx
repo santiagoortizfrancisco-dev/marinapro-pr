@@ -157,7 +157,9 @@ export default function PublicDoc() {
   const t = doc.totals
   const words = wordsFor(doc.business.business_type as Trade | undefined)
   const salon = words.salon
-  const color = doc.business.brand_color || DEFAULT_BRAND
+  const accent = salon ? '#ec4899' : ORANGE
+  // Salón sin color propio (o con el negro de siempre): rosado
+  const color = salon && (!doc.business.brand_color || doc.business.brand_color === DEFAULT_BRAND) ? '#db2777' : doc.business.brand_color || DEFAULT_BRAND
   const logo = logoUrl(doc.business.logo_path)
   const isInvoice = doc.kind === 'invoice'
   const ivuOn = [t.ivu_on_labor && 'mano de obra', t.ivu_on_parts && 'piezas'].filter(Boolean).join(' y ')
@@ -169,7 +171,7 @@ export default function PublicDoc() {
     <div className="min-h-full bg-slate-100 py-4 print:bg-white print:py-0">
       {isMechanic && (
         <div className="safe-top sticky top-0 z-10 mx-auto -mt-4 mb-3 max-w-2xl bg-slate-100 px-3 pt-3 print:hidden">
-          <button onClick={backToApp} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl text-lg font-bold text-white" style={{ backgroundColor: doc.business.brand_color || DEFAULT_BRAND }}>
+          <button onClick={backToApp} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl text-lg font-bold text-white" style={{ backgroundColor: color }}>
             <ArrowLeft /> Volver al app
           </button>
           <button onClick={makePdf} disabled={pdfBusy} className="mt-2 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-navy-800 bg-white text-lg font-bold text-navy-800 active:bg-navy-50 disabled:opacity-60">
@@ -179,10 +181,10 @@ export default function PublicDoc() {
           <p className="mt-1 text-center text-xs text-slate-500">Así lo ve tu cliente. Estos botones solo los ves tú.</p>
         </div>
       )}
-      <article ref={paper} className="mx-auto max-w-2xl overflow-hidden rounded-2xl bg-white text-slate-900 shadow-lg [print-color-adjust:exact] print:max-w-none print:rounded-none print:shadow-none">
+      <article ref={paper} data-trade={doc.business.business_type ?? undefined} style={{ ["--accent" as string]: accent }} className="mx-auto max-w-2xl overflow-hidden rounded-2xl bg-white text-slate-900 shadow-lg [print-color-adjust:exact] print:max-w-none print:rounded-none print:shadow-none">
         <div className="flex h-2.5" aria-hidden="true">
           <span className="flex-[3]" style={{ backgroundColor: color }} />
-          <span className="flex-1" style={{ backgroundColor: ORANGE }} />
+          <span className="flex-1" style={{ backgroundColor: accent }} />
         </div>
         <div className="px-5 py-6">
         {/* Encabezado */}
@@ -196,18 +198,18 @@ export default function PublicDoc() {
             </div>
           </div>
           <div className="sm:text-right">
-            <div className="inline-block rounded-full px-4 py-1 text-lg font-extrabold tracking-wide text-white" style={{ backgroundColor: ORANGE }}>{isInvoice ? `FACTURA #${doc.number}` : 'ESTIMADO'}</div>
+            <div className="inline-block rounded-full px-4 py-1 text-lg font-extrabold tracking-wide text-white" style={{ backgroundColor: accent }}>{isInvoice ? `FACTURA #${doc.number}` : 'ESTIMADO'}</div>
             <div className="text-base text-slate-600">{formatDate(doc.date)}</div>
           </div>
         </header>
 
         <section className="mt-4 grid grid-cols-2 gap-4 text-base">
           <div>
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">{words.Client}</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[var(--accent)]">{words.Client}</div>
             <div className="font-semibold">{doc.client.name}</div>
           </div>
           {!salon && <div>
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">{words.Item}</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[var(--accent)]">{words.Item}</div>
             <div className="font-semibold">{doc.boat.name}</div>
             {boatLine && <div className="text-slate-600">{boatLine}</div>}
           </div>}
@@ -216,7 +218,7 @@ export default function PublicDoc() {
         {!salon && [['Problema reportado', doc.work.complaint], ['Diagnóstico', doc.work.diagnosis], ['Trabajo realizado', doc.work.work_done]].map(([label, text]) =>
           text ? (
             <section key={label} className="mt-4">
-              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">{label}</div>
+              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[var(--accent)]">{label}</div>
               <p className="whitespace-pre-line text-base">{text}</p>
             </section>
           ) : null,
@@ -264,7 +266,7 @@ export default function PublicDoc() {
             <div className="flex justify-between py-1"><dt>Piezas</dt><dd>{formatMoney(Number(t.parts))}</dd></div>
           </>}
           <div className="flex justify-between py-1"><dt>IVU {percent(t.ivu_rate)}{ivuOn && !salon ? ` (${ivuOn})` : ''}</dt><dd>{formatMoney(Number(t.ivu))}</dd></div>
-          <div className="mt-2 flex items-center justify-between rounded-xl bg-navy-900 px-4 py-3 text-white"><dt className="text-lg font-extrabold">TOTAL</dt><dd className="text-2xl font-extrabold" style={{ color: '#FDBA74' }}>{formatMoney(Number(t.total))}</dd></div>
+          <div className="mt-2 flex items-center justify-between rounded-xl bg-navy-900 px-4 py-3 text-white"><dt className="text-lg font-extrabold">TOTAL</dt><dd className="text-2xl font-extrabold" style={{ color: salon ? '#fbcfe8' : '#FDBA74' }}>{formatMoney(Number(t.total))}</dd></div>
           {payments.map((py, i) => (
             <div key={i} className="flex justify-between py-1 text-emerald-800">
               <dt>{!isInvoice || py.paid_at < doc.date ? 'Depósito' : salon ? 'Pagó' : 'Abono'} {formatDate(py.paid_at)}</dt><dd>−{formatMoney(Number(py.amount))}</dd>
@@ -307,7 +309,7 @@ export default function PublicDoc() {
         {/* Prueba en el agua y garantía */}
         {words.seaTrial && doc.work.sea_trial_required && (
           <section className="mt-5 text-base">
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">Prueba en el agua</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[var(--accent)]">Prueba en el agua</div>
             {doc.work.sea_trial_method === 'not_allowed' ? (
               <p className="font-bold text-red-700">El cliente no permitió la prueba en el agua. La garantía queda anulada.</p>
             ) : doc.work.sea_trial_done ? (
@@ -319,7 +321,7 @@ export default function PublicDoc() {
         )}
         {doc.policies && (
           <section className="mt-5 border-t border-slate-200 pt-3">
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">{salon ? 'Políticas' : 'Garantía y políticas'}</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[var(--accent)]">{salon ? 'Políticas' : 'Garantía y políticas'}</div>
             <p className="whitespace-pre-line text-sm text-slate-700">{doc.policies}</p>
           </section>
         )}

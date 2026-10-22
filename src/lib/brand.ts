@@ -11,6 +11,9 @@ export const BRAND_COLORS = [
   { value: '#166534', label: 'Verde' },
   { value: '#b91c1c', label: 'Rojo' },
   { value: '#334155', label: 'Gris' },
+  { value: '#db2777', label: 'Rosado' },
+  { value: '#be185d', label: 'Fucsia' },
+  { value: '#7e22ce', label: 'Morado' },
 ]
 
 export const DEFAULT_BRAND = '#0b1220'

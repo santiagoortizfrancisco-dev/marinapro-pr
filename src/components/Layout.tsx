@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import type { Role } from '../lib/types'
 import { Sheet, Toast } from './Sheet'
-import { BRAND_EVENT, logoUrl } from '../lib/brand'
+import { BRAND_EVENT, DEFAULT_BRAND, logoUrl } from '../lib/brand'
 import { db } from '../lib/db'
 import { BackButton, Button } from './ui'
 import ApprovalAlerts from './ApprovalAlerts'
@@ -82,7 +82,7 @@ export default function Layout() {
 
   const roleOption = (role: Role, Icon: LucideIcon, text: string) => {
     const current = profile?.role === role
-    return (
+  return (
       <button
         onClick={() => switchTo(role)}
         className={`flex w-full items-center gap-4 rounded-2xl border-2 p-4 text-left ${current ? 'border-slate-300 bg-slate-100' : `${ROLE_STYLE[role].border} bg-white active:bg-slate-50`}`}
@@ -100,11 +100,13 @@ export default function Layout() {
   }
 
   const style = ROLE_STYLE[isMechanic ? 'mechanic' : 'client']
+  // Salón: si no escogió color (o tiene el negro de siempre), la barra es rosada
+  const headerColor = words.salon && (!brand.color || brand.color === DEFAULT_BRAND) ? '#db2777' : brand.color
 
   return (
     <div className="min-h-full">
       {/* Cabecera y pestañas fijas; la página baja con el dedo normal (más confiable en iPhone) */}
-      <header className={`safe-top sticky top-0 z-10 text-white ${brand.color ? '' : style.bg}`} style={brand.color ? { backgroundColor: brand.color } : undefined}>
+      <header className={`safe-top sticky top-0 z-10 text-white ${headerColor ? '' : style.bg}`} style={headerColor ? { backgroundColor: headerColor } : undefined}>
         <div className="mx-auto flex max-w-xl items-center gap-3 px-4 pb-3 pt-3">
           {brand.logo ? (
             <img src={brand.logo} alt="" className="h-12 w-12 shrink-0 rounded-xl bg-black object-contain" />

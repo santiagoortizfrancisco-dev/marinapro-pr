@@ -38,7 +38,7 @@ export default function More() {
           <IconBadge icon={Briefcase} tone="teal" />
           <span className="flex-1">
             <span className="block text-lg font-bold">Mi negocio</span>
-            <span className="block text-sm text-navy-100">ATH Móvil, tarifa, IVU, facturas y garantía</span>
+            <span className="block text-sm text-navy-100">{words.salon ? "ATH Móvil, IVU, facturas y políticas" : "ATH Móvil, tarifa, IVU, facturas y garantía"}</span>
           </span>
           <ChevronRight />
         </Link>

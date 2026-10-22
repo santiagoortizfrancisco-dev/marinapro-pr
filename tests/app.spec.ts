@@ -1046,6 +1046,8 @@ test('salón: el inicio tiene su estilo de belleza (sin baterías) y "Cobrar aho
   await expect(page.getByRole('link', { name: /Cobrar ahora/ })).toBeVisible()
   await expect(page.getByText('Factura rápida')).toHaveCount(0)
   await expect(page.locator('body')).toHaveAttribute('data-trade', 'beauty')
+  // Rosado y blanco: la barra de arriba y los botones
+  await expect(page.locator('header').first()).toHaveCSS('background-color', 'rgb(219, 39, 119)')
 
   await page.getByRole('link', { name: /Cobrar ahora/ }).click()
   await expect(page.getByRole('heading', { name: 'Cobrar ahora' })).toBeVisible()

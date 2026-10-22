@@ -129,8 +129,8 @@ export default function Agenda() {
   return (
     <>
 
-      <Link to="/cobrar" className="mb-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-navy-800 bg-white text-base font-bold text-navy-800 active:bg-navy-50">
-        <Zap size={20} /> Factura rápida (sin cita)
+      <Link to={w.salon ? "/citas/nueva?ahora=1" : "/cobrar"} className="mb-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-navy-800 bg-white text-base font-bold text-navy-800 active:bg-navy-50">
+        <Zap size={20} /> {w.salon ? "Cobrar ahora (sin cita)" : "Factura rápida (sin cita)"}
       </Link>
 
       {/* Mes | Semana */}
