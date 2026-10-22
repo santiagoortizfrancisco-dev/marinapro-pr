@@ -156,6 +156,7 @@ export default function PublicDoc() {
 
   const t = doc.totals
   const words = wordsFor(doc.business.business_type as Trade | undefined)
+  const salon = words.salon
   const color = doc.business.brand_color || DEFAULT_BRAND
   const logo = logoUrl(doc.business.logo_path)
   const isInvoice = doc.kind === 'invoice'
@@ -202,17 +203,17 @@ export default function PublicDoc() {
 
         <section className="mt-4 grid grid-cols-2 gap-4 text-base">
           <div>
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">Cliente</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">{words.Client}</div>
             <div className="font-semibold">{doc.client.name}</div>
           </div>
-          <div>
+          {!salon && <div>
             <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">{words.Item}</div>
             <div className="font-semibold">{doc.boat.name}</div>
             {boatLine && <div className="text-slate-600">{boatLine}</div>}
-          </div>
+          </div>}
         </section>
 
-        {[['Problema reportado', doc.work.complaint], ['Diagnóstico', doc.work.diagnosis], ['Trabajo realizado', doc.work.work_done]].map(([label, text]) =>
+        {!salon && [['Problema reportado', doc.work.complaint], ['Diagnóstico', doc.work.diagnosis], ['Trabajo realizado', doc.work.work_done]].map(([label, text]) =>
           text ? (
             <section key={label} className="mt-4">
               <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">{label}</div>
@@ -225,9 +226,9 @@ export default function PublicDoc() {
         <table className="mt-5 w-full text-sm sm:text-base">
           <thead>
             <tr className="bg-navy-50 text-left text-sm uppercase text-navy-900">
-              <th className="rounded-l-lg px-2 py-2">Descripción</th>
-              <th className="py-2 pl-2 text-right">Cant.</th>
-              <th className="py-2 pl-3 text-right">Precio</th>
+              <th className="rounded-l-lg px-2 py-2">{salon ? 'Servicio' : 'Descripción'}</th>
+              {!salon && <th className="py-2 pl-2 text-right">Cant.</th>}
+              {!salon && <th className="py-2 pl-3 text-right">Precio</th>}
               <th className="rounded-r-lg py-2 pl-3 pr-2 text-right">Total</th>
             </tr>
           </thead>
@@ -247,8 +248,8 @@ export default function PublicDoc() {
                   {p.part_number && <span className="block text-sm text-slate-500"># {p.part_number}</span>}
                   {p.supplied_by === 'client' && <span className="block text-sm text-slate-500">Pieza suplida por el cliente: solo se garantiza la instalación.</span>}
                 </td>
-                <td className="whitespace-nowrap py-2 pl-3 text-right">{Number(p.qty)}</td>
-                <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' || Number(p.unit_cost) === 0 ? '—' : formatMoney(Number(p.unit_cost))}</td>
+                {!salon && <td className="whitespace-nowrap py-2 pl-3 text-right">{Number(p.qty)}</td>}
+                {!salon && <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' || Number(p.unit_cost) === 0 ? '—' : formatMoney(Number(p.unit_cost))}</td>}
                 <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' ? 'No se cobra' : Number(p.unit_cost) === 0 ? 'Incluido' : formatMoney(Number(p.qty) * Number(p.unit_cost))}</td>
               </tr>
             ))}
@@ -256,13 +257,17 @@ export default function PublicDoc() {
         </table>
 
         <dl className="ml-auto mt-4 max-w-xs text-base">
-          <div className="flex justify-between py-1"><dt>{doc.parts.some((p) => p.kind === 'service') ? 'Mano de obra y servicios' : 'Mano de obra'}</dt><dd>{formatMoney(Number(t.labor))}</dd></div>
-          <div className="flex justify-between py-1"><dt>Piezas</dt><dd>{formatMoney(Number(t.parts))}</dd></div>
-          <div className="flex justify-between py-1"><dt>IVU {percent(t.ivu_rate)}{ivuOn ? ` (${ivuOn})` : ''}</dt><dd>{formatMoney(Number(t.ivu))}</dd></div>
+          {salon ? (
+            <div className="flex justify-between py-1"><dt>Servicios</dt><dd>{formatMoney(Number(t.labor) + Number(t.parts))}</dd></div>
+          ) : <>
+            <div className="flex justify-between py-1"><dt>{doc.parts.some((p) => p.kind === 'service') ? 'Mano de obra y servicios' : 'Mano de obra'}</dt><dd>{formatMoney(Number(t.labor))}</dd></div>
+            <div className="flex justify-between py-1"><dt>Piezas</dt><dd>{formatMoney(Number(t.parts))}</dd></div>
+          </>}
+          <div className="flex justify-between py-1"><dt>IVU {percent(t.ivu_rate)}{ivuOn && !salon ? ` (${ivuOn})` : ''}</dt><dd>{formatMoney(Number(t.ivu))}</dd></div>
           <div className="mt-2 flex items-center justify-between rounded-xl bg-navy-900 px-4 py-3 text-white"><dt className="text-lg font-extrabold">TOTAL</dt><dd className="text-2xl font-extrabold" style={{ color: '#FDBA74' }}>{formatMoney(Number(t.total))}</dd></div>
           {payments.map((py, i) => (
             <div key={i} className="flex justify-between py-1 text-emerald-800">
-              <dt>{!isInvoice || py.paid_at < doc.date ? 'Depósito' : 'Abono'} {formatDate(py.paid_at)}</dt><dd>−{formatMoney(Number(py.amount))}</dd>
+              <dt>{!isInvoice || py.paid_at < doc.date ? 'Depósito' : salon ? 'Pagó' : 'Abono'} {formatDate(py.paid_at)}</dt><dd>−{formatMoney(Number(py.amount))}</dd>
             </div>
           ))}
           {payments.length > 0 && !doc.paid_at && (
@@ -314,7 +319,7 @@ export default function PublicDoc() {
         )}
         {doc.policies && (
           <section className="mt-5 border-t border-slate-200 pt-3">
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">Garantía y políticas</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[#F37021]">{salon ? 'Políticas' : 'Garantía y políticas'}</div>
             <p className="whitespace-pre-line text-sm text-slate-700">{doc.policies}</p>
           </section>
         )}

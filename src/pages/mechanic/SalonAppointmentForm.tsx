@@ -257,10 +257,10 @@ export default function SalonAppointmentForm() {
           </div>
           {selected.length > 0 ? (
             <div className="mt-2 flex items-center justify-between rounded-2xl bg-pink-600 px-4 py-3 text-base font-extrabold text-white" aria-label="Resumen de la cita">
-              <span>{selected.length} {selected.length === 1 ? 'servicio' : 'servicios'} · {minutesLabel(fromServices)}</span><span className="text-lg">{formatMoney(price)}</span>
+              <span>{selected.length} {selected.length === 1 ? 'servicio' : 'servicios'} · {minutesLabel(fromServices)}</span>{price > 0 && <span className="text-lg">{formatMoney(price)}</span>}
             </div>
           ) : (
-            <p className="mt-1 text-sm text-slate-500">Si no sabes todavía, déjalo así. El precio lo pones o lo cambias al cobrar.</p>
+            <p className="mt-1 text-sm text-slate-500">Si no sabes todavía, déjalo así. El precio lo pones al cobrar.</p>
           )}
         </Step>
 

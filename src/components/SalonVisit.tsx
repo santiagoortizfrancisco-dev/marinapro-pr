@@ -102,6 +102,8 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const due = invoice && done ? Number(invoice.total) : totals.total
   const balance = done ? 0 : Math.max(0, Math.round((due - paid) * 100) / 100)
   const firstName = c.full_name.split(' ')[0]
+  // El precio se pone al cobrar (cambia por persona): el primer servicio que todavía no tiene precio
+  const unpriced = parts.find((p) => !(Number(p.unit_cost) > 0)) ?? null
   const sign = profile?.full_name ?? ''
 
   const confirmMsg = `Hola ${firstName}, te confirmo tu cita el ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)}` +
@@ -125,15 +127,17 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
     if (row) await syncTitle([...parts, row as Part])
     setBusy(false)
     setAddOpen(false)
+    if (row && !(price > 0)) setEdit(row as Part)
     reload()
   }
 
   async function saveLine(p: Part, description: string, price: number) {
     setBusy(true)
     await db().from('work_order_parts').update({ description, unit_cost: price }).eq('id', p.id)
-    await syncTitle(parts.map((x) => (x.id === p.id ? { ...x, description } : x)))
+    const list = parts.map((x) => (x.id === p.id ? { ...x, description, unit_cost: price } : x))
+    await syncTitle(list)
     setBusy(false)
-    setEdit(null)
+    setEdit(list.find((x) => x.id !== p.id && !(Number(x.unit_cost) > 0)) ?? null)
     reload()
   }
 
@@ -254,9 +258,9 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         </div>
 
         {!done ? (
-          <button type="button" disabled={busy || balance <= 0} onClick={() => setPayOpen(true)}
+          <button type="button" disabled={busy || (balance <= 0 && !unpriced)} onClick={() => (unpriced ? setEdit(unpriced) : setPayOpen(true))}
             className="mt-4 flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-xl font-extrabold text-white shadow-lg shadow-emerald-900/20 active:bg-emerald-700 disabled:bg-slate-300 disabled:shadow-none">
-            {balance > 0 ? <>Cobrar {formatMoney(balance)}</> : 'Pon el precio para cobrar'}
+            {unpriced ? <>Ponle precio a “{unpriced.description}”</> : balance > 0 ? <>Cobrar {formatMoney(balance)}</> : 'Añade lo que vas a cobrar'}
           </button>
         ) : (
           <div className="mt-4 space-y-3">
@@ -443,26 +447,26 @@ function AddServiceSheet({ open, menu, busy, onClose, onAdd }: { open: boolean; 
 
 /** Cambiar el precio (o el nombre) de un servicio de la cuenta, o quitarlo. */
 function LineSheet({ part, busy, onClose, onSave, onRemove }: { part: Part | null; busy: boolean; onClose: () => void; onSave: (p: Part, name: string, price: number) => void; onRemove: (p: Part) => void }) {
-  const [name, setName] = useState('')
-  const [price, setPrice] = useState('')
-  useEffect(() => {
-    if (!part) return
-    setName(part.description)
-    setPrice(Number(part.unit_cost) > 0 ? String(Number(part.unit_cost)) : '')
-  }, [part])
   return (
-    <Sheet open={Boolean(part)} title="Precio del servicio" onClose={onClose}>
-      {part && (
-        <div className="space-y-3">
-          <Input aria-label="Servicio" value={name} onChange={(e) => setName(e.target.value)} />
-          <div className="relative">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-extrabold text-slate-400">$</span>
-            <Input aria-label="Precio ($)" inputMode="decimal" autoFocus value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className="pl-10 text-2xl! font-extrabold" />
-          </div>
-          <Button disabled={busy || name.trim().length < 2} onClick={() => onSave(part, name.trim(), num(price) ?? 0)} className="bg-pink-600! active:bg-pink-700!"><Check /> Guardar</Button>
-          <Button variant="ghost" disabled={busy} onClick={() => onRemove(part)} className="text-red-700!"><Trash2 size={20} /> Quitar de la cuenta</Button>
-        </div>
-      )}
+    <Sheet open={Boolean(part)} title="¿Cuánto es?" onClose={onClose}>
+      {/* Con key: cada servicio empieza con su nombre y su precio (no se queda el del anterior) */}
+      {part && <LineForm key={part.id} part={part} busy={busy} onSave={onSave} onRemove={onRemove} />}
     </Sheet>
+  )
+}
+
+function LineForm({ part, busy, onSave, onRemove }: { part: Part; busy: boolean; onSave: (p: Part, name: string, price: number) => void; onRemove: (p: Part) => void }) {
+  const [name, setName] = useState(part.description)
+  const [price, setPrice] = useState(Number(part.unit_cost) > 0 ? String(Number(part.unit_cost)) : '')
+  return (
+    <div className="space-y-3">
+      <Input aria-label="Servicio" value={name} onChange={(e) => setName(e.target.value)} />
+      <div className="relative">
+        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-extrabold text-slate-400">$</span>
+        <Input aria-label="Precio ($)" inputMode="decimal" autoFocus value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className="pl-10 text-2xl! font-extrabold" />
+      </div>
+      <Button disabled={busy || name.trim().length < 2} onClick={() => onSave(part, name.trim(), num(price) ?? 0)} className="bg-pink-600! active:bg-pink-700!"><Check /> Guardar precio</Button>
+      <Button variant="ghost" disabled={busy} onClick={() => onRemove(part)} className="text-red-700!"><Trash2 size={20} /> Quitar de la cuenta</Button>
+    </div>
   )
 }

@@ -158,11 +158,11 @@ function publicDoc(token) {
   const t = totals(wo)
   const boat = db.boats.find((b) => b.id === wo.boat_id)
   const client = db.clients.find((c) => c.id === boat.client_id)
-  const m = db.mechanics[0]
-  const p = db.profiles[0]
+  const m = db.mechanics.find((x) => x.profile_id === client.mechanic_id) ?? db.mechanics[0]
+  const p = db.profiles.find((x) => x.id === m.profile_id) ?? db.profiles[0]
   return {
     kind: inv ? 'invoice' : 'estimate', number: inv?.number ?? null, date: inv?.created_at ?? new Date().toISOString(), paid_at: inv?.paid_at ?? null, payment_method: inv?.payment_method ?? null,
-    business: { name: m.business_name, owner: p.full_name, phone: p.phone, email: null, town: p.town, ath_movil: m.ath_movil_number, logo_path: m.logo_path, brand_color: m.brand_color },
+    business: { business_type: m.business_type, name: m.business_name, owner: p.full_name, phone: p.phone, email: null, town: p.town, ath_movil: m.ath_movil_number, logo_path: m.logo_path, brand_color: m.brand_color },
     client: { name: client.full_name },
     boat: { name: boat.name, make: boat.make, model: boat.model, year: boat.year, marina: boat.marina_name, slip: boat.slip_number, town: boat.town },
     work: { complaint: wo.complaint, diagnosis: wo.diagnosis, work_done: wo.work_done, status: wo.status, approved_at: wo.estimate_approved_at, sea_trial_required: wo.sea_trial_required, sea_trial_done: wo.sea_trial_done, sea_trial_method: wo.sea_trial_method, sea_trial_notes: wo.sea_trial_notes },
@@ -306,10 +306,10 @@ const RPC = {
   },
   seed_beauty_services: ({ p_mech }) => {
     if (db.catalog_items.some((c) => c.mechanic_id === p_mech && c.duration_min)) return null
-    for (const [name, category, last_price, duration_min] of [
-      ['Uñas acrílicas (set completo)', 'Uñas', 40, 90], ['Relleno de acrílico', 'Uñas', 30, 60], ['Pedicura', 'Uñas', 25, 45],
-      ['Corte de dama', 'Pelo', 25, 45], ['Masaje relajante (60 min)', 'Spa', 60, 60],
-    ]) db.catalog_items.push({ id: randomUUID(), mechanic_id: p_mech, kind: 'service', name, category, last_price, duration_min, use_count: 0 })
+    for (const [name, category, duration_min] of [
+      ['Uñas acrílicas (set completo)', 'Uñas', 90], ['Relleno de acrílico', 'Uñas', 60], ['Pedicura', 'Uñas', 45],
+      ['Corte de dama', 'Pelo', 45], ['Masaje relajante (60 min)', 'Spa', 60],
+    ]) db.catalog_items.push({ id: randomUUID(), mechanic_id: p_mech, kind: 'service', name, category, last_price: null, duration_min, use_count: 0 })
     return null
   },
   start_trial: ({ p_type } = {}) => {
@@ -321,7 +321,7 @@ const RPC = {
     db.clients.push({ id: cid, mechanic_id: caller, profile_id: null, full_name: 'Ana Martínez (ejemplo)', phone: '787-555-0111', email: null, town: 'Fajardo', address: null, preferred_contact: 'whatsapp', notes: p_type === 'beauty' ? 'Le gusta el almendrado largo.' : 'PRUEBA', created_at: new Date().toISOString() })
     if (p_type === 'beauty') {
       const m = db.mechanics.find((x) => x.profile_id === caller)
-      Object.assign(m, { business_name: 'Salón de Prueba', use_estimates: false })
+      Object.assign(m, { business_name: 'Salón de Prueba', use_estimates: false, warranty_days: 3, policies_text: 'Si no puedes llegar, avísanos con 24 horas de anticipación.' })
       db.boats.push({ ...DEFAULTS.boats(), id: randomUUID(), client_id: cid, name: 'Ana Martínez (ejemplo)', location_type: 'home', created_at: new Date().toISOString() })
       db.staff.push({ id: randomUUID(), mechanic_id: caller, name: 'Yari', phone: null, color: '#db2777', commission_rate: 0.4, active: true })
       db.staff.push({ id: randomUUID(), mechanic_id: caller, name: 'Kamila', phone: null, color: '#7c3aed', commission_rate: 0.35, active: true })

@@ -499,3 +499,18 @@ test('salón: menú de uñas con duración, empleadas solo del negocio, propina 
   assert.equal((await one(V, `select count(*)::int n from appointments where staff_id is not null`)).n, 8)
   assert.ok(Number((await one(V, `select sum(tip) t from payments`)).t) > 0, 'propinas de ejemplo')
 })
+
+test('políticas del salón: al hacerse salón le tocan las de salón (no garantía de mecánico); las que escribió el negocio no se tocan', async () => {
+  const pol = async () => (await one(A, `select policies_text p, warranty_days d from mechanics where profile_id = '${A}'`))
+  await as(A, `update mechanics set business_type = 'beauty' where profile_id = '${A}'`)
+  assert.match((await pol()).p, /24 horas/)
+  assert.doesNotMatch((await pol()).p, /piezas|agua|mecánico/i)
+  await as(A, `update mechanics set business_type = 'marine' where profile_id = '${A}'`)
+  assert.match((await pol()).p, /Garantía de mano de obra/)
+  assert.equal((await pol()).d, 90)
+
+  await as(A, `update mechanics set policies_text = 'Mis reglas propias' where profile_id = '${A}'`)
+  await as(A, `update mechanics set business_type = 'beauty' where profile_id = '${A}'`)
+  assert.equal((await pol()).p, 'Mis reglas propias')
+  await as(A, `update mechanics set business_type = 'marine', policies_text = default_policies() where profile_id = '${A}'`)
+})

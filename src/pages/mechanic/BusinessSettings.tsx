@@ -182,28 +182,32 @@ export default function BusinessSettings() {
         </Field>
 
         <h2 className="pt-3 text-xl font-extrabold text-navy-900">Precios</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Tarifa por hora ($)">
+        <div className={`grid gap-3 ${trade === 'beauty' ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {trade !== 'beauty' && <Field label="Tarifa por hora ($)">
             <Input inputMode="decimal" value={f.labor_rate_hour} onChange={(e) => set('labor_rate_hour', e.target.value)} placeholder="85" />
-          </Field>
+          </Field>}
           <Field label="IVU (%)">
             <Input inputMode="decimal" value={f.ivu_percent} onChange={(e) => set('ivu_percent', e.target.value)} placeholder="11.5" />
           </Field>
         </div>
-        <p className="text-sm text-slate-500">Para trabajos nuevos. En cada trabajo puedes poner o quitar el IVU.</p>
-        <Toggle checked={f.ivu_on_labor} onChange={(v) => set('ivu_on_labor', v)} label="Cobrar IVU en mano de obra" />
-        <Toggle checked={f.ivu_on_parts} onChange={(v) => set('ivu_on_parts', v)} label="Cobrar IVU en piezas" />
+        <p className="text-sm text-slate-500">{trade === 'beauty' ? 'Para citas nuevas. En cada cuenta puedes poner o quitar el IVU.' : 'Para trabajos nuevos. En cada trabajo puedes poner o quitar el IVU.'}</p>
+        {trade === 'beauty' ? (
+          <Toggle checked={f.ivu_on_labor} onChange={(v) => setF({ ...f, ivu_on_labor: v, ivu_on_parts: v })} label="Cobrar IVU" />
+        ) : <>
+          <Toggle checked={f.ivu_on_labor} onChange={(v) => set('ivu_on_labor', v)} label="Cobrar IVU en mano de obra" />
+          <Toggle checked={f.ivu_on_parts} onChange={(v) => set('ivu_on_parts', v)} label="Cobrar IVU en piezas" />
+        </>}
 
-        <h2 className="pt-3 text-xl font-extrabold text-navy-900">Facturas y garantía</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <h2 className="pt-3 text-xl font-extrabold text-navy-900">{trade === 'beauty' ? 'Facturas y políticas' : 'Facturas y garantía'}</h2>
+        <div className={`grid gap-3 ${trade === 'beauty' ? 'grid-cols-1' : 'grid-cols-2'}`}>
           <Field label="Próxima factura #">
             <Input inputMode="numeric" value={f.next_invoice_number} onChange={(e) => set('next_invoice_number', e.target.value.replace(/\D/g, ''))} />
           </Field>
-          <Field label="Garantía (días)">
+          {trade !== 'beauty' && <Field label="Garantía (días)">
             <Input inputMode="numeric" value={f.warranty_days} onChange={(e) => set('warranty_days', e.target.value.replace(/\D/g, ''))} />
-          </Field>
+          </Field>}
         </div>
-        <Field label="Políticas de garantía" hint="Salen al final del estimado y la factura. (Revisar con un abogado.)">
+        <Field label={trade === 'beauty' ? 'Políticas del salón' : 'Políticas de garantía'} hint={trade === 'beauty' ? 'Salen al final de la factura: cancelaciones, tardanzas, arreglos.' : 'Salen al final del estimado y la factura. (Revisar con un abogado.)'}>
           <Textarea rows={9} value={f.policies_text} onChange={(e) => set('policies_text', e.target.value)} />
         </Field>
         <FormActions busy={busy} error={saveError} saveLabel="Guardar" />
