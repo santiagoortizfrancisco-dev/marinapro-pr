@@ -1283,3 +1283,13 @@ test('admin: le sale quién se registró (nombre, negocio, oficio, email y telé
   await expect(box).toContainText('wanda@nails.test')
   await expect.poll(async () => (await state()).admin_signups.every((x) => x.seen_at)).toBe(true)
 })
+
+test('página informativa (/info): se abre sin cuenta, dice lo que hace y lleva a probarlo', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: /Conócelo aquí/ }).click()
+  await expect(page.getByRole('heading', { name: /Tu negocio de servicio/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Se adapta a/ })).toBeVisible()
+  for (const t of ['Salones, uñas y spa', 'Mecánicos de botes', 'Aire acondicionado', 'Plomería', 'Electricidad']) await expect(page.getByText(t).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Todo tu salón en el celular/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Pruébalo gratis/ }).first()).toHaveAttribute('href', '/demo')
+})

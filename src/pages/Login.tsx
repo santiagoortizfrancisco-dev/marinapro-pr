@@ -186,6 +186,7 @@ export default function Login() {
                 <Button type="button" variant="secondary" onClick={() => { setStep('signup'); setError('') }}>
                   <UserPlus /> ¿Tienes un negocio de servicio? Crea tu cuenta
                 </Button>
+                <a href="/info" className="mt-3 block text-center text-base font-bold text-navy-700 underline">¿Qué es FacturaFácil PR? Conócelo aquí</a>
               </div>
             </form>
           )}

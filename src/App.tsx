@@ -36,6 +36,7 @@ import StaffPage from './pages/mechanic/StaffPage'
 import BookingSettings from './pages/mechanic/BookingSettings'
 import GiftCards from './pages/mechanic/GiftCards'
 import SalonBooking from './pages/public/SalonBooking'
+import Landing from './pages/public/Landing'
 import { useWords } from './lib/trade'
 
 /** La cita: la de salón (servicios y empleada) o la de servicio en la calle. */
@@ -53,13 +54,14 @@ export default function App() {
   const { pathname } = useLocation()
 
   // Estimado / factura y directorio de mecánicos: se abren sin cuenta
-  if (pathname.startsWith('/d/') || pathname === '/mecanicos' || pathname.startsWith('/mecanicos/') || pathname.startsWith('/reservar/')) {
+  if (pathname.startsWith('/d/') || pathname === '/mecanicos' || pathname.startsWith('/mecanicos/') || pathname.startsWith('/reservar/') || pathname === '/info') {
     return (
       <Routes>
         <Route path="/d/:token" element={<PublicDoc />} />
         <Route path="/mecanicos" element={<Directory />} />
         <Route path="/mecanicos/:slug" element={<MechanicProfile />} />
         <Route path="/reservar/:slug" element={<SalonBooking />} />
+        <Route path="/info" element={<Landing />} />
       </Routes>
     )
   }
