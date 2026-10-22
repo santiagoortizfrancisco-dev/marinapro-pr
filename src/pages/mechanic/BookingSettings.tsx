@@ -22,12 +22,14 @@ export function slugify(s: string) {
  */
 export default function BookingSettings() {
   const { session } = useAuth()
-  const { data: m, loading, error, reload } = useLoad(async () => must(await db().from('mechanics').select('business_name, booking_on, booking_slug, booking_hours').eq('profile_id', session!.user.id).single()) as {
-    business_name: string | null; booking_on: boolean; booking_slug: string | null; booking_hours: Hours
+  const { data: m, loading, error, reload } = useLoad(async () => must(await db().from('mechanics').select('business_name, booking_on, booking_slug, booking_hours, booking_deposit, ath_movil_number').eq('profile_id', session!.user.id).single()) as {
+    business_name: string | null; booking_on: boolean; booking_slug: string | null; booking_hours: Hours; booking_deposit: number | null; ath_movil_number: string | null
   }, [])
   const [on, setOn] = useState(false)
   const [slug, setSlug] = useState('')
   const [hours, setHours] = useState<Hours>({})
+  const [askDeposit, setAskDeposit] = useState(false)
+  const [deposit, setDeposit] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
@@ -37,6 +39,8 @@ export default function BookingSettings() {
     setOn(m.booking_on)
     setSlug(m.booking_slug ?? slugify(m.business_name ?? ''))
     setHours(m.booking_hours ?? {})
+    setAskDeposit(m.booking_deposit != null)
+    setDeposit(m.booking_deposit != null ? String(Number(m.booking_deposit)) : '10')
   }, [m])
 
   const link = `${window.location.origin}/reservar/${slug}`
@@ -45,9 +49,11 @@ export default function BookingSettings() {
     const s = slugify(slug)
     if (s.length < 3) return setErr('El link necesita por lo menos 3 letras.')
     for (const [k, v] of Object.entries(hours)) if (v && v[0] >= v[1]) return setErr(`Revisa el horario del ${DAYS.find((d) => d[0] === k)?.[1]}: abre después de cerrar.`)
+    const dep = askDeposit ? Number(deposit.replace(/[^0-9.]/g, '')) : null
+    if (askDeposit && !(dep! > 0)) return setErr('Escribe cuánto es el depósito.')
     setBusy(true)
     setErr('')
-    const { error } = await db().from('mechanics').update({ booking_on: on, booking_slug: s, booking_hours: hours }).eq('profile_id', session!.user.id)
+    const { error } = await db().from('mechanics').update({ booking_on: on, booking_slug: s, booking_hours: hours, booking_deposit: dep }).eq('profile_id', session!.user.id)
     setBusy(false)
     if (error) return setErr(/duplicate|unique/i.test(error.message) ? 'Ese link ya lo tiene otro negocio. Cámbialo un poco (ej. añade el pueblo).' : 'No se pudo guardar. Intenta otra vez.')
     setSlug(s)
@@ -95,6 +101,18 @@ export default function BookingSettings() {
               )
             })}
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Toggle checked={askDeposit} onChange={setAskDeposit} label="Pedir depósito para separar la cita" hint="Cuando le confirmes la cita por WhatsApp, el mensaje le pide el depósito por tu ATH Móvil" />
+          {askDeposit && (
+            <>
+              <Field label="¿Cuánto es el depósito? ($)">
+                <Input aria-label="Depósito ($)" inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="10" />
+              </Field>
+              {!m.ath_movil_number && <p className="rounded-xl bg-amber-50 p-3 text-base text-amber-900">Pon tu número de ATH Móvil en <b>Más → Mi negocio</b> para que el mensaje le diga a dónde enviarlo.</p>}
+            </>
+          )}
         </div>
 
         {err && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{err}</p>}

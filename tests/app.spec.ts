@@ -1152,6 +1152,8 @@ test('salón: citas por internet — prende su link, la clienta pide cita sola y
   await page.getByRole('link', { name: /Citas por internet/ }).click()
   await page.getByRole('switch', { name: /Recibir citas por internet/ }).click()
   await page.getByRole('textbox', { name: 'Link del salón' }).fill('glow-prueba')
+  await page.getByRole('switch', { name: /Pedir depósito/ }).click()
+  await page.getByLabel('Depósito ($)').fill('15')
   await page.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('Tu link está prendido:')).toBeVisible()
 
@@ -1166,6 +1168,7 @@ test('salón: citas por internet — prende su link, la clienta pide cita sola y
   await clienta.getByLabel('Tu teléfono').fill('787-555-1212')
   await clienta.getByRole('button', { name: /Pedir cita/ }).click()
   await expect(clienta.getByText('¡Cita pedida!')).toBeVisible()
+  await expect(clienta.getByText(/depósito/i)).toHaveCount(0) // al reservar no se le pide el depósito
   await clienta.close()
   const ap = (await state()).appointments.find((a) => a.source === 'online')!
   expect(ap).toMatchObject({ status: 'requested', title: 'Pedicura', duration_min: 45 })
@@ -1177,7 +1180,9 @@ test('salón: citas por internet — prende su link, la clienta pide cita sola y
   await expect(page.getByText('La pidió por internet')).toBeVisible()
   const popup = page.waitForEvent('popup')
   await page.getByRole('button', { name: /Confirmar cita por WhatsApp/ }).click()
-  await (await popup).close()
+  const wa = await popup
+  expect(decodeURIComponent(wa.url().replace(/\+/g, ' '))).toContain('envía el depósito de $15.00 por ATH Móvil al 787-555-0100')
+  await wa.close()
   await expect.poll(async () => (await state()).appointments.find((a) => a.id === ap.id)?.status).toBe('confirmed')
 
   // Un link que no existe no enseña nada

@@ -107,8 +107,13 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const unpriced = parts.find((p) => !(Number(p.unit_cost) > 0)) ?? null
   const sign = profile?.full_name ?? ''
 
+  // Cita pedida por internet con depósito pendiente: se le recuerda cómo pagarlo
+  const depositDue = (mech as Mechanic & { booking_deposit?: number | null }).booking_deposit
+  const askDeposit = (a as unknown as { source?: string }).source === 'online' && depositDue && paid === 0
   const confirmMsg = `Hola ${firstName}, te confirmo tu cita el ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)}` +
-    (a.title ? ` para ${a.title}` : '') + (who ? ` con ${who.name}` : '') + `. Si no puedes llegar, avísame. ¡Te espero! 💅 ${sign}`.trimEnd()
+    (a.title ? ` para ${a.title}` : '') + (who ? ` con ${who.name}` : '') +
+    (askDeposit ? `. Para separarla, envía el depósito de ${formatMoney(Number(depositDue))}${mech.ath_movil_number ? ` por ATH Móvil al ${mech.ath_movil_number}` : ''}` : '') +
+    `. Si no puedes llegar, avísame. ¡Te espero! 💅 ${sign}`.trimEnd()
   const receiptMsg = invoice
     ? `Hola ${firstName}, ¡gracias por venir! 💅 Aquí está tu recibo #${invoice.number} por ${formatMoney(Number(invoice.total))}: ${window.location.origin}/d/${invoice.public_token} . ${sign}`.trim()
     : ''
