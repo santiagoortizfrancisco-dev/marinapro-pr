@@ -192,7 +192,7 @@ export function BackButton({ to }: { to?: string }) {
   return (
     <button
       type="button"
-      onClick={() => (to ? navigate(to) : (window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate('/inicio'))}
+      onClick={() => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate(to ?? '/inicio'))}
       className={`${CARD} -ml-1 mb-3 inline-flex min-h-12 items-center gap-1 px-4 text-lg font-bold text-navy-800 active:bg-navy-50`}
     >
       <ChevronLeft size={26} strokeWidth={2.5} /> Volver atrás

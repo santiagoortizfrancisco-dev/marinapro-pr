@@ -1040,6 +1040,20 @@ test('salón de uñas: cita con servicios y empleada (suma tiempo y precio), sin
   await expect(page.getByText('Políticas', { exact: true })).toBeVisible()
   await expect(page.getByText(/24 horas/)).toBeVisible()
 
+  // Inicio del salón: lo que falta cobrar dice "Sin cobrar" (no "Trabajando · Aprobado"), y Volver atrás regresa a Inicio
+  await page.goto('/citas/nueva?ahora=1')
+  await page.getByRole('button', { name: /Clienta nueva/ }).click()
+  await page.getByPlaceholder('Nombre *').fill('Ruth Prueba')
+  await page.getByRole('button', { name: 'Seguir a cobrar' }).click()
+  await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Sin cobrar' })).toBeVisible()
+  await expect(page.getByText('Trabajando')).toHaveCount(0)
+  await page.getByRole('link', { name: /Ruth Prueba/ }).first().click()
+  await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
+  await page.getByRole('button', { name: 'Volver atrás' }).click()
+  await expect(page.getByRole('heading', { name: 'Sin cobrar' })).toBeVisible()
+
   // Empleadas y comisiones: a Yari le toca su 40% de los servicios + la propina
   await page.goto('/mas/empleadas')
   await expect(page.getByLabel('Comisión de Yari')).toContainText('Le toca')

@@ -6,7 +6,7 @@ import { GaugeIcon, PistonIcon, PropellerIcon, SparkPlugIcon } from '../../compo
 import { useAuth } from '../../auth/AuthProvider'
 import DueServices from '../../components/DueServices'
 import { db } from '../../lib/db'
-import { formatLongDate, formatMoney, formatTime, prRange, prTime, todayPR } from '../../lib/format'
+import { formatDate, formatLongDate, formatMoney, formatTime, prRange, prTime, todayPR } from '../../lib/format'
 import { WORK_ORDER_STATUS } from '../../lib/catalog'
 import { loadMoney, owed, sumOwed } from '../../lib/money'
 import type { WorkOrder } from '../../lib/types'
@@ -14,7 +14,7 @@ import { must, useLoad } from '../../lib/useLoad'
 import { CARD, Pill } from '../../components/ui'
 
 interface TodayAppt { id: string; starts_at: string; status: string; boats: { name: string; clients: { full_name: string } } }
-interface Working { id: string; status: WorkOrder['status']; appointment_id: string | null; boats: { name: string; clients: { full_name: string } } }
+interface Working { id: string; status: WorkOrder['status']; appointment_id: string | null; boats: { name: string; clients: { full_name: string } }; appointments: { starts_at: string; title: string | null } | null }
 
 /** Saludo según la hora de Puerto Rico. */
 function greeting(): string {
@@ -100,7 +100,7 @@ export default function Home() {
     const [start, end] = prRange(today, 1)
     const [appts, working, money] = await Promise.all([
       db().from('appointments').select('id, starts_at, status, boats(name, clients(full_name))').gte('starts_at', start).lt('starts_at', end).neq('status', 'cancelled').order('starts_at'),
-      db().from('work_orders').select('id, status, appointment_id, boats(name, clients(full_name))').in('status', ['approved', 'waiting_parts', 'in_progress', 'sea_trial']).order('created_at', { ascending: false }).limit(10),
+      db().from('work_orders').select('id, status, appointment_id, boats(name, clients(full_name)), appointments(starts_at, title)').in('status', ['approved', 'waiting_parts', 'in_progress', 'sea_trial']).order('created_at', { ascending: false }).limit(10),
       loadMoney(),
     ])
     return { appts: must(appts) as unknown as TodayAppt[], working: must(working) as unknown as Working[], debt: sumOwed(owed(money)) }
@@ -162,7 +162,28 @@ export default function Home() {
       </section>
 
       {/* Trabajos en proceso */}
-      {data && data.working.length > 0 && (
+      {/* Salón: lo que ya pasó y falta cobrar (las citas de más tarde salen en Hoy) */}
+      {data && words.salon && (() => {
+        const now = Date.now()
+        const due = data.working.filter((x) => !x.appointments || new Date(x.appointments.starts_at).getTime() <= now)
+        return due.length > 0 && (
+          <section className="mt-6">
+            <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><Wallet size={22} /> Sin cobrar</h2>
+            <div className={`${CARD} divide-y divide-slate-100`}>
+              {due.map((x) => (
+                <Link key={x.id} to={x.appointment_id ? `/citas/${x.appointment_id}` : `/trabajos/${x.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-slate-50">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-base font-bold text-slate-900">{x.boats.clients.full_name}</span>
+                    <span className="block truncate text-sm text-slate-600">{[x.appointments ? `${formatDate(x.appointments.starts_at).slice(0, 5)} ${formatTime(x.appointments.starts_at)}` : null, x.appointments?.title].filter(Boolean).join(' · ')}</span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-pink-100 px-3 py-1 text-sm font-bold text-pink-800">Por cobrar</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )
+      })()}
+      {data && !words.salon && data.working.length > 0 && (
         <section className="mt-6">
           <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><Wrench size={22} /> Trabajando</h2>
           <div className={`${CARD} divide-y divide-slate-100`}>

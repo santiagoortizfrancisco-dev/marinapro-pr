@@ -176,7 +176,8 @@ export default function SalonAppointmentForm() {
         })))
         if (p.error) throw p.error
       }
-      navigate(`/citas/${apptId}${now ? '?cobrar=1' : ''}`, { replace: true })
+      if (id) navigate(-1)
+      else navigate(`/citas/${apptId}${now ? '?cobrar=1' : ''}`, { replace: true })
     } catch (err) {
       console.error(err)
       setError('No se pudo guardar. Revisa la señal e intenta otra vez.')
