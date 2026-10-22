@@ -596,7 +596,7 @@ test('Contactar al desarrollador: el mecánico escribe desde Más y al admin le 
   await s2.getByLabel('Tu mensaje').fill('La factura no sale por WhatsApp')
   await s2.getByRole('button', { name: /Enviar mensaje/ }).click()
   await expect(s2.getByText('¡Recibido!')).toBeVisible()
-  await s2.getByRole('button', { name: 'Cerrar' }).click()
+  await s2.getByRole('button', { name: 'Cerrar', exact: true }).click()
   expect((await state()).support_messages).toHaveLength(2)
 
   // El admin lo ve en Admin → Mensajes
@@ -1018,6 +1018,13 @@ test('salón de uñas: cita con servicios y empleada (suma tiempo y precio), sin
   // Cobrar con propina: un solo botón
   await page.getByRole('button', { name: /^Cobrar \$/ }).click()
   const sheet = page.getByRole('dialog', { name: 'Cobrar' })
+  // Se puede salir sin cobrar y volver a entrar
+  await sheet.getByRole('button', { name: 'No cobrar ahora' }).click()
+  await expect(sheet).toHaveCount(0)
+  await page.getByRole('button', { name: /^Cobrar \$/ }).click()
+  await sheet.getByRole('button', { name: 'Cerrar ventana' }).click()
+  await expect(sheet).toHaveCount(0)
+  await page.getByRole('button', { name: /^Cobrar \$/ }).click()
   await sheet.getByRole('button', { name: '$5', exact: true }).click()
   await sheet.getByRole('radio', { name: /Efectivo/ }).click()
   await sheet.getByRole('button', { name: /^Cobrar \$/ }).click()

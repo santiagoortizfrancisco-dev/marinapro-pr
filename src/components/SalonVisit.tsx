@@ -422,6 +422,7 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
           <CheckCircle2 /> {busy ? 'Guardando…' : `Cobrar ${formatMoney(total)}`}
         </button>
         {tipValue > 0 && <p className="-mt-3 text-center text-sm text-slate-500">Incluye {formatMoney(tipValue)} de propina para la empleada</p>}
+        <Button variant="ghost" onClick={onClose}>No cobrar ahora</Button>
       </div>
     </Sheet>
   )
