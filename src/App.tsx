@@ -33,6 +33,9 @@ import QuickInvoice from './pages/mechanic/QuickInvoice'
 import Invoices from './pages/mechanic/Invoices'
 import SalonAppointmentForm from './pages/mechanic/SalonAppointmentForm'
 import StaffPage from './pages/mechanic/StaffPage'
+import BookingSettings from './pages/mechanic/BookingSettings'
+import GiftCards from './pages/mechanic/GiftCards'
+import SalonBooking from './pages/public/SalonBooking'
 import { useWords } from './lib/trade'
 
 /** La cita: la de salón (servicios y empleada) o la de servicio en la calle. */
@@ -50,12 +53,13 @@ export default function App() {
   const { pathname } = useLocation()
 
   // Estimado / factura y directorio de mecánicos: se abren sin cuenta
-  if (pathname.startsWith('/d/') || pathname === '/mecanicos' || pathname.startsWith('/mecanicos/')) {
+  if (pathname.startsWith('/d/') || pathname === '/mecanicos' || pathname.startsWith('/mecanicos/') || pathname.startsWith('/reservar/')) {
     return (
       <Routes>
         <Route path="/d/:token" element={<PublicDoc />} />
         <Route path="/mecanicos" element={<Directory />} />
         <Route path="/mecanicos/:slug" element={<MechanicProfile />} />
+        <Route path="/reservar/:slug" element={<SalonBooking />} />
       </Routes>
     )
   }
@@ -107,6 +111,8 @@ export default function App() {
           <Route path="/mas/admin" element={<Admin />} />
           <Route path="/mas/catalogo" element={<Catalog />} />
           <Route path="/mas/empleadas" element={<StaffPage />} />
+          <Route path="/mas/reservas" element={<BookingSettings />} />
+          <Route path="/mas/regalos" element={<GiftCards />} />
           <Route path="/mas/perfil-publico" element={<PublicProfileSettings />} />
           <Route path="/mas/clave" element={<PasswordSettings />} />
           <Route path="/solicitudes/:id" element={<RequestDetail />} />

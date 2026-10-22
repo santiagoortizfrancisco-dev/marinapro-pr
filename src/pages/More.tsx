@@ -1,7 +1,7 @@
 import { TRADES, useWords } from '../lib/trade'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Briefcase, ChevronRight, Globe, KeyRound, LifeBuoy, ListChecks, ShieldCheck, Users } from 'lucide-react'
+import { Gift, CalendarHeart, Briefcase, ChevronRight, Globe, KeyRound, LifeBuoy, ListChecks, ShieldCheck, Users } from 'lucide-react'
 import ContactSheet from '../components/ContactSheet'
 import { db } from '../lib/db'
 import { useLoad } from '../lib/useLoad'
@@ -66,7 +66,28 @@ export default function More() {
         </Link>
       )}
 
-      {profile?.role === 'mechanic' && !session?.user.is_anonymous && (
+      {profile?.role === 'mechanic' && words.salon && (
+        <>
+          <Link to="/mas/reservas" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+            <IconBadge icon={CalendarHeart} tone="blue" />
+            <span className="flex-1">
+              <span className="block text-lg font-bold">Citas por internet</span>
+              <span className="block text-sm text-slate-600">Tu link para que las clientas pidan cita solas</span>
+            </span>
+            <ChevronRight />
+          </Link>
+          <Link to="/mas/regalos" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+            <IconBadge icon={Gift} tone="blue" />
+            <span className="flex-1">
+              <span className="block text-lg font-bold">Tarjetas de regalo</span>
+              <span className="block text-sm text-slate-600">Véndelas y úsalas al cobrar</span>
+            </span>
+            <ChevronRight />
+          </Link>
+        </>
+      )}
+
+      {profile?.role === 'mechanic' && !session?.user.is_anonymous && !words.salon && (
         <Link to="/mas/perfil-publico" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
           <IconBadge icon={Globe} tone="blue" />
           <span className="flex-1">

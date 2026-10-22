@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Banknote, CalendarClock, Receipt, Camera, Check, CheckCircle2, ChevronDown, CreditCard, ExternalLink, Phone, Plus, Smartphone, Trash2, XCircle, type LucideIcon } from 'lucide-react'
+import { Banknote, CalendarClock, Gift, Globe, Receipt, Camera, Check, CheckCircle2, ChevronDown, CreditCard, ExternalLink, Phone, Plus, Smartphone, Trash2, XCircle, type LucideIcon } from 'lucide-react'
 import { WhatsAppIcon } from './BrandIcons'
 import { useAuth } from '../auth/AuthProvider'
 import { APPOINTMENT_STATUS } from '../lib/catalog'
@@ -157,14 +157,24 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   }
 
   /** Cobrar: si con esto queda pagada, se hace el recibo (factura) para que quede el récord, y la cita queda hecha. */
-  async function receive(method: Method, amount: number, tip: number) {
+  async function receive(method: Method, amount: number, tip: number, giftCode?: string) {
+    let giftId: string | undefined
+    if (giftCode) {
+      const { data: cards } = await db().from('gift_cards').select('id, balance').ilike('code', giftCode.trim())
+      const card = (cards ?? [])[0] as { id: string; balance: number } | undefined
+      if (!card) throw new Error('No encontré esa tarjeta de regalo. Revisa el código.')
+      if (!(Number(card.balance) > 0)) throw new Error('A esa tarjeta ya no le queda dinero.')
+      giftId = card.id
+      amount = Math.min(amount, Number(card.balance))
+      tip = 0
+    }
     const full = amount >= totals.total - paid - 0.004
     const outdated = invoice && Math.abs(Number(invoice.total) - totals.total) > 0.004
     if (full && totals.total > 0 && (!invoice || outdated)) {
       const { error } = await db().rpc('create_invoice', { p_wo: woId })
       if (error) throw error
     }
-    await addPayment(woId, amount, method, tip)
+    await addPayment(woId, amount, method, tip, giftId)
     if (full) await db().from('appointments').update({ status: 'done' }).eq('id', a.id)
     setPayOpen(false)
     reload()
@@ -190,6 +200,17 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
 
   return (
     <>
+      {a.status === 'requested' && (
+        <section className="mb-3 rounded-3xl bg-amber-50 p-4 ring-1 ring-amber-200">
+          <p className="flex items-center gap-2 text-lg font-extrabold text-amber-900"><Globe size={22} /> {(a as unknown as { source?: string }).source === 'online' ? 'La pidió por internet' : 'Cita pedida'}</p>
+          <p className="mt-1 text-base text-amber-900">Todavía no está confirmada. Confírmale para que sepa que la esperas.</p>
+          <button type="button" onClick={() => { onActivate(); if (c.phone) window.open(whatsappLink(c.phone, confirmMsg), '_blank') }}
+            className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-lg font-extrabold text-white active:bg-emerald-700">
+            <Check /> Confirmar cita{c.phone ? ' por WhatsApp' : ''}
+          </button>
+        </section>
+      )}
+
       {/* La cita */}
       <section className="rounded-3xl bg-white p-4 shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100">
         <div className="flex items-center gap-3">
@@ -299,7 +320,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
             <div className="rounded-3xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
               <p className="flex items-center gap-2 text-xl font-extrabold text-emerald-800"><CheckCircle2 /> Pagada el {formatDate(invoice?.paid_at ?? payments.at(-1)?.paid_at ?? wo.created_at)}</p>
               <p className="mt-1 text-base text-emerald-900">
-                {formatMoney(paid)}{payments.length ? ` · ${payments.map((p) => METHODS.find((m) => m.value === p.method)?.label ?? 'Cheque').filter((v, i, arr) => arr.indexOf(v) === i).join(' y ')}` : ''}
+                {formatMoney(paid)}{payments.length ? ` · ${payments.map((p) => ((p as Payment & { gift_card_id?: string | null }).gift_card_id ? 'Tarjeta de regalo' : METHODS.find((m) => m.value === p.method)?.label ?? 'Cheque')).filter((v, i, arr) => arr.indexOf(v) === i).join(' y ')}` : ''}
                 {tips > 0 && <> · propina {formatMoney(tips)}</>}
               </p>
             </div>
@@ -356,9 +377,11 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
 
 /** Cobrar: el total grande, la propina con un toque, cómo pagó y un solo botón. */
 function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
-  open: boolean; balance: number; hasAth: boolean; onClose: () => void; onPay: (m: Method, amount: number, tip: number) => Promise<void>
+  open: boolean; balance: number; hasAth: boolean; onClose: () => void; onPay: (m: Method, amount: number, tip: number, giftCode?: string) => Promise<void>
 }) {
   const [method, setMethod] = useState<Method>('ath_movil')
+  const [gift, setGift] = useState(false)
+  const [code, setCode] = useState('')
   const [tip, setTip] = useState(0)
   const [otherTip, setOtherTip] = useState('')
   const [part, setPart] = useState<string | null>(null)
@@ -368,24 +391,27 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
   useEffect(() => {
     if (!open) return
     setMethod(hasAth ? 'ath_movil' : 'cash')
+    setGift(false)
+    setCode('')
     setTip(0)
     setOtherTip('')
     setPart(null)
     setError('')
   }, [open, hasAth])
 
-  const tipValue = otherTip ? num(otherTip) ?? 0 : tip
+  const tipValue = gift ? 0 : otherTip ? num(otherTip) ?? 0 : tip
   const amount = part !== null ? num(part) ?? 0 : balance
   const total = Math.round((amount + tipValue) * 100) / 100
 
   async function save() {
     if (!(amount > 0)) return setError('Escribe cuánto te dio.')
+    if (gift && code.trim().length < 4) return setError('Escribe el código de la tarjeta de regalo.')
     setBusy(true)
     setError('')
     try {
-      await onPay(method, Math.min(amount, balance), tipValue)
-    } catch {
-      setError('No se pudo guardar el pago. Revisa la señal e intenta otra vez.')
+      await onPay(gift ? 'other' : method, Math.min(amount, balance), tipValue, gift ? code : undefined)
+    } catch (e) {
+      setError(e instanceof Error && /tarjeta/i.test(e.message) ? e.message : 'No se pudo guardar el pago. Revisa la señal e intenta otra vez.')
     } finally {
       setBusy(false)
     }
@@ -407,7 +433,7 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
           )}
         </div>
 
-        <div>
+        {!gift && <div>
           <div className="mb-2 text-base font-extrabold text-slate-800">Propina <span className="font-semibold text-slate-400">(opcional)</span></div>
           <div className="grid grid-cols-4 gap-2">
             {[0, 3, 5, 10].map((t) => {
@@ -421,23 +447,29 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
             })}
           </div>
           <Input aria-label="Otra propina" inputMode="decimal" value={otherTip} onChange={(e) => setOtherTip(e.target.value)} placeholder="Otra cantidad" className="mt-2 text-center" />
-        </div>
+        </div>}
 
         <div>
           <div className="mb-2 text-base font-extrabold text-slate-800">¿Cómo pagó?</div>
-          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="¿Cómo pagó?">
+          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="¿Cómo pagó?">
             {METHODS.map((m) => {
-              const on = method === m.value
+              const on = !gift && method === m.value
               const Icon = m.icon
               return (
-                <button key={m.value} type="button" role="radio" aria-checked={on} onClick={() => setMethod(m.value)}
-                  className="flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl text-base font-bold transition"
+                <button key={m.value} type="button" role="radio" aria-checked={on} onClick={() => { setMethod(m.value); setGift(false) }}
+                  className="flex min-h-16 items-center justify-center gap-2 rounded-2xl text-base font-bold transition"
                   style={on ? { backgroundColor: m.color, color: '#fff' } : { backgroundColor: '#f1f5f9', color: '#334155' }}>
-                  <Icon size={26} /> {m.label}
+                  <Icon size={24} /> {m.label}
                 </button>
               )
             })}
+            <button type="button" role="radio" aria-checked={gift} onClick={() => setGift(true)}
+              className="flex min-h-16 items-center justify-center gap-2 rounded-2xl text-base font-bold transition"
+              style={gift ? { backgroundColor: '#db2777', color: '#fff' } : { backgroundColor: '#f1f5f9', color: '#334155' }}>
+              <Gift size={24} /> Tarjeta de regalo
+            </button>
           </div>
+          {gift && <Input aria-label="Código de la tarjeta de regalo" autoFocus value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Código (ej. GLOW-4827)" className="mt-2 text-center font-mono text-xl! font-extrabold tracking-widest" />}
         </div>
 
         {error && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}

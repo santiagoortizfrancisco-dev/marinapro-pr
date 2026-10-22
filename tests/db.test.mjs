@@ -537,3 +537,47 @@ test('el tipo de negocio se escoge una sola vez: después solo el administrador 
   await as(admin, `update mechanics set business_type = 'beauty' where profile_id = '${admin}'`)
   assert.equal((await one(admin, `select business_type from mechanics where profile_id = '${admin}'`)).business_type, 'beauty', 'el administrador sí lo cambia')
 })
+
+test('citas por internet: la clienta ve el menú y las horas (sin nombres), pide la cita y queda "pedida"; no se monta encima ni fuera de horario', async () => {
+  const allDay = `'{"0":["08:00","20:00"],"1":["08:00","20:00"],"2":["08:00","20:00"],"3":["08:00","20:00"],"4":["08:00","20:00"],"5":["08:00","20:00"],"6":["08:00","20:00"]}'`
+  await sys(`update mechanics set booking_on = true, booking_slug = 'salon-a', booking_hours = ${allDay}::jsonb where profile_id = '${A}'`)
+  await sys(`update mechanics set booking_on = false, booking_slug = 'salon-b' where profile_id = '${B}'`)
+  await as(A, `select seed_beauty_services('${A}')`)
+
+  const page = (await one(null, `select booking_page('Salon-A') d`, 'anon')).d
+  assert.ok(page.services.length >= 10, 'el menú del salón')
+  assert.equal((await one(null, `select booking_page('salon-b') d`, 'anon')).d, null, 'si el salón no lo prendió, no sale')
+  const seen = await as(null, `select count(*)::int n from clients`, 'anon').catch(() => [{ n: 0 }])
+  assert.equal(seen[0].n, 0, 'un visitante no ve las clientas')
+
+  const at = `((current_date + 3) + time '10:00') at time zone 'America/Puerto_Rico'`
+  const svc = page.services.find((s) => s.name === 'Pedicura').id
+  const id = (await one(null, `select booking_request('salon-a', 'Lola Web', '787-555-1212', array['${svc}']::uuid[], null, ${at}, 'color rojo') id`, 'anon')).id
+  const ap = (await sys(`select a.status, a.source, a.title, a.duration_min, c.full_name, c.mechanic_id from appointments a join boats b on b.id = a.boat_id join clients c on c.id = b.client_id where a.id = '${id}'`))[0]
+  assert.deepEqual(ap, { status: 'requested', source: 'online', title: 'Pedicura', duration_min: 45, full_name: 'Lola Web', mechanic_id: A })
+
+  const busy = (await one(null, `select booking_busy('salon-a', (current_date + 3)) d`, 'anon')).d
+  assert.equal(busy.length >= 1, true)
+  assert.ok(!JSON.stringify(busy).includes('Lola'), 'las horas ocupadas no dicen quién')
+
+  let st = (await sys(`select id from staff where mechanic_id = '${A}' and active limit 1`))[0]?.id
+  if (!st) st = (await sys(`insert into staff (mechanic_id, name) values ('${A}', 'Yari') returning id`))[0].id
+  assert.ok(await fails(() => as(null, `select booking_request('salon-a', 'Otra', '787-555-3434', array['${svc}']::uuid[], '${st}', ${at})`, 'anon')), 'esa hora ya se cogió')
+  assert.ok(await fails(() => as(null, `select booking_request('salon-a', 'Otra', '787-555-3434', array['${svc}']::uuid[], null, ((current_date + 3) + time '22:00') at time zone 'America/Puerto_Rico')`, 'anon')), 'cerrado a esa hora')
+  assert.ok(await fails(() => as(null, `select booking_request('salon-a', 'Otra', '787-555-3434', array['${svc}']::uuid[], null, now() - interval '1 day')`, 'anon')), 'en el pasado no')
+  assert.ok(await fails(() => as(null, `select booking_request('salon-b', 'Otra', '787-555-3434', array['${svc}']::uuid[], null, ${at})`, 'anon')), 'salón apagado')
+  await sys(`update mechanics set booking_on = false where profile_id = '${A}'`)
+})
+
+test('tarjetas de regalo: solo las ve su negocio; pagar con la tarjeta le resta, no deja pasarse del balance y borrar el pago se lo devuelve', async () => {
+  const card = (await as(A, `insert into gift_cards (mechanic_id, code, amount, balance, recipient_name) values ('${A}', 'REGALO-1111', 50, 50, 'Mamá') returning id`))[0].id
+  assert.equal((await one(B, `select count(*)::int n from gift_cards`)).n, 0, 'otro negocio no la ve')
+  assert.ok(await fails(() => as(B, `insert into gift_cards (mechanic_id, code, amount, balance) values ('${A}', 'X-1', 10, 10)`)), 'ni la crea a nombre de otro')
+
+  const w = (await sys(`select w.id from work_orders w join boats b on b.id = w.boat_id join clients c on c.id = b.client_id where c.mechanic_id = '${A}' limit 1`))[0].id
+  const pay = (await as(A, `insert into payments (work_order_id, amount, method, gift_card_id) values ('${w}', 30, 'other', '${card}') returning id`))[0].id
+  assert.equal(Number((await one(A, `select balance from gift_cards where id = '${card}'`)).balance), 20)
+  assert.ok(await fails(() => as(A, `insert into payments (work_order_id, amount, method, gift_card_id) values ('${w}', 25, 'other', '${card}')`)), 'no le quedan $25')
+  await as(A, `delete from payments where id = '${pay}'`)
+  assert.equal(Number((await one(A, `select balance from gift_cards where id = '${card}'`)).balance), 50, 'se le devuelve')
+})

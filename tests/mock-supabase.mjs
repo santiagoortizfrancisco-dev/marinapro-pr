@@ -19,6 +19,9 @@ const addDays = (day, n) => {
   return d.toISOString().slice(0, 10)
 }
 
+// Horario del salón de prueba: todos los días de 8:00 a 20:00 (para que siempre haya horas libres)
+const HOURS = () => Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((d) => [String(d), ['08:00', '20:00']]))
+
 let db
 let passwords = {}
 let signups = {} // id -> { email, user_metadata }
@@ -37,6 +40,7 @@ function reset() {
       ivu_on_labor: true, ivu_on_parts: true, warranty_days: 90, policies_text: 'Garantía de mano de obra: 90 días.', policies_version: 1,
       next_invoice_number: 1, business_type: 'marine', business_type_set: true, use_estimates: true, logo_path: '/brands/jqr-boat-repair.jpg', brand_color: '#0b0b0f', created_at: now,
       listed: false, approved: false, slug: null, public_description: null, public_towns: [], public_services: [], public_brands: [], public_locations: [],
+      booking_on: false, booking_slug: null, booking_hours: HOURS(),
     }],
     settings: { directory_open: false },
     ads: [],
@@ -65,6 +69,7 @@ function reset() {
     photos: [],
     invoices: [],
     payments: [],
+    gift_cards: [],
     staff: [],
     maintenance_schedules: [],
     notifications: [],
@@ -77,7 +82,7 @@ reset()
 const DEFAULTS = {
   clients: () => ({ profile_id: null, email: null, town: null, address: null, preferred_contact: 'whatsapp', notes: null }),
   boats: () => ({ make: null, model: null, year: null, length_ft: null, hull_id: null, registration_number: null, marbete_expires: null, hull_color: null, location_type: 'water_slip', marina_name: null, slip_number: null, town: null, lat: null, lng: null, location_notes: null, notes: null }),
-  appointments: () => ({ duration_min: 60, status: 'requested', title: null, systems: [], notes: null, service_request_id: null, staff_id: null }),
+  appointments: () => ({ duration_min: 60, status: 'requested', title: null, systems: [], notes: null, service_request_id: null, staff_id: null, reminded_at: null, source: 'app' }),
   staff: () => ({ phone: null, color: '#2563eb', commission_rate: 0, active: true }),
   service_requests: () => ({ urgency: 'normal', status: 'new', media_paths: [], source: 'app', spam: false, contact_name: null, contact_phone: null, preferred_when: null, boat_location: null }),
   ads: () => ({ link_url: null, active: true, clicks: 0, views: 0 }),
@@ -88,7 +93,8 @@ const DEFAULTS = {
   }),
   maintenance_schedules: () => ({ engine_id: null, due_hours: null, last_notified_at: null, status: 'pending', interval_months: null, work_order_id: null, notes: null }),
   service_packages: () => ({ items: [], use_count: 0 }),
-  payments: () => ({ method: 'cash', paid_at: new Date().toISOString(), note: null, tip: 0 }),
+  payments: () => ({ method: 'cash', paid_at: new Date().toISOString(), note: null, tip: 0, gift_card_id: null }),
+  gift_cards: () => ({ recipient_name: null, buyer_name: null, phone: null, method: 'cash', note: null, sold_at: new Date().toISOString() }),
   work_order_parts: () => ({ kind: 'part', part_number: null, qty: 1, unit_cost: 0, supplied_by: 'mechanic', supplier: null, eta: null, received_at: null }),
 }
 
@@ -312,6 +318,44 @@ const RPC = {
     ]) db.catalog_items.push({ id: randomUUID(), mechanic_id: p_mech, kind: 'service', name, category, last_price: null, duration_min, use_count: 0 })
     return null
   },
+  booking_page: ({ p_slug }) => {
+    const m = db.mechanics.find((x) => x.booking_on && String(x.booking_slug).toLowerCase() === String(p_slug).toLowerCase())
+    if (!m) return null
+    const p = db.profiles.find((x) => x.id === m.profile_id)
+    return {
+      name: m.business_name, town: p?.town ?? null, phone: p?.phone ?? null, logo_path: m.logo_path, brand_color: m.brand_color, hours: m.booking_hours,
+      services: db.catalog_items.filter((c) => c.mechanic_id === m.profile_id && c.kind === 'service').map((c) => ({ id: c.id, name: c.name, category: c.category, duration_min: c.duration_min, price: c.last_price })),
+      staff: db.staff.filter((x) => x.mechanic_id === m.profile_id && x.active).map((x) => ({ id: x.id, name: x.name, color: x.color })),
+    }
+  },
+  booking_busy: ({ p_slug, p_day }) => {
+    const m = db.mechanics.find((x) => x.booking_on && String(x.booking_slug).toLowerCase() === String(p_slug).toLowerCase())
+    if (!m) return []
+    return db.appointments.filter((a) => a.mechanic_id === m.profile_id && a.status !== 'cancelled' && prDay(new Date(a.starts_at)) === p_day)
+      .map((a) => ({ starts_at: a.starts_at, duration_min: a.duration_min, staff_id: a.staff_id }))
+  },
+  booking_request: ({ p_slug, p_name, p_phone, p_services, p_staff, p_starts_at, p_note }) => {
+    const m = db.mechanics.find((x) => x.booking_on && String(x.booking_slug).toLowerCase() === String(p_slug).toLowerCase())
+    if (!m) throw Object.assign(new Error('Este salón no está recibiendo citas por internet.'), { status: 400 })
+    const svcs = db.catalog_items.filter((c) => (p_services ?? []).includes(c.id))
+    const mins = svcs.reduce((t, c) => t + (c.duration_min ?? 30), 0) || 60
+    const start = new Date(p_starts_at).getTime()
+    const clash = db.appointments.some((a) => a.mechanic_id === m.profile_id && a.status !== 'cancelled' && (!p_staff || !a.staff_id || a.staff_id === p_staff) &&
+      new Date(a.starts_at).getTime() < start + mins * 60000 && new Date(a.starts_at).getTime() + a.duration_min * 60000 > start)
+    if (clash && (p_staff || db.staff.filter((x) => x.mechanic_id === m.profile_id && x.active).length <= 1)) throw Object.assign(new Error('Esa hora ya se cogió. Escoge otra.'), { status: 400 })
+    const digits = String(p_phone).replace(/\D/g, '')
+    let client = db.clients.find((c) => c.mechanic_id === m.profile_id && String(c.phone ?? '').replace(/\D/g, '') === digits)
+    if (!client) { client = { ...DEFAULTS.clients(), id: randomUUID(), mechanic_id: m.profile_id, full_name: p_name, phone: p_phone, created_at: new Date().toISOString() }; db.clients.push(client) }
+    let boat = db.boats.find((b) => b.client_id === client.id)
+    if (!boat) { boat = { ...DEFAULTS.boats(), id: randomUUID(), client_id: client.id, name: client.full_name, location_type: 'home', created_at: new Date().toISOString() }; db.boats.push(boat) }
+    const title = svcs.map((c) => c.name).sort().join(' + ') || null
+    const appt = { ...DEFAULTS.appointments(), id: randomUUID(), mechanic_id: m.profile_id, boat_id: boat.id, staff_id: p_staff ?? null, starts_at: new Date(p_starts_at).toISOString(), duration_min: mins, status: 'requested', title, notes: p_note ?? null, source: 'online', created_at: new Date().toISOString() }
+    db.appointments.push(appt)
+    const wo = { ...DEFAULTS.work_orders(), id: randomUUID(), boat_id: boat.id, appointment_id: appt.id, staff_id: p_staff ?? null, complaint: title, status: 'approved', estimate_approved_at: new Date().toISOString(), estimate_approved_by: 'mechanic', sea_trial_required: false, public_token: randomUUID(), created_at: new Date().toISOString() }
+    db.work_orders.push(wo)
+    for (const c of svcs) db.work_order_parts.push({ ...DEFAULTS.work_order_parts(), id: randomUUID(), work_order_id: wo.id, kind: 'service', description: c.name, unit_cost: c.last_price ?? 0, created_at: new Date().toISOString() })
+    return appt.id
+  },
   start_trial: ({ p_type } = {}) => {
     if (!signups[caller]?.is_anonymous) throw Object.assign(new Error('Solo para la prueba'), { status: 400 })
     if (db.mechanics.some((m) => m.profile_id === caller)) return null
@@ -448,6 +492,12 @@ http.createServer((req, res) => {
       }
       if (req.method === 'POST') {
         const items = [].concat(json()).map((item) => ({ ...(DEFAULTS[table]?.() ?? {}), id: randomUUID(), created_at: new Date().toISOString(), ...item }))
+        if (table === 'payments') for (const x of items) {
+          if (!x.gift_card_id) continue
+          const card = db.gift_cards.find((c) => c.id === x.gift_card_id)
+          if (!card || Number(card.balance) < Number(x.amount) - 0.004) throw Object.assign(new Error('A la tarjeta no le queda suficiente'), { status: 400 })
+          card.balance = r2(Number(card.balance) - Number(x.amount))
+        }
         rows.push(...items)
         if (table === 'payments') items.forEach((x) => settle(x.work_order_id))
         return out(items)
@@ -459,7 +509,11 @@ http.createServer((req, res) => {
       }
       if (req.method === 'DELETE') {
         db[table] = rows.filter((r) => !found.includes(r))
-        if (table === 'payments') found.forEach((x) => settle(x.work_order_id))
+        if (table === 'payments') found.forEach((x) => {
+          const card = x.gift_card_id && db.gift_cards.find((c) => c.id === x.gift_card_id)
+          if (card) card.balance = Math.min(Number(card.amount), r2(Number(card.balance) + Number(x.amount)))
+          settle(x.work_order_id)
+        })
         return out(found)
       }
       send(405, {})

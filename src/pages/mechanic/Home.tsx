@@ -5,6 +5,7 @@ import { NailPolishIcon, NailsHandIcon } from '../../components/BeautyIcons'
 import { GaugeIcon, PistonIcon, PropellerIcon, SparkPlugIcon } from '../../components/PartIcons'
 import { useAuth } from '../../auth/AuthProvider'
 import DueServices from '../../components/DueServices'
+import SalonReminders from '../../components/SalonReminders'
 import { db } from '../../lib/db'
 import { formatDate, formatLongDate, formatMoney, formatTime, prRange, prTime, todayPR } from '../../lib/format'
 import { WORK_ORDER_STATUS } from '../../lib/catalog'
@@ -142,6 +143,8 @@ export default function Home() {
           <PlainTile to="/trabajos" icon={Wallet} label="Me deben" sub={debt} color="#dc2626" />
         </div>
       )}
+
+      {words.salon && <SalonReminders />}
 
       {/* Hoy */}
       <section className="mt-6">
