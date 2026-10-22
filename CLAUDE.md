@@ -1,6 +1,8 @@
-# Salt Marine Repair (antes Salt Boat Repair / MarinaPro PR) — App para mecánicos marinos (botes y jet skis)
+# FacturaFácil PR (antes Salt Marine Repair / MarinaPro PR) — App de citas, facturas y cobros para negocios de servicio
 
 ## Qué es
+**Giro (2026-10-21/22):** el app sirve para todo negocio de servicio en PR. Cada negocio escoge a qué se dedica (`mechanics.business_type`: beauty, marine, ac, plumbing, electrical, auto, general) y el app usa sus palabras y secciones (`src/lib/trade.ts`). Para todos el nombre es **FacturaFácil PR**. **Salón de belleza / uñas / spa** (prioridad; piloto: Las Kamelias Spa, Salinas): citas con menú de servicios (duración y precio, uñas primero), empleadas con su agenda y comisión (`staff`), propina en el pago, historial de la clienta y "¿cuándo vuelve?". Estimados opcionales por negocio (`mechanics.use_estimates`). Lo de abajo describe la versión original de botes, que sigue funcionando como uno de los oficios.
+
 App web instalable (PWA), en español, para mecánicos de bote independientes en Puerto Rico.
 Tiene dos caras dentro del mismo sistema:
 - **App del mecánico** (el que paga): agenda, clientes, botes, órdenes de trabajo, piezas, fotos, facturas y recordatorios de mantenimiento.

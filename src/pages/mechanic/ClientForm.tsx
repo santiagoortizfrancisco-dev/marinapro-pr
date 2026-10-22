@@ -63,14 +63,14 @@ export default function ClientForm() {
     }
     const newId = (res.data as { id: string }).id
     // Cliente nuevo: seguir directo a añadir su bote
-    navigate(id ? `/clientes/${id}` : `/botes/nuevo?cliente=${newId}`, { replace: true })
+    navigate(id || w.salon ? `/clientes/${id ?? newId}` : `/botes/nuevo?cliente=${newId}`, { replace: true })
   }
 
   if (loading) return <Loading />
 
   return (
     <>
-      <BackTitle subtitle={id ? undefined : `Después de guardar añades su ${w.item}`}>{id ? 'Editar cliente' : 'Cliente nuevo'}</BackTitle>
+      <BackTitle subtitle={id || w.salon ? undefined : `Después de guardar añades su ${w.item}`}>{id ? 'Editar cliente' : 'Cliente nuevo'}</BackTitle>
       <form onSubmit={save} className="space-y-4">
         <Field label="Nombre completo *" icon={User}>
           <Input required autoComplete="off" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} placeholder="Ana Martínez" />
@@ -93,10 +93,10 @@ export default function ClientForm() {
         <Field label="Dirección" icon={Home} tone="violet">
           <Textarea rows={2} value={f.address} onChange={(e) => set('address', e.target.value)} placeholder="Urb., calle, número" />
         </Field>
-        <Field label="Notas" icon={StickyNote} tone="amber" hint="Ej.: paga con ATH Móvil, llamar después de las 5">
+        <Field label={w.salon ? "Notas (fórmula de color, alergias, gustos)" : "Notas"} icon={StickyNote} tone="amber" hint={w.salon ? "Ej.: tinte 6.1 + 20 vol. Alérgica a la acetona. Le gusta el almendrado." : "Ej.: paga con ATH Móvil, llamar después de las 5"}>
           <Textarea value={f.notes} onChange={(e) => set('notes', e.target.value)} />
         </Field>
-        <FormActions busy={busy} error={error} saveLabel={id ? 'Guardar cambios' : `Guardar y añadir ${w.item}`} />
+        <FormActions busy={busy} error={error} saveLabel={id ? 'Guardar cambios' : w.salon ? 'Guardar' : `Guardar y añadir ${w.item}`} />
       </form>
     </>
   )

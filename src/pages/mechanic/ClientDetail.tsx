@@ -33,12 +33,16 @@ export default function ClientDetail() {
         ) as Appointment[])
       : []
     const money = (await loadMoney()).filter((r) => r.boats.clients.id === id)
-    return { client, boats, appts, money }
+    // Salón: sus visitas (lo que se hizo, cuándo, con quién y cuánto)
+    const visits = boatIds.length
+      ? ((await db().from('appointments').select('id, starts_at, title, status, staff(name, color)').in('boat_id', boatIds).lt('starts_at', new Date().toISOString()).neq('status', 'cancelled').order('starts_at', { ascending: false }).limit(20)).data ?? []) as unknown as { id: string; starts_at: string; title: string | null; status: string; staff: { name: string; color: string } | null }[]
+      : []
+    return { client, boats, appts, money, visits }
   }, [id])
 
   if (loading) return <Loading />
   if (error || !data) return <ErrorBox message={error || 'No se encontró el cliente.'} onRetry={reload} />
-  const { client: c, boats, appts, money } = data
+  const { client: c, boats, appts, money, visits } = data
   const debt = owed(money)
   const paidHistory = received(money).slice(0, 8)
   const boatName = (bid: string) => boats.find((b) => b.id === bid)?.name ?? ''
@@ -97,9 +101,45 @@ export default function ClientDetail() {
         ]}
       />
       <Link to={`/clientes/${c.id}/editar`} className="mt-3 flex min-h-12 items-center justify-center gap-2 text-base font-bold text-navy-700">
-        <Pencil size={18} /> Editar datos del cliente
+        <Pencil size={18} /> {w.salon ? 'Editar datos y notas' : 'Editar datos del cliente'}
       </Link>
 
+      {w.salon ? (
+        <>
+          {c.notes && (
+            <div className="mt-4 rounded-2xl bg-pink-50 p-3 text-base text-pink-950 ring-1 ring-pink-200">
+              <div className="mb-1 text-xs font-bold uppercase tracking-wide text-pink-700">Notas (fórmula, alergias, gustos)</div>
+              <p className="whitespace-pre-line">{c.notes}</p>
+            </div>
+          )}
+          <Link to={`/citas/nueva?clienta=${c.id}`} className="mt-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900">
+            <Calendar size={22} /> Nueva cita
+          </Link>
+          {appts.length > 0 && (
+            <>
+              <SectionHeader title="Próximas citas" />
+              <div className="space-y-2">
+                {appts.map((a) => (
+                  <RowLink key={a.id} to={`/citas/${a.id}`} icon={Calendar} title={`${formatLongDate(a.starts_at)} · ${formatTime(a.starts_at)}`} subtitle={a.title ?? undefined} />
+                ))}
+              </div>
+            </>
+          )}
+          <SectionHeader title="Historial de visitas" />
+          {visits.length === 0 && <p className="text-base text-slate-600">Todavía no ha venido.</p>}
+          {visits.length > 0 && (
+            <p className="mb-2 text-sm font-semibold text-slate-600">Última visita: {ago(visits[0].starts_at)} · {visits.length} {visits.length === 1 ? 'visita' : 'visitas'}</p>
+          )}
+          <div className="space-y-1">
+            {visits.map((v) => (
+              <Link key={v.id} to={`/citas/${v.id}`} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-base ring-1 ring-slate-200">
+                {v.staff && <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: v.staff.color }} aria-hidden="true" />}
+                <span className="min-w-0 flex-1 truncate">{formatDate(v.starts_at)} · {v.title ?? 'Visita'}{v.staff ? ` · ${v.staff.name}` : ''}</span>
+              </Link>
+            ))}
+          </div>
+        </>
+      ) : <>
       <SectionHeader title={w.Items} addTo={`/botes/nuevo?cliente=${c.id}`} addLabel={w.Item} />
       {boats.length === 0 && <p className="text-base text-slate-600">{`Todavía no tiene ${w.items}. Toca “${w.Item}” para añadir${w.elItem.startsWith('la') ? 'la' : 'lo'}.`}</p>}
       <div className="space-y-2">
@@ -125,6 +165,7 @@ export default function ClientDetail() {
           </div>
         </>
       )}
+      </>}
 
       {paidHistory.length > 0 && (
         <>

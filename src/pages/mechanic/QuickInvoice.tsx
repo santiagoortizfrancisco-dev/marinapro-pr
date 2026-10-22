@@ -52,7 +52,7 @@ export default function QuickInvoice() {
 
   useEffect(() => {
     db().from('clients').select('id, full_name, phone, boats(id, name)').order('full_name').then(({ data }) => setClients((data ?? []) as unknown as ClientRow[]))
-    db().from('catalog_items').select('*').then(({ data }) => setCatalog((data ?? []) as CatalogItem[]))
+    db().from('catalog_items').select('*').then(({ data }) => setCatalog(((data ?? []) as CatalogItem[]).filter((c) => c.mechanic_id || tw.marina)))
   }, [])
   useEffect(() => {
     if (mech) setIvu(mech.ivu_on_labor)
@@ -148,7 +148,7 @@ export default function QuickInvoice() {
       }
       const first = owner.split(' ')[0] || 'cliente'
       if (!boatId) {
-        const b = await db().from('boats').insert({ client_id: clientId, name: boatName.trim() || tw.itemOf(first) }).select('id').single()
+        const b = await db().from('boats').insert({ client_id: clientId, name: tw.salon ? owner : boatName.trim() || tw.itemOf(first) }).select('id').single()
         if (b.error) throw b.error
         boatId = (b.data as { id: string }).id
       }
@@ -286,7 +286,7 @@ export default function QuickInvoice() {
                 </button>
               </div>
             )}
-            {pick && pick.kind !== 'boat' && (
+            {pick && pick.kind !== 'boat' && !tw.salon && (
               <Input aria-label={tw.Item} className="mt-2" value={boatName} onChange={(e) => setBoatName(e.target.value)} placeholder={tw.marina ? 'Bote o jet ski (opcional)' : `${tw.Item} (opcional)`} />
             )}
           </div>

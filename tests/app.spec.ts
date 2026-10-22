@@ -66,7 +66,7 @@ test('mecánico nuevo entra por primera vez con su email: pone nombre y compañ�
   await page.getByLabel('Nombre de tu compañía').fill('Luis Marine Service')
   await page.getByRole('button', { name: 'Empezar' }).click()
   await expect(page.locator('header').getByText('Luis Marine Service')).toBeVisible()
-  await expect(page.locator('header img')).toHaveAttribute('src', '/logo.svg')
+  await expect(page.locator('header img')).toHaveAttribute('src', '/logo-ff.svg')
   await expect(page.getByRole('link', { name: 'Agenda', exact: true })).toBeVisible()
   const s = await state()
   expect(s.profiles.find((p) => p.email === 'nuevo@prueba.test')?.role).toBe('mechanic')
@@ -399,7 +399,7 @@ test('cliente y bote: ficha con WhatsApp, bote con Waze, motores y equipos', asy
 test('Más: versión del app y Mi negocio con ATH Móvil y tarifa', async ({ page }) => {
   await login(page)
   await page.getByRole('link', { name: 'Más' }).click()
-  await expect(page.getByText(/Salt Marine Repair · versión \d{4}-\d{2}-\d{2}/)).toBeVisible()
+  await expect(page.getByText(/FacturaFácil PR · versión \d{4}-\d{2}-\d{2}/)).toBeVisible()
   await page.getByRole('link', { name: /Mi negocio/ }).click()
   await expect(page.getByLabel(/Número de ATH Móvil/)).toHaveValue('787-555-0100')
   await expect(page.getByLabel('Tarifa por hora ($)')).toHaveValue('85')
@@ -951,7 +951,7 @@ test('facturas: lista de todas las facturas con buscador, y la factura se saca e
 test('FacturaFácil: un técnico de aire acondicionado ve sus palabras (equipo), sin botes ni prueba en el agua', async ({ page }) => {
   await page.goto('/demo')
   await expect(page.getByText('¿A qué te dedicas?')).toBeVisible()
-  await page.getByRole('radio', { name: /Aire acondicionado/ }).click()
+  await page.getByRole('radio', { name: /Aire acondic/ }).click()
   await expect(page.locator('header').getByText('FacturaFácil PR')).toBeVisible()
   await expect(page.locator('header img').first()).toHaveAttribute('src', '/logo-ff.svg')
   expect((await state()).mechanics.find((m) => m.business_name === 'Negocio de Prueba')?.business_type).toBe('ac')
@@ -964,4 +964,54 @@ test('FacturaFácil: un técnico de aire acondicionado ve sus palabras (equipo),
   await expect(page.getByRole('heading', { name: 'Equipo nuevo' })).toBeVisible()
   await expect(page.getByText('Muelle / Slip')).toHaveCount(0)
   await expect(page.getByText('Número de registro (DRNA)')).toHaveCount(0)
+})
+
+test('salón de uñas: cita con servicios y empleada (suma tiempo y precio), sin estimado, cobro con propina y comisión de la empleada', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.locator('header').getByText('FacturaFácil PR')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Clientas', exact: true })).toBeVisible()
+
+  // Cita nueva: clienta, servicios, con quién
+  await page.goto('/citas/nueva')
+  await page.getByLabel('Buscar clienta').fill('Ana')
+  await page.getByRole('button', { name: /Ana Martínez/ }).click()
+  await page.getByRole('button', { name: /Uñas acrílicas \(set completo\)/ }).click()
+  await page.getByRole('button', { name: /Diseño|Pedicura/ }).first().click()
+  await expect(page.getByLabel('Resumen de la cita')).toContainText('2 h 15 min')
+  await expect(page.getByLabel('Resumen de la cita')).toContainText('$65.00')
+  await page.getByRole('button', { name: 'Yari', exact: true }).click()
+  await page.getByRole('button', { name: 'Guardar cita' }).click()
+
+  // La cita: con Yari, la cuenta lista, sin estimado
+  await expect(page.getByText('Con Yari')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Estimado' })).toHaveCount(0)
+  await expect(page.getByText('$65.00').first()).toBeVisible()
+  const s = await state()
+  const appt = s.appointments.find((a) => (a.title ?? '').includes('Uñas acrílicas (set completo)') && (a.title ?? '').includes('Pedicura'))!
+  expect(appt).toMatchObject({ duration_min: 135 })
+  expect(s.work_order_parts.filter((x) => x.work_order_id === s.work_orders.find((w) => w.appointment_id === appt.id)!.id)).toHaveLength(2)
+
+  // Cobrar con propina
+  await page.getByRole('button', { name: /Recibir pago/ }).click()
+  await page.getByRole('button', { name: '$5', exact: true }).click()
+  await page.getByRole('button', { name: 'Guardar pago' }).click()
+  await expect(page.getByText(/Pagada el/)).toBeVisible()
+  expect((await state()).payments.at(-1)).toMatchObject({ tip: 5 })
+
+  // Empleadas y comisiones: a Yari le toca su 40% de los servicios + la propina
+  await page.goto('/mas/empleadas')
+  await expect(page.getByLabel('Comisión de Yari')).toContainText('Le toca')
+})
+
+test('estimados opcionales: si el negocio no los usa, el trabajo va directo a cobrar', async ({ page }) => {
+  await login(page)
+  await page.goto('/mas/negocio')
+  await page.getByRole('switch', { name: /Uso estimados/ }).click()
+  await page.getByRole('button', { name: /Guardar/ }).first().click()
+  await expect.poll(async () => (await state()).mechanics[0].use_estimates).toBe(false)
+  await openExampleAppointment(page)
+  await expect(page.getByRole('heading', { name: 'Cobrar' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Estimado' })).toHaveCount(0)
 })

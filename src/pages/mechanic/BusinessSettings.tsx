@@ -23,6 +23,7 @@ export default function BusinessSettings() {
   })
   const [busy, setBusy] = useState(false)
   const [trade, setTradeLocal] = useState<Trade>('marine')
+  const [useEstimates, setUseEstimates] = useState(true)
   const setTrade = useSetTrade()
   const [color, setColor] = useState(DEFAULT_BRAND)
   const [logoPath, setLogoPath] = useState<string | null>(null)
@@ -35,6 +36,7 @@ export default function BusinessSettings() {
     if (!m) return
     setColor(m.brand_color || DEFAULT_BRAND)
     setTradeLocal(((m as { business_type?: Trade }).business_type) ?? 'marine')
+    setUseEstimates(m.use_estimates !== false)
     setLogoPath(m.logo_path)
     setF({
       full_name: profile?.full_name ?? '', phone: profile?.phone ?? '', town: profile?.town ?? '',
@@ -64,6 +66,7 @@ export default function BusinessSettings() {
         policies_text: f.policies_text.trim(),
         brand_color: color,
         business_type: trade,
+        use_estimates: useEstimates,
         // Si cambian las políticas, sube la versión (los estimados aprobados guardan la versión que aceptaron)
         policies_version: policiesChanged ? m.policies_version + 1 : m.policies_version,
       }).eq('profile_id', session!.user.id),
@@ -74,6 +77,8 @@ export default function BusinessSettings() {
       return
     }
     setTrade(trade)
+    // Salón: su menú de servicios (uñas, pelo, spa) con duración y precio, si todavía no tiene
+    if (trade === 'beauty') await db().rpc('seed_beauty_services', { p_mech: session!.user.id })
     await refreshProfile()
     notifyBrandChanged()
     navigate('/mas')
@@ -154,8 +159,9 @@ export default function BusinessSettings() {
           </div>
         </Field>
         <Field label="¿A qué te dedicas?" hint="Cambia las palabras del app: bote, carro, equipo o propiedad">
-          <TradePicker value={trade} onChange={setTradeLocal} />
+          <TradePicker value={trade} onChange={(t) => { setTradeLocal(t); setUseEstimates(t !== 'beauty') }} />
         </Field>
+        <Toggle checked={useEstimates} onChange={setUseEstimates} label="Uso estimados (cotizaciones)" hint="Le envías el precio al cliente para que lo apruebe antes de trabajar. Los salones casi nunca los usan." />
         <Field label="Nombre del negocio">
           <Input value={f.business_name} onChange={(e) => set('business_name', e.target.value)} placeholder="Rivera Service" />
         </Field>

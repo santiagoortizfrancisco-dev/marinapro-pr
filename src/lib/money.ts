@@ -56,8 +56,8 @@ export function received(rows: MoneyRow[]) {
 }
 
 /** Guarda un pago (depósito o abono). Si con eso se completa la factura, queda Pagada sola. */
-export async function addPayment(workOrderId: string, amount: number, method: NonNullable<Invoice['payment_method']>) {
-  const { error } = await db().from('payments').insert({ work_order_id: workOrderId, amount: r2(amount), method })
+export async function addPayment(workOrderId: string, amount: number, method: NonNullable<Invoice['payment_method']>, tip = 0) {
+  const { error } = await db().from('payments').insert({ work_order_id: workOrderId, amount: r2(amount), method, tip: r2(Math.max(0, tip)) })
   if (error) throw error
 }
 

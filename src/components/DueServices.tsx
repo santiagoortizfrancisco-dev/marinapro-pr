@@ -65,14 +65,14 @@ export default function DueServices() {
   return (
     <section className="mb-5 rounded-2xl border-2 border-sun-500 bg-sun-400/10 p-3">
       <h2 className="mb-2 flex items-center gap-2 px-1 text-lg font-extrabold text-navy-900">
-        <BellRing size={22} /> Le toca servicio ({data.length})
+        <BellRing size={22} /> {words.salon ? 'Le toca volver' : 'Le toca servicio'} ({data.length})
       </h2>
       <div className="space-y-2">
         {shown.map((d) => {
           const w = whenText(d.due)
           const first = d.clientName.split(' ')[0]
           const msg = d.scheduleId
-            ? `Hola ${first}, a tu ${words.item} ${d.boatName} le toca: ${d.what}. ¿Te separo un día para hacerlo? ${profile?.full_name ?? ''}`.trim()
+            ? words.salon ? `Hola ${first}, ya te toca: ${d.what}. ¿Te separo un turno esta semana? 💅 ${profile?.full_name ?? ''}`.trim() : `Hola ${first}, a tu ${words.item} ${d.boatName} le toca: ${d.what}. ¿Te separo un día para hacerlo? ${profile?.full_name ?? ''}`.trim()
             : `Hola ${first}, el marbete de tu ${words.item} ${d.boatName} vence el ${formatDate(d.due)}. Si quieres, aprovechamos y le damos servicio antes. ${profile?.full_name ?? ''}`.trim()
           return (
             <div key={d.key} className="rounded-xl bg-white p-3">

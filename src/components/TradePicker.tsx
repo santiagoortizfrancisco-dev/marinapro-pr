@@ -1,6 +1,6 @@
 import { TRADES, type Trade } from '../lib/trade'
 
-/** "¿A qué te dedicas?": seis botones grandes con su dibujito. */
+/** "¿A qué te dedicas?": botones grandes con su dibujito. */
 export default function TradePicker({ value, onChange, dark = false }: { value: Trade | null; onChange: (t: Trade) => void; dark?: boolean }) {
   return (
     <div role="radiogroup" aria-label="¿A qué te dedicas?" className="grid grid-cols-2 gap-2">
@@ -12,7 +12,7 @@ export default function TradePicker({ value, onChange, dark = false }: { value: 
               on ? 'border-navy-800 bg-navy-800 text-white' : dark ? 'border-white/30 bg-white/10 text-white' : 'border-slate-300 bg-white text-slate-900'
             }`}>
             <span className="text-2xl" aria-hidden="true">{t.emoji}</span>
-            <span className="min-w-0 text-[15px] leading-tight [overflow-wrap:anywhere]">{t.label}</span>
+            <span className="min-w-0 text-[15px] leading-tight">{t.label}</span>
           </button>
         )
       })}

@@ -1,3 +1,4 @@
+import { useWords } from '../../lib/trade'
 import { Link } from 'react-router'
 import { CalendarDays, ChevronRight, Users, Wrench, Zap, type LucideIcon } from 'lucide-react'
 import { GaugeIcon, PistonIcon, PropellerIcon, SparkPlugIcon } from '../../components/PartIcons'
@@ -59,6 +60,7 @@ function Tile({ to, icon: Icon, label, sub, from, color, badge }: { to: string; 
 
 /** Pantalla de inicio: lo que puedes hacer (4 botones grandes) y lo que tienes hoy. */
 export default function Home() {
+  const words = useWords()
   const { profile } = useAuth()
   const today = todayPR()
   const { data } = useLoad(async () => {
@@ -83,7 +85,7 @@ export default function Home() {
       <div className="grid grid-cols-2 gap-x-3 gap-y-4">
         <Tile to="/citas/nueva" icon={PropellerIcon as unknown as LucideIcon} badge={<CalendarDays size={16} strokeWidth={2.5} />} label="Hacer cita" from="#3b82f6" color="#1e3a8a" />
         <Tile to="/cobrar" icon={GaugeIcon as unknown as LucideIcon} badge={<Zap size={16} strokeWidth={2.5} />} label="Factura rápida" from="#38bdf8" color="#0369a1" />
-        <Tile to="/clientes" icon={SparkPlugIcon as unknown as LucideIcon} badge={<Users size={16} strokeWidth={2.5} />} label="Clientes" from="#64748b" color="#0f172a" />
+        <Tile to="/clientes" icon={SparkPlugIcon as unknown as LucideIcon} badge={<Users size={16} strokeWidth={2.5} />} label={words.Clients} from="#64748b" color="#0f172a" />
         <Tile to="/trabajos" icon={PistonIcon as unknown as LucideIcon} label="Me deben" sub={data ? formatMoney(data.debt) : '…'} from="#fca5a5" color="#ef4444" />
       </div>
 

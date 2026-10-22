@@ -35,7 +35,7 @@ function reset() {
     mechanics: [{
       profile_id: U, business_name: 'JQR Boat Repair', ath_movil_number: '787-555-0100', labor_rate_hour: 85, ivu_rate: 0.115,
       ivu_on_labor: true, ivu_on_parts: true, warranty_days: 90, policies_text: 'Garantía de mano de obra: 90 días.', policies_version: 1,
-      next_invoice_number: 1, business_type: 'marine', logo_path: '/brands/jqr-boat-repair.jpg', brand_color: '#0b0b0f', created_at: now,
+      next_invoice_number: 1, business_type: 'marine', use_estimates: true, logo_path: '/brands/jqr-boat-repair.jpg', brand_color: '#0b0b0f', created_at: now,
       listed: false, approved: false, slug: null, public_description: null, public_towns: [], public_services: [], public_brands: [], public_locations: [],
     }],
     settings: { directory_open: false },
@@ -65,6 +65,7 @@ function reset() {
     photos: [],
     invoices: [],
     payments: [],
+    staff: [],
     maintenance_schedules: [],
     notifications: [],
   }
@@ -76,7 +77,8 @@ reset()
 const DEFAULTS = {
   clients: () => ({ profile_id: null, email: null, town: null, address: null, preferred_contact: 'whatsapp', notes: null }),
   boats: () => ({ make: null, model: null, year: null, length_ft: null, hull_id: null, registration_number: null, marbete_expires: null, hull_color: null, location_type: 'water_slip', marina_name: null, slip_number: null, town: null, lat: null, lng: null, location_notes: null, notes: null }),
-  appointments: () => ({ duration_min: 60, status: 'requested', title: null, systems: [], notes: null, service_request_id: null }),
+  appointments: () => ({ duration_min: 60, status: 'requested', title: null, systems: [], notes: null, service_request_id: null, staff_id: null }),
+  staff: () => ({ phone: null, color: '#2563eb', commission_rate: 0, active: true }),
   service_requests: () => ({ urgency: 'normal', status: 'new', media_paths: [], source: 'app', spam: false, contact_name: null, contact_phone: null, preferred_when: null, boat_location: null }),
   ads: () => ({ link_url: null, active: true, clicks: 0, views: 0 }),
   work_orders: () => ({
@@ -86,7 +88,7 @@ const DEFAULTS = {
   }),
   maintenance_schedules: () => ({ engine_id: null, due_hours: null, last_notified_at: null, status: 'pending', interval_months: null, work_order_id: null, notes: null }),
   service_packages: () => ({ items: [], use_count: 0 }),
-  payments: () => ({ method: 'cash', paid_at: new Date().toISOString(), note: null }),
+  payments: () => ({ method: 'cash', paid_at: new Date().toISOString(), note: null, tip: 0 }),
   work_order_parts: () => ({ kind: 'part', part_number: null, qty: 1, unit_cost: 0, supplied_by: 'mechanic', supplier: null, eta: null, received_at: null }),
 }
 
@@ -103,6 +105,7 @@ function withRelations(table, row) {
   if (table === 'appointments') {
     r.boats = boat(row.boat_id)
     r.service_requests = db.service_requests.find((s) => s.id === row.service_request_id) ?? null
+    r.staff = db.staff.find((x) => x.id === row.staff_id) ?? null
   }
   if (table === 'maintenance_schedules') r.boats = boat(row.boat_id)
   if (table === 'work_orders') {
@@ -301,12 +304,29 @@ const RPC = {
     else db.catalog_items.push({ id: randomUUID(), mechanic_id: caller, kind: p_kind, name, category: null, last_price: p_price ?? null, use_count: 1 })
     return null
   },
+  seed_beauty_services: ({ p_mech }) => {
+    if (db.catalog_items.some((c) => c.mechanic_id === p_mech && c.duration_min)) return null
+    for (const [name, category, last_price, duration_min] of [
+      ['Uñas acrílicas (set completo)', 'Uñas', 40, 90], ['Relleno de acrílico', 'Uñas', 30, 60], ['Pedicura', 'Uñas', 25, 45],
+      ['Corte de dama', 'Pelo', 25, 45], ['Masaje relajante (60 min)', 'Spa', 60, 60],
+    ]) db.catalog_items.push({ id: randomUUID(), mechanic_id: p_mech, kind: 'service', name, category, last_price, duration_min, use_count: 0 })
+    return null
+  },
   start_trial: ({ p_type } = {}) => {
     if (!signups[caller]?.is_anonymous) throw Object.assign(new Error('Solo para la prueba'), { status: 400 })
     if (db.mechanics.some((m) => m.profile_id === caller)) return null
     Object.assign(db.profiles.find((x) => x.id === caller), { role: 'mechanic', full_name: 'Taller de Prueba', phone: '787-555-0100', town: 'Fajardo', trial: true, access: 'approved' })
     db.mechanics.push({ ...db.mechanics[0], profile_id: caller, business_type: p_type ?? 'marine', business_name: (p_type ?? 'marine') === 'marine' ? 'Taller de Prueba' : 'Negocio de Prueba', logo_path: null, brand_color: '#0b1220', listed: false, approved: false, slug: null })
-    db.clients.push({ id: randomUUID(), mechanic_id: caller, profile_id: null, full_name: 'Ana Martínez (ejemplo)', phone: '787-555-0111', email: null, town: 'Fajardo', address: null, preferred_contact: 'whatsapp', notes: 'PRUEBA', created_at: new Date().toISOString() })
+    const cid = randomUUID()
+    db.clients.push({ id: cid, mechanic_id: caller, profile_id: null, full_name: 'Ana Martínez (ejemplo)', phone: '787-555-0111', email: null, town: 'Fajardo', address: null, preferred_contact: 'whatsapp', notes: p_type === 'beauty' ? 'Le gusta el almendrado largo.' : 'PRUEBA', created_at: new Date().toISOString() })
+    if (p_type === 'beauty') {
+      const m = db.mechanics.find((x) => x.profile_id === caller)
+      Object.assign(m, { business_name: 'Salón de Prueba', use_estimates: false })
+      db.boats.push({ ...DEFAULTS.boats(), id: randomUUID(), client_id: cid, name: 'Ana Martínez (ejemplo)', location_type: 'home', created_at: new Date().toISOString() })
+      db.staff.push({ id: randomUUID(), mechanic_id: caller, name: 'Yari', phone: null, color: '#db2777', commission_rate: 0.4, active: true })
+      db.staff.push({ id: randomUUID(), mechanic_id: caller, name: 'Kamila', phone: null, color: '#7c3aed', commission_rate: 0.35, active: true })
+      RPC.seed_beauty_services({ p_mech: caller })
+    }
     return null
   },
   create_invoice: ({ p_wo }) => {

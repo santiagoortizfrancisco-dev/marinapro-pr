@@ -16,7 +16,7 @@ import JobPanel from '../../components/JobPanel'
 import { Sheet } from '../../components/Sheet'
 import { BackTitle, Button, ErrorBox, LinkButton, Loading } from '../../components/ui'
 
-const SELECT = '*, service_requests(description), boats(id, name, location_type, marina_name, slip_number, town, lat, lng, location_notes, clients(id, full_name, phone))'
+const SELECT = '*, service_requests(description), staff(name, color), boats(id, name, location_type, marina_name, slip_number, town, lat, lng, location_notes, clients(id, full_name, phone))'
 
 /** La visita completa: la cita arriba y, debajo, su trabajo (problema, piezas, fotos, factura). */
 export default function AppointmentDetail() {
@@ -52,15 +52,18 @@ export default function AppointmentDetail() {
   const st = APPOINTMENT_STATUS[a.status]
   const where = [w.marina ? b.marina_name : null, w.marina ? b.slip_number && (b.location_type === 'water_slip' ? `muelle ${b.slip_number}` : b.slip_number) : null, b.town].filter(Boolean).join(', ')
   const firstName = c.full_name.split(' ')[0]
-  const message =
-    `Hola ${firstName}, te confirmo la cita para ${w.elItem} ${b.name} el ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)}` +
+  const who = (a as unknown as { staff: { name: string; color: string } | null }).staff
+  const message = w.salon
+    ? `Hola ${firstName}, te confirmo tu cita el ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)}` +
+      (a.title ? ` para ${a.title}` : '') + (who ? ` con ${who.name}` : '') + `. Si no puedes llegar, avísame. ¡Te espero! 💅 ${profile?.full_name ?? ''}`.trimEnd()
+    : `Hola ${firstName}, te confirmo la cita para ${w.elItem} ${b.name} el ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)}` +
     (where ? ` en ${where}` : '') +
     (a.title ? `. Trabajo: ${a.title}` : '') +
     `. Cualquier cambio me avisas. ${profile?.full_name ?? ''}`.trimEnd()
 
   return (
     <>
-      <BackTitle to={`/agenda?dia=${prDay(a.starts_at)}`}>{b.name} · {c.full_name.split(' ').slice(0, 2).join(' ')}</BackTitle>
+      <BackTitle to={`/agenda?dia=${prDay(a.starts_at)}`}>{w.salon ? c.full_name : <>{b.name} · {c.full_name.split(' ').slice(0, 2).join(' ')}</>}</BackTitle>
 
       {/* La cita */}
       <section className="rounded-2xl border-2 border-slate-200 bg-white p-4">
@@ -72,6 +75,7 @@ export default function AppointmentDetail() {
           <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold ${st.style}`}>{st.label}</span>
         </div>
         {a.title && <div className="mt-3 text-lg font-bold text-slate-900">{a.title}</div>}
+        {who && <div className="mt-2"><span className="rounded-full px-3 py-1 text-sm font-bold text-white" style={{ backgroundColor: who.color }}>Con {who.name}</span></div>}
         {a.systems.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {a.systems.map((s) => <span key={s} className="rounded-full bg-navy-50 px-3 py-1 text-base font-semibold text-navy-800">{labelOf(WORK_AREAS, s)}</span>)}
@@ -90,8 +94,13 @@ export default function AppointmentDetail() {
         </div>
       </section>
 
-      {/* El bote y dónde está */}
+      {/* El bote y dónde está (en el salón: la clienta) */}
       <section className="mt-3 rounded-2xl border-2 border-slate-200 bg-white p-4">
+        {w.salon ? (
+          <Link to={`/clientes/${c.id}`} className="flex items-center gap-3 text-base">
+            <span className="flex-1"><b className="text-lg">{c.full_name}</b> · ver su ficha y notas</span>
+          </Link>
+        ) : <>
         <Link to={`/botes/${b.id}`} className="flex items-center gap-3 text-base">
           <Ship size={24} className="shrink-0 text-navy-700" />
           <span className="flex-1"><b className="text-lg">{b.name}</b> · {c.full_name}</span>
@@ -110,9 +119,10 @@ export default function AppointmentDetail() {
             <LinkButton href={googleMapsLink(b)} external><MapPin size={20} /> Maps</LinkButton>
           </div>
         )}
+        </>}
         {c.phone && (
           <div className="mt-2 flex gap-2">
-            <LinkButton href={whatsappLink(c.phone, message)} external variant="whatsapp"><WhatsAppIcon size={24} /> Enviar cita por WhatsApp</LinkButton>
+            <LinkButton href={whatsappLink(c.phone, message)} external variant="whatsapp"><WhatsAppIcon size={24} /> {w.salon ? 'Confirmarle por WhatsApp' : 'Enviar cita por WhatsApp'}</LinkButton>
             <a href={telLink(c.phone)} aria-label="Llamar" className="flex min-h-14 w-16 items-center justify-center rounded-xl border-2 border-navy-800 text-navy-800"><Phone size={24} /></a>
           </div>
         )}

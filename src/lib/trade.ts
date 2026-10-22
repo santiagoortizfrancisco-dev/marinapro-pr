@@ -3,11 +3,12 @@ import { useAuth } from '../auth/AuthProvider'
 import { db } from './db'
 
 /** A qué se dedica el negocio: cambia las palabras del app y qué secciones salen. */
-export type Trade = 'marine' | 'ac' | 'plumbing' | 'electrical' | 'auto' | 'general'
+export type Trade = 'marine' | 'beauty' | 'ac' | 'plumbing' | 'electrical' | 'auto' | 'general'
 
 export const TRADES: { value: Trade; label: string; emoji: string }[] = [
+  { value: 'beauty', label: 'Uñas, salón y spa', emoji: '💅' },
   { value: 'marine', label: 'Botes y jet skis', emoji: '🚤' },
-  { value: 'ac', label: 'Aire acondicionado', emoji: '❄️' },
+  { value: 'ac', label: 'Aire acondic.', emoji: '❄️' },
   { value: 'plumbing', label: 'Plomería', emoji: '🔧' },
   { value: 'electrical', label: 'Electricidad', emoji: '⚡' },
   { value: 'auto', label: 'Mecánica de autos', emoji: '🚗' },
@@ -49,6 +50,13 @@ export interface Words {
   marina: boolean
   /** Quién trabaja: "mecánico" / "técnico" */
   worker: string
+  /** Salón: el cliente es la persona (no hay bote, carro ni equipo), citas con servicios y empleadas */
+  salon: boolean
+  /** Palabra para el cliente: "cliente" / "clienta" */
+  client: string
+  Client: string
+  clients: string
+  Clients: string
 }
 
 const female = (w: string) => w === 'propiedad'
@@ -58,8 +66,8 @@ function build(trade: Trade, item: string, items: string, itemExample: string, w
   const marine = trade === 'marine'
   return {
     trade,
-    appName: marine ? 'Salt Marine Repair' : APP_NAME,
-    appLogo: marine ? '/logo.svg' : APP_LOGO,
+    appName: APP_NAME,
+    appLogo: APP_LOGO,
     item,
     Item: cap(item),
     items,
@@ -75,11 +83,17 @@ function build(trade: Trade, item: string, items: string, itemExample: string, w
     seaTrial: marine,
     marina: marine,
     worker,
+    salon: trade === 'beauty',
+    client: trade === 'beauty' ? 'clienta' : 'cliente',
+    Client: trade === 'beauty' ? 'Clienta' : 'Cliente',
+    clients: trade === 'beauty' ? 'clientas' : 'clientes',
+    Clients: trade === 'beauty' ? 'Clientas' : 'Clientes',
   }
 }
 
 export function wordsFor(trade: Trade | null | undefined): Words {
   switch (trade) {
+    case 'beauty': return build('beauty', 'clienta', 'clientas', 'Ana Martínez', 'estilista')
     case 'ac': return build('ac', 'equipo', 'equipos', 'Unidad de la sala (24,000 BTU)', 'técnico')
     case 'plumbing': return build('plumbing', 'propiedad', 'propiedades', 'Casa en Bayamón', 'plomero')
     case 'electrical': return build('electrical', 'propiedad', 'propiedades', 'Local comercial', 'electricista')
@@ -125,6 +139,7 @@ export function useSetTrade() {
 
 /** Trabajos típicos de cada oficio (sugerencias al escribir) y un ejemplo de problema. */
 export const JOB_IDEAS: Record<Trade, string[]> = {
+  beauty: ['Uñas acrílicas (set completo)', 'Relleno de acrílico', 'Uñas de gel (set)', 'Manicura con gel', 'Pedicura', 'Pedicura spa', 'Corte de dama', 'Blower', 'Tinte', 'Masaje relajante (60 min)', 'Facial'],
   marine: [
     'Servicio de 100 horas', 'Cambio de aceite y filtros', 'Diagnóstico', 'Cambio de impeller', 'Cambio de bujías',
     'Servicio de pata (lower unit)', 'Revisión eléctrica', 'Instalación de GPS / electrónica', 'Reparación de windlass',
@@ -139,6 +154,7 @@ export const JOB_IDEAS: Record<Trade, string[]> = {
 }
 
 export const PROBLEM_EXAMPLE: Record<Trade, string> = {
+  beauty: 'Lo que pidió la clienta (largo, color, diseño…)',
   marine: 'El motor de babor no arranca en frío',
   ac: 'La unidad de la sala no enfría',
   plumbing: 'Salidero debajo del fregadero',

@@ -1,7 +1,8 @@
+import { loadStaff } from '../../lib/salon'
 import { useWords } from '../../lib/trade'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Calendar, CalendarPlus, ChevronLeft, ChevronRight, MapPin, Plus, User, Wrench, Zap } from 'lucide-react'
+import { Calendar, CalendarPlus, ChevronLeft, ChevronRight, MapPin, Plus, User, Wrench, Zap, Sparkles } from 'lucide-react'
 import { LOCATION_TYPES, labelOf } from '../../lib/catalog'
 import { db } from '../../lib/db'
 import { addDays, formatDate, formatLongDate, formatTime, prDay, prRange, prTime, prToISO, todayPR, weekStart } from '../../lib/format'
@@ -9,7 +10,7 @@ import type { AppointmentFull } from '../../lib/types'
 import { must, useLoad } from '../../lib/useLoad'
 import { ErrorBox, Fab, Loading } from '../../components/ui'
 
-const SELECT = '*, service_requests(description), boats(id, name, location_type, marina_name, slip_number, town, lat, lng, location_notes, clients(id, full_name, phone))'
+const SELECT = '*, service_requests(description), staff(id, name, color), boats(id, name, location_type, marina_name, slip_number, town, lat, lng, location_notes, clients(id, full_name, phone))'
 
 /** Horario de trabajo (por ahora fijo): 7:00 AM a 5:00 PM, lunes a sábado. */
 const WORK_START = 7 * 60
@@ -61,12 +62,20 @@ function monthGrid(day: string): string[] {
   return days
 }
 
+/** La empleada de la cita (salón). */
+function staffOf(a: unknown) {
+  return (a as { staff: { id: string; name: string; color: string } | null }).staff ?? null
+}
+
 export default function Agenda() {
   const w = useWords()
   const [params, setParams] = useSearchParams()
   const today = todayPR()
   const day = params.get('dia') ?? today
   const [view, setView] = useState<'mes' | 'semana'>(savedView)
+  // Salón: la agenda de cada empleada
+  const [who, setWho] = useState<string | null>(null)
+  const { data: staff } = useLoad(async () => (w.salon ? loadStaff() : []), [w.salon])
   const from = weekStart(day)
   const week = Array.from({ length: 7 }, (_, i) => addDays(from, i))
   const grid = view === 'mes' ? monthGrid(day) : week
@@ -93,7 +102,7 @@ export default function Agenda() {
 
   const go = (d: string) => setParams({ dia: d }, { replace: true })
   const byDay = (d: string) => (data ?? []).filter((a) => prDay(a.starts_at) === d)
-  const list = byDay(day)
+  const list = byDay(day).filter((a) => !who || (a as unknown as { staff_id: string | null }).staff_id === who)
   const workDay = WORK_DAYS.includes(dow(day))
 
   // El día por horas: citas y huecos libres entre ellas
@@ -111,7 +120,7 @@ export default function Agenda() {
     if (dayEnd - cursor >= 30 && workDay) out.push({ kind: 'free', start: cursor, end: dayEnd })
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, day])
+  }, [data, day, who])
 
   const freeMin = slots.filter((s) => s.kind === 'free').reduce((t, s) => t + Math.max(0, Math.min(s.end, WORK_END) - Math.max(s.start, WORK_START)), 0)
   const [y, m] = from.split('-').map(Number)
@@ -224,13 +233,25 @@ export default function Agenda() {
         <p className="mb-3 rounded-xl bg-slate-100 p-4 text-base text-slate-700">Día libre. Si igual vas a trabajar, toca “Hacer cita”.</p>
       )}
 
+      {w.salon && staff && staff.length > 0 && (
+        <div className="mb-3 flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Agenda de">
+          <button type="button" onClick={() => setWho(null)} aria-pressed={!who}
+            className={`min-h-11 shrink-0 rounded-full px-4 text-base font-bold ${!who ? 'bg-navy-800 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-300'}`}>Todas</button>
+          {staff.map((st) => (
+            <button key={st.id} type="button" onClick={() => setWho(st.id)} aria-pressed={who === st.id}
+              className="min-h-11 shrink-0 rounded-full border-2 px-4 text-base font-bold"
+              style={who === st.id ? { backgroundColor: st.color, borderColor: st.color, color: '#fff' } : { borderColor: st.color, color: st.color }}>{st.name}</button>
+          ))}
+        </div>
+      )}
+
       {data && (
         <div className="space-y-2">
           {slots.map((s) =>
             s.kind === 'free' ? (
               <Link
                 key={`free-${s.start}`}
-                to={`/citas/nueva?dia=${day}&hora=${hhmm(s.start)}`}
+                to={`/citas/nueva?dia=${day}&hora=${hhmm(s.start)}${who ? `&empleada=${who}` : ''}`}
                 className="grid grid-cols-[4.5rem_1fr] items-center gap-2 transition active:scale-[0.98]"
               >
                 <span className="text-sm font-semibold text-slate-400">{label(s.start)}</span>
@@ -246,16 +267,18 @@ export default function Agenda() {
                   <span className="block text-xs font-semibold text-slate-400">a {label(s.end)}</span>
                 </span>
                 <span className={`${CARD} relative block overflow-hidden !rounded-2xl py-3 pl-5 pr-4`} style={{ minHeight: `${Math.max(64, (s.end - s.start) * 0.9)}px` }}>
-                  <span className={`absolute inset-y-0 left-0 w-1.5 ${STYLE[s.a.status].stripe}`} />
+                  <span className={`absolute inset-y-0 left-0 w-1.5 ${STYLE[s.a.status].stripe}`} style={staffOf(s.a) ? { backgroundColor: staffOf(s.a)!.color } : undefined} />
                   <span className="block text-lg font-extrabold leading-tight text-slate-900">{s.a.boats.name}</span>
                   <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-slate-600">
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STYLE[s.a.status].pill}`}>{STYLE[s.a.status].label}</span>
-                    <span className="flex items-center gap-1.5"><User size={16} className="shrink-0 text-slate-400" /> {s.a.boats.clients.full_name}</span>
+                    {w.salon
+                      ? staffOf(s.a) && <span className="rounded-full px-2.5 py-0.5 text-xs font-bold text-white" style={{ backgroundColor: staffOf(s.a)!.color }}>{staffOf(s.a)!.name}</span>
+                      : <span className="flex items-center gap-1.5"><User size={16} className="shrink-0 text-slate-400" /> {s.a.boats.clients.full_name}</span>}
                   </span>
                   {(s.a.service_requests?.description || s.a.title) && (
-                    <span className="mt-1 flex gap-1.5 text-base text-slate-800"><Wrench size={16} className="mt-1 shrink-0 text-slate-400" /><span className="line-clamp-2">{s.a.service_requests?.description || s.a.title}</span></span>
+                    <span className="mt-1 flex gap-1.5 text-base text-slate-800">{w.salon ? <Sparkles size={16} className="mt-1 shrink-0 text-pink-500" /> : <Wrench size={16} className="mt-1 shrink-0 text-slate-400" />}<span className="line-clamp-2">{s.a.service_requests?.description || s.a.title}</span></span>
                   )}
-                  {((w.marina && s.a.boats.marina_name) || s.a.boats.town) && (
+                  {!w.salon && ((w.marina && s.a.boats.marina_name) || s.a.boats.town) && (
                     <span className="mt-2 inline-flex max-w-full items-start gap-1 rounded-xl bg-slate-100 px-2.5 py-1 text-sm text-slate-600">
                       <MapPin size={14} className="mt-0.5 shrink-0" /> <span>{(w.marina ? [s.a.boats.marina_name ?? labelOf(LOCATION_TYPES, s.a.boats.location_type), s.a.boats.slip_number, s.a.boats.town] : [s.a.boats.town]).filter(Boolean).join(' · ')}</span>
                     </span>

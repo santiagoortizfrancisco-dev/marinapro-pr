@@ -1,3 +1,4 @@
+import { minutesLabel } from '../../lib/salon'
 import { JOB_IDEAS, useWords } from '../../lib/trade'
 import { useState, type FormEvent } from 'react'
 import { Package, Plus, Trash2, Wrench } from 'lucide-react'
@@ -34,6 +35,12 @@ export default function Catalog() {
     setPrice('')
     flash('Guardado ✓')
     reload()
+  }
+
+  async function updateDuration(item: CatalogItem, mins: number) {
+    await db().from('catalog_items').update({ duration_min: mins, updated_at: new Date().toISOString() }).eq('id', item.id)
+    setData((list) => (list ?? []).map((x) => (x.id === item.id ? { ...x, duration_min: mins } : x)))
+    flash('Guardado ✓')
   }
 
   async function updatePrice(item: CatalogItem, value: string) {
@@ -76,7 +83,7 @@ export default function Catalog() {
 
       {list.length === 0 && (
         <p className="rounded-xl bg-slate-100 p-4 text-base text-slate-700">
-          Todavía no tienes {tab === 'service' ? 'servicios' : 'piezas'} guardados. Cuando los uses en un trabajo se guardan aquí solos. Mientras tanto, al escribir te salen sugerencias de la lista común.
+          Todavía no tienes {tab === 'service' ? 'servicios' : 'piezas'} guardados. Cuando los uses en un trabajo se guardan aquí solos.
         </p>
       )}
       <div className="space-y-2">
@@ -85,7 +92,15 @@ export default function Catalog() {
             {c.kind === 'service' ? <Wrench size={20} className="shrink-0 text-navy-700" /> : <Package size={20} className="shrink-0 text-navy-700" />}
             <div className="min-w-0 flex-1">
               <div className="truncate text-base font-bold text-slate-900">{c.name}</div>
-              <div className="text-xs text-slate-500">Usado {c.use_count} {c.use_count === 1 ? 'vez' : 'veces'}</div>
+              {w.salon && c.kind === 'service' ? (
+                <label className="mt-1 flex items-center gap-1 text-sm text-slate-600">
+                  Dura
+                  <select aria-label={`Duración de ${c.name}`} defaultValue={String(c.duration_min ?? 30)} onChange={(e) => updateDuration(c, Number(e.target.value))}
+                    className="h-9 rounded-lg border-2 border-slate-300 bg-white px-1 text-sm font-semibold">
+                    {[15, 30, 45, 60, 75, 90, 120, 150, 180].map((m) => <option key={m} value={m}>{minutesLabel(m)}</option>)}
+                  </select>
+                </label>
+              ) : <div className="text-xs text-slate-500">Usado {c.use_count} {c.use_count === 1 ? 'vez' : 'veces'}</div>}
             </div>
             <input
               inputMode="decimal"

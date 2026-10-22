@@ -476,3 +476,32 @@ test('FacturaFácil: cada negocio dice a qué se dedica; los de antes quedan com
   const tok = (await one(V, `select public_token from invoices limit 1`)).public_token
   assert.equal((await one(null, `select get_public_document('${tok}') d`, 'anon')).d.business.business_type, 'ac')
 })
+
+test('salón: menú de uñas con duración, empleadas solo del negocio, propina en el pago y prueba de salón', async () => {
+  // El menú de salón se carga una vez (uñas primero) y no se duplica
+  await as(A, `select seed_beauty_services('${A}')`)
+  await as(A, `select seed_beauty_services('${A}')`)
+  const s = await one(A, `select count(*)::int n, min(duration_min) mn from catalog_items where mechanic_id = '${A}' and category = 'Uñas'`)
+  assert.equal(s.n, 9)
+  assert.ok(await fails(() => as(B, `select seed_beauty_services('${A}')`)), 'otro no le carga el menú')
+
+  // Empleadas: cada negocio ve las suyas
+  const st = (await one(A, `insert into staff (mechanic_id, name, commission_rate) values ('${A}', 'Yari', 0.4) returning id`)).id
+  assert.equal((await as(B, `select * from staff`)).length, 0)
+  assert.ok(await fails(() => as(B, `insert into staff (mechanic_id, name) values ('${A}', 'Intrusa')`)))
+  assert.ok(await fails(() => as(A, `update staff set commission_rate = 1.5 where id = '${st}'`)), 'comisión entre 0% y 100%')
+
+  // Estimados se pueden apagar
+  await as(A, `update mechanics set use_estimates = false, business_type = 'beauty' where profile_id = '${A}'`)
+  assert.deepEqual(await one(A, `select use_estimates, business_type from mechanics where profile_id = '${A}'`), { use_estimates: false, business_type: 'beauty' })
+  await as(A, `update mechanics set use_estimates = true, business_type = 'marine' where profile_id = '${A}'`)
+
+  // Prueba de salón
+  const V = (await db.query(`insert into auth.users(is_anonymous) values (true) returning id`)).rows[0].id
+  await as(V, `select start_trial('beauty')`)
+  const m = await one(V, `select business_type, use_estimates from mechanics where profile_id = '${V}'`)
+  assert.deepEqual(m, { business_type: 'beauty', use_estimates: false })
+  assert.equal((await one(V, `select count(*)::int n from staff`)).n, 2)
+  assert.equal((await one(V, `select count(*)::int n from appointments where staff_id is not null`)).n, 8)
+  assert.ok(Number((await one(V, `select sum(tip) t from payments`)).t) > 0, 'propinas de ejemplo')
+})

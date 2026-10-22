@@ -16,6 +16,7 @@ export interface CatalogItem {
   category: string | null
   last_price: number | null
   use_count: number
+  duration_min?: number | null
 }
 
 type Form = { description: string; qty: string; unit_cost: string; byClient: boolean; part_number: string; supplier: string; eta: string; received: boolean }
@@ -58,7 +59,7 @@ export default function PartSheet({ open, workOrderId, part, onClose, onSaved }:
         : EMPTY,
     )
     setDetails(Boolean(part && (part.part_number || part.supplier || part.eta)))
-    db().from('catalog_items').select('*').then(({ data }) => setCatalog((data ?? []) as CatalogItem[]))
+    db().from('catalog_items').select('*').then(({ data }) => setCatalog(((data ?? []) as CatalogItem[]).filter((c) => c.mechanic_id || words.marina)))
   }, [open, part])
 
   // Sugerencias: primero lo suyo (lo que más usa, con su precio), después la lista común

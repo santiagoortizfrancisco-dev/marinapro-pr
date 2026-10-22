@@ -42,7 +42,8 @@ export default function ChooseRole() {
     })
     if (!error) {
       // A qué se dedica: cambia las palabras del app (bote, carro, equipo, propiedad…)
-      await supabase.from('mechanics').update({ business_type: trade }).eq('profile_id', session!.user.id)
+      await supabase.from('mechanics').update({ business_type: trade, use_estimates: trade !== 'beauty' }).eq('profile_id', session!.user.id)
+      if (trade === 'beauty') await supabase.rpc('seed_beauty_services', { p_mech: session!.user.id })
       try { localStorage.setItem('tipo-de-negocio', trade) } catch { /* sin memoria: no pasa nada */ }
     }
     setBusy(false)

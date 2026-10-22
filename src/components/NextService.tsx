@@ -2,7 +2,7 @@ import { JOB_IDEAS, useWords } from '../lib/trade'
 import { useState } from 'react'
 import { CalendarClock } from 'lucide-react'
 import { db } from '../lib/db'
-import { addMonths, todayPR } from '../lib/format'
+import { addDays, addMonths, todayPR } from '../lib/format'
 import { Button, Choice, Field, Input } from './ui'
 
 const WHEN = [
@@ -10,6 +10,14 @@ const WHEN = [
   { value: '6', label: '6 meses' },
   { value: '12', label: '1 año' },
   { value: 'date', label: 'Otra fecha' },
+] as const
+
+/** Salón: vuelve en semanas (relleno, retoque, tinte) */
+const WEEKS = [
+  { value: 'w2', label: '2 semanas' },
+  { value: 'w3', label: '3 semanas' },
+  { value: 'w4', label: '4 semanas' },
+  { value: 'w6', label: '6 semanas' },
 ] as const
 
 /**
@@ -26,17 +34,18 @@ export default function NextService({ boatId, workOrderId, defaultService, onSav
 }) {
   const w = useWords()
   const [service, setService] = useState(defaultService ?? 'Mantenimiento')
-  const [when, setWhen] = useState<(typeof WHEN)[number]['value']>('6')
+  const [when, setWhen] = useState<string>(w.salon ? 'w3' : '6')
   const [date, setDate] = useState(addMonths(todayPR(), 6))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   async function save() {
-    if (!service.trim()) return setError('Escribe qué servicio le toca.')
+    if (!service.trim()) return setError(w.salon ? 'Escribe qué le toca.' : 'Escribe qué servicio le toca.')
     setBusy(true)
     setError('')
-    const months = when === 'date' ? null : Number(when)
-    const due = when === 'date' ? date : addMonths(todayPR(), months!)
+    const weeks = when.startsWith('w') ? Number(when.slice(1)) : null
+    const months = when === 'date' || weeks ? null : Number(when)
+    const due = when === 'date' ? date : weeks ? addDays(todayPR(), weeks * 7) : addMonths(todayPR(), months!)
     // El recordatorio anterior de ese mismo servicio ya se cumplió
     await db().from('maintenance_schedules').update({ status: 'done' }).eq('boat_id', boatId).in('status', ['pending', 'notified']).ilike('service_type', service.trim())
     const { error } = await db().from('maintenance_schedules').insert({
@@ -49,12 +58,12 @@ export default function NextService({ boatId, workOrderId, defaultService, onSav
 
   return (
     <section className="rounded-2xl border-2 border-sun-500 bg-sun-400/10 p-4">
-      <h3 className="mb-3 flex items-center gap-2 text-lg font-extrabold text-navy-900"><CalendarClock size={22} /> {title}</h3>
+      <h3 className="mb-3 flex items-center gap-2 text-lg font-extrabold text-navy-900"><CalendarClock size={22} /> {w.salon && title === '¿Cuándo le toca el próximo servicio?' ? '¿Cuándo vuelve?' : title}</h3>
       <div className="space-y-3">
         <Field label="¿Qué le toca?">
           <Input value={service} onChange={(e) => setService(e.target.value)} placeholder={JOB_IDEAS[w.trade][0]} />
         </Field>
-        <Choice value={when} onChange={setWhen} options={WHEN} />
+        <Choice value={when} onChange={setWhen} options={w.salon ? [...WEEKS, { value: 'date', label: 'Otra fecha' }] : [...WHEN]} />
         {when === 'date' && (
           <Field label="Fecha">
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />

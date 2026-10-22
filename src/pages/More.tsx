@@ -1,7 +1,7 @@
 import { TRADES, useWords } from '../lib/trade'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Briefcase, ChevronRight, Globe, KeyRound, LifeBuoy, ListChecks, ShieldCheck } from 'lucide-react'
+import { Briefcase, ChevronRight, Globe, KeyRound, LifeBuoy, ListChecks, ShieldCheck, Users } from 'lucide-react'
 import ContactSheet from '../components/ContactSheet'
 import { db } from '../lib/db'
 import { useLoad } from '../lib/useLoad'
@@ -48,8 +48,19 @@ export default function More() {
         <Link to="/mas/catalogo" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
           <IconBadge icon={ListChecks} tone="amber" />
           <span className="flex-1">
-            <span className="block text-lg font-bold">Mis piezas y servicios</span>
-            <span className="block text-sm text-slate-600">Tus precios para no escribirlos cada vez</span>
+            <span className="block text-lg font-bold">{words.salon ? 'Mis servicios y precios' : 'Mis piezas y servicios'}</span>
+            <span className="block text-sm text-slate-600">{words.salon ? 'Tu menú: cuánto cuesta y cuánto dura cada servicio' : 'Tus precios para no escribirlos cada vez'}</span>
+          </span>
+          <ChevronRight />
+        </Link>
+      )}
+
+      {profile?.role === 'mechanic' && words.salon && (
+        <Link to="/mas/empleadas" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+          <IconBadge icon={Users} tone="violet" />
+          <span className="flex-1">
+            <span className="block text-lg font-bold">Empleadas y comisiones</span>
+            <span className="block text-sm text-slate-600">Su agenda, su comisión y sus propinas</span>
           </span>
           <ChevronRight />
         </Link>

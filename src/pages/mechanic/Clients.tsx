@@ -78,7 +78,7 @@ export default function Clients() {
             to={`/clientes/${c.id}`}
             lead={<Initials name={c.full_name} />}
             title={c.full_name}
-            subtitle={<>{debts?.get(c.id) ? <span className="font-extrabold text-red-700">Debe {formatMoney(debts.get(c.id)!)} · </span> : null}{[c.boats.map((b) => b.name).join(', ') || w.noItem, c.town].filter(Boolean).join(' · ')}</>}
+            subtitle={<>{debts?.get(c.id) ? <span className="font-extrabold text-red-700">Debe {formatMoney(debts.get(c.id)!)} · </span> : null}{(w.salon ? [c.phone, c.town] : [c.boats.map((b) => b.name).join(', ') || w.noItem, c.town]).filter(Boolean).join(' · ')}</>}
           />
         ))}
       </div>

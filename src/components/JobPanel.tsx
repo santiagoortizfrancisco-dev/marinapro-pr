@@ -187,12 +187,16 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   }
 
   /** Recibir un pago (completo, depósito o abono). Si paga todo y no hay factura, la factura se hace sola para que quede el récord. */
-  async function receive(method: NonNullable<Invoice['payment_method']>, amount: number) {
+  async function receive(method: NonNullable<Invoice['payment_method']>, amount: number, tip = 0) {
     if (!invoice && due > 0 && amount >= due - paid - 0.004) {
       const { error } = await db().rpc('create_invoice', { p_wo: wo.id })
       if (error) throw error
     }
-    await addPayment(wo.id, amount, method)
+    await addPayment(wo.id, amount, method, tip)
+    // Salón: cobrada la cuenta, la cita queda hecha
+    if (w.salon && wo.appointment_id && amount >= due - paid - 0.004) {
+      await db().from('appointments').update({ status: 'done' }).eq('id', wo.appointment_id)
+    }
     setPayOpen(false)
     reload()
   }
@@ -328,7 +332,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
     <>
       {embedded ? (
         <div className="mb-3 mt-8 flex items-center justify-between gap-2 border-t-4 border-navy-800 pt-4">
-          <h2 className="text-2xl font-extrabold text-navy-900">El trabajo</h2>
+          <h2 className="text-2xl font-extrabold text-navy-900">{w.salon ? 'La cuenta' : 'El trabajo'}</h2>
           <Pill label={st.label} style={st.style} />
         </div>
       ) : (
@@ -354,7 +358,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
       {/* Ya facturado: lo primero es cobrar */}
       {billed && cobrarBlock}
 
-      {!billed && !locked && (
+      {!billed && !locked && !w.salon && (
         <Section title="¿En qué va?" icon={ListChecks} tone="navy">
           <Choice columns={3} value={wo.status} onChange={setStatus} options={WORK_STEPS} />
         </Section>
@@ -423,15 +427,15 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
       {/* Detalles del trabajo: cada cosa en su renglón, se abre con un toque */}
       <section className="mt-6">
-        <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><IconBadge icon={Wrench} tone="amber" size="sm" /> Detalles del trabajo</h2>
+        <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><IconBadge icon={Wrench} tone="amber" size="sm" /> {w.salon ? 'Fotos y próxima visita' : 'Detalles del trabajo'}</h2>
         <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
-          <Row icon={Wrench} title="El problema" summary={wo.work_done || wo.diagnosis || wo.complaint || 'Lo que dice el cliente y lo que encontraste'} defaultOpen={!billed && !(wo.complaint || wo.diagnosis || wo.work_done)}>
+          {!w.salon && <Row icon={Wrench} title="El problema" summary={wo.work_done || wo.diagnosis || wo.complaint || 'Lo que dice el cliente y lo que encontraste'} defaultOpen={!billed && !(wo.complaint || wo.diagnosis || wo.work_done)}>
             <div className="space-y-4">
               <AutoText label="Lo que dice el cliente" value={wo.complaint} onSave={(v) => patch({ complaint: v })} />
               <AutoText label="Diagnóstico (lo que encontraste)" value={wo.diagnosis} onSave={(v) => patch({ diagnosis: v })} rows={4} />
               <AutoText label="Lo que se hizo" hint="Sale en la factura para el cliente" value={wo.work_done} onSave={(v) => patch({ work_done: v })} rows={4} />
             </div>
-          </Row>
+          </Row>}
           <Row icon={Camera} title="Fotos" summary={photos.length ? `${photos.length} ${photos.length === 1 ? 'foto' : 'fotos'}` : 'Antes, pieza vieja, pieza nueva, después'}>
             <PhotoSection workOrderId={wo.id} photos={photos} onChange={reload} />
           </Row>
@@ -459,7 +463,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
                 </span>
               </div>
             ) : (billed || skipNext) && (
-              <Row icon={CalendarClock} title="Recordarle el próximo servicio" summary="Te avisa cuando le toque">
+              <Row icon={CalendarClock} title={w.salon ? '¿Cuándo vuelve?' : 'Recordarle el próximo servicio'} summary="Te avisa cuando le toque">
                 <NextService boatId={boat.id} workOrderId={wo.id} defaultService={parts.find((p) => p.kind === 'service')?.description ?? 'Mantenimiento'} onSaved={reload} />
               </Row>
             )
@@ -467,7 +471,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </div>
       </section>
 
-      {!invoice && <Section title="Estimado" icon={FileText} tone="amber">
+      {!invoice && mech.use_estimates !== false && <Section title="Estimado" icon={FileText} tone="amber">
         {wo.estimate_approved_at ? (
           <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-base font-semibold text-emerald-900">
             <CheckCircle2 />
@@ -497,7 +501,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
       {!billed && cobrarBlock}
 
-      <PaySheet open={payOpen} balance={balance} title={invoice ? 'Recibir pago' : 'Recibir pago o depósito'} onClose={() => setPayOpen(false)} onPay={receive} />
+      <PaySheet withTip={w.salon} open={payOpen} balance={balance} title={invoice ? 'Recibir pago' : 'Recibir pago o depósito'} onClose={() => setPayOpen(false)} onPay={receive} />
 
       <PartSheet open={partOpen} workOrderId={wo.id} part={editPart} onClose={() => setPartOpen(false)} onSaved={reload} />
 

@@ -31,6 +31,14 @@ import RequestDetail from './pages/mechanic/RequestDetail'
 import PasswordSettings from './pages/mechanic/PasswordSettings'
 import QuickInvoice from './pages/mechanic/QuickInvoice'
 import Invoices from './pages/mechanic/Invoices'
+import SalonAppointmentForm from './pages/mechanic/SalonAppointmentForm'
+import StaffPage from './pages/mechanic/StaffPage'
+import { useWords } from './lib/trade'
+
+/** La cita: la de salón (servicios y empleada) o la de servicio en la calle. */
+function ApptForm() {
+  return useWords().salon ? <SalonAppointmentForm /> : <AppointmentForm />
+}
 import Home from './pages/mechanic/Home'
 import AppLock from './components/AppLock'
 import MyBoats from './pages/client/MyBoats'
@@ -77,9 +85,9 @@ export default function App() {
           <Route path="/inicio" element={<Home />} />
           <Route path="/facturas" element={<Invoices />} />
           <Route path="/agenda" element={<Agenda />} />
-          <Route path="/citas/nueva" element={<AppointmentForm />} />
+          <Route path="/citas/nueva" element={<ApptForm />} />
           <Route path="/citas/:id" element={<AppointmentDetail />} />
-          <Route path="/citas/:id/editar" element={<AppointmentForm />} />
+          <Route path="/citas/:id/editar" element={<ApptForm />} />
           <Route path="/clientes" element={<Clients />} />
           <Route path="/clientes/nuevo" element={<ClientForm />} />
           <Route path="/clientes/:id" element={<ClientDetail />} />
@@ -98,6 +106,7 @@ export default function App() {
           <Route path="/mas/negocio" element={<BusinessSettings />} />
           <Route path="/mas/admin" element={<Admin />} />
           <Route path="/mas/catalogo" element={<Catalog />} />
+          <Route path="/mas/empleadas" element={<StaffPage />} />
           <Route path="/mas/perfil-publico" element={<PublicProfileSettings />} />
           <Route path="/mas/clave" element={<PasswordSettings />} />
           <Route path="/solicitudes/:id" element={<RequestDetail />} />

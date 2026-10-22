@@ -18,22 +18,26 @@ export const PAY_ICONS: Record<string, { icon: LucideIcon; tone: Tone }> = {
  * Recibir un pago: cuánto (sale lo que falta; si le dio una parte, la cambia) y cómo.
  * Sirve para el pago completo, un depósito o un abono: el mecánico decide.
  */
-export default function PaySheet({ open, balance, title = 'Recibir pago', onClose, onPay }: {
+export default function PaySheet({ open, balance, title = 'Recibir pago', onClose, onPay, withTip = false }: {
   open: boolean
+  /** Salón: se puede añadir la propina (va aparte, para la empleada) */
+  withTip?: boolean
   /** Lo que falta (0 si todavía no hay total) */
   balance: number
   title?: string
   onClose: () => void
-  onPay: (method: NonNullable<Invoice['payment_method']>, amount: number) => Promise<void>
+  onPay: (method: NonNullable<Invoice['payment_method']>, amount: number, tip: number) => Promise<void>
 }) {
   const [method, setMethod] = useState<NonNullable<Invoice['payment_method']>>('ath_movil')
   const [amount, setAmount] = useState('')
+  const [tip, setTip] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (!open) return
     setAmount(balance > 0 ? balance.toFixed(2) : '')
+    setTip('')
     setError('')
   }, [open, balance])
 
@@ -45,7 +49,7 @@ export default function PaySheet({ open, balance, title = 'Recibir pago', onClos
     setBusy(true)
     setError('')
     try {
-      await onPay(method, value)
+      await onPay(method, value, num(tip) ?? 0)
     } catch {
       setError('No se pudo guardar el pago. Revisa la señal e intenta otra vez.')
     } finally {
@@ -61,6 +65,17 @@ export default function PaySheet({ open, balance, title = 'Recibir pago', onClos
         </Field>
         {balance > 0 && value > 0 && left > 0.004 && <p className="rounded-xl bg-amber-50 p-3 text-base font-bold text-amber-900">Le quedan {formatMoney(left)} de balance.</p>}
         {balance > 0 && value > 0 && left <= 0.004 && <p className="rounded-xl bg-emerald-50 p-3 text-base font-bold text-emerald-800">Con esto queda saldado ✓</p>}
+        {withTip && (
+          <Field label="Propina (opcional)" hint="Va aparte, para la empleada">
+            <div className="flex gap-2">
+              {[3, 5, 10].map((t) => (
+                <button key={t} type="button" onClick={() => setTip(String(t))} aria-pressed={tip === String(t)}
+                  className={`min-h-12 flex-1 rounded-xl text-base font-bold ${tip === String(t) ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-800'}`}>${t}</button>
+              ))}
+              <Input aria-label="Otra propina" inputMode="decimal" value={tip} onChange={(e) => setTip(e.target.value)} placeholder="Otra" className="w-24! text-center" />
+            </div>
+          </Field>
+        )}
         <Field label="¿Cómo te pagó?">
           <Choice value={method} onChange={setMethod} options={PAYMENT_METHODS.map((m) => ({ ...m, ...PAY_ICONS[m.value] }))} />
         </Field>

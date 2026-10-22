@@ -97,6 +97,10 @@ export interface AppointmentFull extends Appointment {
 
 export interface Mechanic {
   profile_id: string
+  /** A qué se dedica: botes, salón, aire, plomería… */
+  business_type?: string
+  /** Usa estimados (cotizaciones) antes de trabajar */
+  use_estimates?: boolean
   business_name: string | null
   ath_movil_number: string | null
   labor_rate_hour: number
