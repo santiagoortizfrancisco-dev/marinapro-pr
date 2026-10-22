@@ -10,6 +10,12 @@ const db = new PGlite()
 const sql = (f) => readFileSync(new URL(`../supabase/${f}`, import.meta.url), 'utf8')
 let A, B // dos mecánicos
 
+/** Correr algo como el sistema (SQL Editor de Supabase: sin usuario, sin RLS). */
+async function sys(query) {
+  await db.exec(`reset role; select set_config('request.jwt.uid', '', false);`)
+  return (await db.query(query)).rows
+}
+
 /** Correr algo como un usuario (o como alguien sin cuenta con role = 'anon'). */
 async function as(uid, query, role = 'authenticated') {
   await db.exec(`set role ${role}; select set_config('request.jwt.uid', '${uid ?? ''}', false);`)
@@ -456,10 +462,10 @@ test('link de prueba: el visitante anónimo recibe su propio taller de ejemplo, 
 
 test('FacturaFácil: cada negocio dice a qué se dedica; los de antes quedan como botes; la prueba arma el oficio escogido', async () => {
   assert.equal((await one(A, `select business_type from mechanics where profile_id = '${A}'`)).business_type, 'marine')
-  await as(A, `update mechanics set business_type = 'plumbing' where profile_id = '${A}'`)
+  await sys(`update mechanics set business_type = 'plumbing' where profile_id = '${A}'`)
   assert.equal((await one(A, `select business_type from mechanics where profile_id = '${A}'`)).business_type, 'plumbing')
   assert.ok(await fails(() => as(A, `update mechanics set business_type = 'piloto' where profile_id = '${A}'`)), 'solo los oficios de la lista')
-  await as(A, `update mechanics set business_type = 'marine' where profile_id = '${A}'`)
+  await sys(`update mechanics set business_type = 'marine' where profile_id = '${A}'`)
 
   const V = (await db.query(`insert into auth.users(is_anonymous) values (true) returning id`)).rows[0].id
   await as(V, `select start_trial('ac')`)
@@ -486,9 +492,9 @@ test('salón: menú de uñas con duración, empleadas solo del negocio, propina 
   assert.ok(await fails(() => as(A, `update staff set commission_rate = 1.5 where id = '${st}'`)), 'comisión entre 0% y 100%')
 
   // Estimados se pueden apagar
-  await as(A, `update mechanics set use_estimates = false, business_type = 'beauty' where profile_id = '${A}'`)
+  await sys(`update mechanics set use_estimates = false, business_type = 'beauty' where profile_id = '${A}'`)
   assert.deepEqual(await one(A, `select use_estimates, business_type from mechanics where profile_id = '${A}'`), { use_estimates: false, business_type: 'beauty' })
-  await as(A, `update mechanics set use_estimates = true, business_type = 'marine' where profile_id = '${A}'`)
+  await sys(`update mechanics set use_estimates = true, business_type = 'marine' where profile_id = '${A}'`)
 
   // Prueba de salón
   const V = (await db.query(`insert into auth.users(is_anonymous) values (true) returning id`)).rows[0].id
@@ -502,15 +508,32 @@ test('salón: menú de uñas con duración, empleadas solo del negocio, propina 
 
 test('políticas del salón: al hacerse salón le tocan las de salón (no garantía de mecánico); las que escribió el negocio no se tocan', async () => {
   const pol = async () => (await one(A, `select policies_text p, warranty_days d from mechanics where profile_id = '${A}'`))
-  await as(A, `update mechanics set business_type = 'beauty' where profile_id = '${A}'`)
+  await sys(`update mechanics set business_type = 'beauty' where profile_id = '${A}'`)
   assert.match((await pol()).p, /24 horas/)
   assert.doesNotMatch((await pol()).p, /piezas|agua|mecánico/i)
-  await as(A, `update mechanics set business_type = 'marine' where profile_id = '${A}'`)
+  await sys(`update mechanics set business_type = 'marine' where profile_id = '${A}'`)
   assert.match((await pol()).p, /Garantía de mano de obra/)
   assert.equal((await pol()).d, 90)
 
   await as(A, `update mechanics set policies_text = 'Mis reglas propias' where profile_id = '${A}'`)
-  await as(A, `update mechanics set business_type = 'beauty' where profile_id = '${A}'`)
+  await sys(`update mechanics set business_type = 'beauty' where profile_id = '${A}'`)
   assert.equal((await pol()).p, 'Mis reglas propias')
-  await as(A, `update mechanics set business_type = 'marine', policies_text = default_policies() where profile_id = '${A}'`)
+  await sys(`update mechanics set business_type = 'marine', policies_text = default_policies() where profile_id = '${A}'`)
+})
+
+test('el tipo de negocio se escoge una sola vez: después solo el administrador lo cambia', async () => {
+  const C = (await db.query(`insert into auth.users(email) values ('salon@nuevo.test') returning id`)).rows[0].id
+  await as(C, `select set_my_role('mechanic','Salón Nuevo','787-555-0900','Salinas','Salón Nuevo')`)
+  await as(C, `update mechanics set business_type = 'beauty', business_type_set = true where profile_id = '${C}'`)
+  assert.deepEqual(await one(C, `select business_type, business_type_set from mechanics where profile_id = '${C}'`), { business_type: 'beauty', business_type_set: true })
+  assert.ok(await fails(() => as(C, `update mechanics set business_type = 'marine' where profile_id = '${C}'`)), 'ya no lo puede cambiar')
+  await as(C, `update mechanics set business_type_set = false where profile_id = '${C}'`)
+  assert.ok(await fails(() => as(C, `update mechanics set business_type = 'marine' where profile_id = '${C}'`)), 'ni quitándole el candado')
+  await as(C, `update mechanics set business_name = 'Salón Nuevo PR' where profile_id = '${C}'`)
+  assert.equal((await one(C, `select business_name from mechanics where profile_id = '${C}'`)).business_name, 'Salón Nuevo PR', 'lo demás sí se cambia')
+
+  const admin = (await db.query(`select id from profiles where email = 'santiagoortizfrancisco@gmail.com'`)).rows[0].id
+  await as(admin, `update mechanics set business_type = 'marine' where profile_id = '${admin}'`)
+  await as(admin, `update mechanics set business_type = 'beauty' where profile_id = '${admin}'`)
+  assert.equal((await one(admin, `select business_type from mechanics where profile_id = '${admin}'`)).business_type, 'beauty', 'el administrador sí lo cambia')
 })

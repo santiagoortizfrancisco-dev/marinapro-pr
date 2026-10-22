@@ -674,7 +674,12 @@ test('registro de un salón: entra derecho al salón rosado, sin error de "No se
   await expect(nueva.locator('header').first()).toHaveCSS('background-color', 'rgb(219, 39, 119)')
   const s = await state()
   const p = s.profiles.find((x) => x.email === 'iris@salon.test')!
-  expect(s.mechanics.find((m) => m.profile_id === p.id)).toMatchObject({ business_type: 'beauty', use_estimates: false })
+  expect(s.mechanics.find((m) => m.profile_id === p.id)).toMatchObject({ business_type: 'beauty', business_type_set: true, use_estimates: false })
+
+  // El oficio quedó fijo: en Mi negocio se ve, pero no se puede cambiar (solo el administrador)
+  await nueva.goto('http://localhost:4321/mas/negocio')
+  await expect(nueva.getByLabel('Tipo de negocio')).toContainText('Uñas, salón y spa')
+  await expect(nueva.getByRole('radio', { name: /Botes/ })).toHaveCount(0)
   await nueva.close()
 })
 
@@ -1138,11 +1143,4 @@ test('salón: el inicio tiene su estilo de belleza (sin baterías) y Factura rá
   const appt = (await state()).appointments.find((a) => a.title === 'Diseño especial')
   expect(appt).toBeTruthy()
 
-  // Un mecánico de botes sigue con sus baterías
-  await page.goto('/mas/negocio')
-  await page.getByRole('radio', { name: /Botes/ }).click()
-  await page.getByRole('button', { name: /Guardar/ }).first().click()
-  await page.goto('/')
-  await expect(page.getByRole('link', { name: /Factura rápida/ })).toBeVisible()
-  await expect(page.locator('body')).toHaveAttribute('data-trade', 'marine')
 })

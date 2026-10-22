@@ -1,5 +1,5 @@
 import TradePicker from '../../components/TradePicker'
-import { useSetTrade, type Trade } from '../../lib/trade'
+import { TRADES, useSetTrade, type Trade } from '../../lib/trade'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Check, ImagePlus, Trash2 } from 'lucide-react'
 import { BRAND_COLORS, DEFAULT_BRAND, logoUrl, notifyBrandChanged } from '../../lib/brand'
@@ -25,6 +25,13 @@ export default function BusinessSettings() {
   const [trade, setTradeLocal] = useState<Trade>('marine')
   const [useEstimates, setUseEstimates] = useState(true)
   const setTrade = useSetTrade()
+  // El oficio se escoge una sola vez; después solo el administrador lo cambia
+  const [canChangeTrade, setCanChangeTrade] = useState(false)
+  useEffect(() => {
+    if (!m) return
+    if (!(m as { business_type_set?: boolean }).business_type_set) { setCanChangeTrade(true); return }
+    db().rpc('is_app_admin').then(({ data }) => setCanChangeTrade(Boolean(data)))
+  }, [m])
   const [color, setColor] = useState(DEFAULT_BRAND)
   const [logoPath, setLogoPath] = useState<string | null>(null)
   const [logoBusy, setLogoBusy] = useState(false)
@@ -65,7 +72,7 @@ export default function BusinessSettings() {
         next_invoice_number: Math.max(1, Math.floor(num(f.next_invoice_number) ?? 1)),
         policies_text: f.policies_text.trim(),
         brand_color: color,
-        business_type: trade,
+        ...(canChangeTrade ? { business_type: trade } : {}),
         use_estimates: useEstimates,
         // Si cambian las políticas, sube la versión (los estimados aprobados guardan la versión que aceptaron)
         policies_version: policiesChanged ? m.policies_version + 1 : m.policies_version,
@@ -159,7 +166,14 @@ export default function BusinessSettings() {
           </div>
         </Field>
         <Field label="¿A qué te dedicas?" hint="Cambia las palabras del app: bote, carro, equipo o propiedad">
-          <TradePicker value={trade} onChange={(t) => { setTradeLocal(t); setUseEstimates(t !== 'beauty') }} />
+          {canChangeTrade ? (
+            <TradePicker value={trade} onChange={(t) => { setTradeLocal(t); setUseEstimates(t !== 'beauty') }} />
+          ) : (
+            <div className="rounded-xl bg-slate-100 p-3" aria-label="Tipo de negocio">
+              <p className="text-base font-bold text-slate-900">{TRADES.find((t) => t.value === trade)?.emoji} {TRADES.find((t) => t.value === trade)?.label}</p>
+              <p className="mt-1 text-sm text-slate-600">Se escoge una sola vez, al crear la cuenta. Si te equivocaste, escríbele al desarrollador en Más → Contactar al desarrollador.</p>
+            </div>
+          )}
         </Field>
         <Toggle checked={useEstimates} onChange={setUseEstimates} label="Uso estimados (cotizaciones)" hint="Le envías el precio al cliente para que lo apruebe antes de trabajar. Los salones casi nunca los usan." />
         <Field label="Nombre del negocio">
