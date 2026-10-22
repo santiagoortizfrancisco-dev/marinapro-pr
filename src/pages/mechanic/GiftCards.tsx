@@ -156,9 +156,14 @@ function SellSheet({ open, business, onClose, onSold }: { open: boolean; busines
           </div>
           <Input aria-label="Otra cantidad" inputMode="decimal" value={[25, 50, 75, 100].includes(value) ? '' : amount} onChange={(e) => setAmount(e.target.value)} placeholder="Otra cantidad" className="mt-2 text-center" />
         </div>
-        <Input aria-label="Para quién" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Para quién (opcional)" />
-        <Input aria-label="De parte de" value={buyer} onChange={(e) => setBuyer(e.target.value)} placeholder="De parte de (opcional)" />
-        <Input aria-label="Teléfono para enviarla" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp para enviarla (opcional)" />
+        <Input aria-label="Para quién" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="¿Para quién es? (opcional)" />
+        <details className="rounded-2xl bg-slate-50 px-3">
+          <summary className="min-h-12 cursor-pointer py-3 text-base font-bold text-slate-600">De parte de quién y WhatsApp (opcional)</summary>
+          <div className="space-y-2 pb-3">
+            <Input aria-label="De parte de" value={buyer} onChange={(e) => setBuyer(e.target.value)} placeholder="De parte de" />
+            <Input aria-label="Teléfono para enviarla" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp para enviarla" />
+          </div>
+        </details>
         <div>
           <div className="mb-2 text-base font-extrabold text-slate-800">¿Cómo la pagó?</div>
           <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="¿Cómo la pagó?">

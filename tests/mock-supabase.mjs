@@ -141,6 +141,7 @@ function matches(row, params) {
     if (op === 'lte' && !(v != null && String(v) <= arg)) return false
     if (op === 'gte' && !(String(v) >= arg)) return false
     if (op === 'lt' && !(String(v) < arg)) return false
+    if (op === 'gt' && !(Number(v) > Number(arg))) return false
   }
   return true
 }

@@ -1235,7 +1235,7 @@ test('salón: tarjetas de regalo — se vende con su código y se usa al cobrar 
   await page.getByRole('button', { name: 'Cobrar $33.45' }).click()
   const sheet = page.getByRole('dialog', { name: 'Cobrar' })
   await sheet.getByRole('radio', { name: /Tarjeta de regalo/ }).click()
-  await sheet.getByLabel('Código de la tarjeta de regalo').fill(card.code)
+  await sheet.getByRole('radio', { name: /Para Mamá/ }).click() // se escoge de la lista, sin escribir el código
   await sheet.getByRole('button', { name: /^Cobrar \$/ }).click()
   await expect(page.getByText(/Pagada el/)).toBeVisible()
   await expect(page.getByText(/Tarjeta de regalo/).first()).toBeVisible()

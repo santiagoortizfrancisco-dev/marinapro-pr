@@ -382,6 +382,14 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
   const [method, setMethod] = useState<Method>('ath_movil')
   const [gift, setGift] = useState(false)
   const [code, setCode] = useState('')
+  const [cards, setCards] = useState<{ code: string; balance: number; recipient_name: string | null }[] | null>(null)
+  const [find, setFind] = useState('')
+  // Las tarjetas que todavía tienen dinero (la más nueva primero)
+  useEffect(() => {
+    if (!gift || cards) return
+    db().from('gift_cards').select('code, balance, recipient_name').gt('balance', 0).order('sold_at', { ascending: false }).limit(100)
+      .then(({ data }) => setCards((data ?? []) as { code: string; balance: number; recipient_name: string | null }[]))
+  }, [gift, cards])
   const [tip, setTip] = useState(0)
   const [otherTip, setOtherTip] = useState('')
   const [part, setPart] = useState<string | null>(null)
@@ -393,6 +401,8 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
     setMethod(hasAth ? 'ath_movil' : 'cash')
     setGift(false)
     setCode('')
+    setCards(null)
+    setFind('')
     setTip(0)
     setOtherTip('')
     setPart(null)
@@ -405,7 +415,7 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
 
   async function save() {
     if (!(amount > 0)) return setError('Escribe cuánto te dio.')
-    if (gift && code.trim().length < 4) return setError('Escribe el código de la tarjeta de regalo.')
+    if (gift && code.trim().length < 4) return setError('Escoge la tarjeta de regalo.')
     setBusy(true)
     setError('')
     try {
@@ -469,7 +479,34 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
               <Gift size={24} /> Tarjeta de regalo
             </button>
           </div>
-          {gift && <Input aria-label="Código de la tarjeta de regalo" autoFocus value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Código (ej. GLOW-4827)" className="mt-2 text-center font-mono text-xl! font-extrabold tracking-widest" />}
+          {gift && (
+            <div className="mt-3">
+              <div className="mb-2 text-base font-extrabold text-slate-800">¿Cuál tarjeta?</div>
+              {cards && cards.length > 5 && (
+                <Input aria-label="Buscar tarjeta" value={find} onChange={(e) => setFind(e.target.value)} placeholder="Buscar por nombre o código" className="mb-2" />
+              )}
+              {cards === null ? <p className="text-base text-slate-500">Buscando…</p> : cards.length === 0 ? (
+                <p className="rounded-2xl bg-slate-50 p-3 text-base text-slate-600">No hay tarjetas de regalo con dinero. Véndelas en Más → Tarjetas de regalo.</p>
+              ) : (
+                <div className="max-h-64 space-y-2 overflow-y-auto" role="radiogroup" aria-label="¿Cuál tarjeta?">
+                  {cards.filter((c) => !find.trim() || `${c.code} ${c.recipient_name ?? ''}`.toLowerCase().includes(find.trim().toLowerCase())).map((c) => {
+                    const on = code === c.code
+                    return (
+                      <button key={c.code} type="button" role="radio" aria-checked={on} onClick={() => setCode(c.code)}
+                        className={`flex min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left ${on ? 'bg-pink-600 text-white' : 'bg-pink-50 text-slate-900'}`}>
+                        <Gift size={22} className={on ? 'text-white' : 'text-pink-600'} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-base font-bold">{c.recipient_name ? `Para ${c.recipient_name}` : 'Tarjeta de regalo'}</span>
+                          <span className={`block font-mono text-sm ${on ? 'text-white/85' : 'text-slate-500'}`}>{c.code}</span>
+                        </span>
+                        <span className="shrink-0 text-lg font-extrabold">{formatMoney(Number(c.balance))}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {error && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}
