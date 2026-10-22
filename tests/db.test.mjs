@@ -634,3 +634,18 @@ test('pedir información (página /info): un visitante sin cuenta deja nombre y 
   await as(admin, `select admin_mark_info_seen()`)
   assert.equal(Number((await one(admin, `select admin_unseen_info() n`)).n), 0)
 })
+
+test('piscinas: es un oficio más; la prueba y los ejemplos traen piscinas', async () => {
+  const V = (await db.query(`insert into auth.users(is_anonymous) values (true) returning id`)).rows[0].id
+  await as(V, `select start_trial('pool')`)
+  assert.equal((await one(V, `select business_type from mechanics where profile_id = '${V}'`)).business_type, 'pool')
+  assert.ok((await as(V, `select name from boats`)).map((r) => r.name).includes('Piscina del condominio'))
+
+  const P = (await db.query(`insert into auth.users(email) values ('aqua@piscinas.test') returning id`)).rows[0].id
+  await as(P, `select set_my_role('mechanic','Pedro Aqua','787-555-0999','Dorado','Aqua Pools')`)
+  await as(P, `update mechanics set business_type = 'pool', business_type_set = true where profile_id = '${P}'`)
+  await as(P, `select load_examples()`)
+  assert.equal((await one(P, `select count(*)::int n from boats where name like 'Piscina%'`)).n, 3)
+  const admin = (await sys(`select id from profiles where email = 'santiagoortizfrancisco@gmail.com'`))[0].id
+  assert.ok((await one(admin, `select admin_new_signups() d`)).d.some((s) => s.business_type === 'pool' && s.email === 'aqua@piscinas.test'))
+})

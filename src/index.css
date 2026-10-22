@@ -46,6 +46,21 @@ body[data-trade="beauty"] { background-color: #fdf2f8; background-image: url("/f
   --color-sky-700: #be185d;
 }
 body[data-trade="beauty"] { color: #500724; }
+/* Piscinas: aqua clarito */
+body[data-trade="pool"] { background-image: none; background-color: #ecfeff; }
+[data-trade="pool"] {
+  --color-navy-50: #ecfeff;
+  --color-navy-100: #cffafe;
+  --color-navy-600: #0891b2;
+  --color-navy-700: #0e7490;
+  --color-navy-800: #0891b2;
+  --color-navy-900: #164e63;
+  --color-sun-400: #0891b2;
+  --color-sun-500: #0e7490;
+  --color-blue-50: #ecfeff;
+  --color-blue-100: #cffafe;
+  --color-blue-700: #0e7490;
+}
 body[data-trade="ac"], body[data-trade="plumbing"], body[data-trade="electrical"], body[data-trade="general"], body[data-trade="auto"] { background-image: none; background-color: #eef2f7; }
 /* Respetar el "notch" del iPhone */
 .safe-top { padding-top: max(env(safe-area-inset-top), 0.25rem); }

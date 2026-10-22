@@ -140,7 +140,7 @@ export default function Home() {
       )}
       {look === 'plain' && (
         <div className="grid grid-cols-2 gap-3">
-          <PlainTile to="/citas/nueva" icon={CalendarDays} label="Hacer cita" color="#1d4ed8" />
+          <PlainTile to="/citas/nueva" icon={CalendarDays} label="Hacer cita" color={words.trade === 'pool' ? '#0891b2' : '#1d4ed8'} />
           <PlainTile to="/cobrar" icon={Receipt} label="Factura rápida" color="#0369a1" />
           <PlainTile to="/clientes" icon={Users} label={words.Clients} color="#334155" />
           <PlainTile to="/trabajos" icon={Wallet} label="Me deben" sub={debt} color="#dc2626" />

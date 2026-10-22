@@ -101,7 +101,8 @@ export default function Layout() {
 
   const style = ROLE_STYLE[isMechanic ? 'mechanic' : 'client']
   // Salón: si no escogió color (o tiene el negro de siempre), la barra es rosada
-  const headerColor = words.salon && (!brand.color || brand.color === DEFAULT_BRAND) ? '#db2777' : brand.color
+  const plainBrand = !brand.color || brand.color === DEFAULT_BRAND
+  const headerColor = words.salon && plainBrand ? '#db2777' : words.trade === 'pool' && plainBrand ? '#0e7490' : brand.color
 
   return (
     <div className="min-h-full">

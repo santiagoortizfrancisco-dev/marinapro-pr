@@ -14,6 +14,7 @@ export const BRAND_COLORS = [
   { value: '#db2777', label: 'Rosado' },
   { value: '#be185d', label: 'Fucsia' },
   { value: '#7e22ce', label: 'Morado' },
+  { value: '#0e7490', label: 'Aqua' },
 ]
 
 export const DEFAULT_BRAND = '#0b1220'

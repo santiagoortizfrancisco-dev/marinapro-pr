@@ -3,7 +3,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { db } from './db'
 
 /** A qué se dedica el negocio: cambia las palabras del app y qué secciones salen. */
-export type Trade = 'marine' | 'beauty' | 'ac' | 'plumbing' | 'electrical' | 'auto' | 'general'
+export type Trade = 'marine' | 'beauty' | 'ac' | 'plumbing' | 'electrical' | 'auto' | 'pool' | 'general'
 
 export const TRADES: { value: Trade; label: string; emoji: string }[] = [
   { value: 'beauty', label: 'Uñas, salón y spa', emoji: '💅' },
@@ -12,6 +12,7 @@ export const TRADES: { value: Trade; label: string; emoji: string }[] = [
   { value: 'plumbing', label: 'Plomería', emoji: '🔧' },
   { value: 'electrical', label: 'Electricidad', emoji: '⚡' },
   { value: 'auto', label: 'Mecánica de autos', emoji: '🚗' },
+  { value: 'pool', label: 'Piscinas', emoji: '🏊' },
   { value: 'general', label: 'Otro servicio', emoji: '🛠️' },
 ]
 
@@ -59,7 +60,7 @@ export interface Words {
   Clients: string
 }
 
-const female = (w: string) => w === 'propiedad'
+const female = (w: string) => w === 'propiedad' || w === 'piscina'
 
 function build(trade: Trade, item: string, items: string, itemExample: string, worker: string): Words {
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
@@ -76,7 +77,7 @@ function build(trade: Trade, item: string, items: string, itemExample: string, w
     noItem: `Sin ${item} todavía`,
     delItem: female(item) ? `de la ${item}` : `del ${item}`,
     elItem: female(item) ? `la ${item}` : `el ${item}`,
-    hasMakeModel: item !== 'propiedad',
+    hasMakeModel: item !== 'propiedad' && item !== 'piscina',
     itemOf: (name) => `${cap(item)} de ${name}`,
     itemExample,
     engines: marine,
@@ -98,6 +99,7 @@ export function wordsFor(trade: Trade | null | undefined): Words {
     case 'plumbing': return build('plumbing', 'propiedad', 'propiedades', 'Casa en Bayamón', 'plomero')
     case 'electrical': return build('electrical', 'propiedad', 'propiedades', 'Local comercial', 'electricista')
     case 'auto': return build('auto', 'carro', 'carros', 'Toyota Corolla 2018', 'mecánico')
+    case 'pool': return build('pool', 'piscina', 'piscinas', 'Piscina de la casa', 'técnico')
     case 'general': return build('general', 'propiedad', 'propiedades', 'Casa de la familia Rivera', 'técnico')
     default: return build('marine', 'bote', 'botes', 'La Tranquila', 'mecánico')
   }
@@ -152,6 +154,7 @@ export const JOB_IDEAS: Record<Trade, string[]> = {
   plumbing: ['Salidero', 'Destape', 'Instalación de inodoro', 'Calentador de agua', 'Cambio de llave', 'Reparación de tubería', 'Diagnóstico', 'Cisterna / bomba de agua'],
   electrical: ['Breaker se dispara', 'Instalación de abanico', 'Instalación de tomacorriente', 'Revisión del panel', 'Instalación de lámparas', 'Generador / planta', 'Diagnóstico', 'Certificación eléctrica'],
   auto: ['Cambio de aceite', 'Frenos', 'Diagnóstico (scanner)', 'Batería', 'Alineación y balanceo', 'Aire acondicionado del carro', 'Suspensión', 'Afinamiento'],
+  pool: ['Limpieza semanal', 'Agua verde (tratamiento de choque)', 'Balance de químicos', 'Cloro y químicos', 'Limpieza del filtro', 'Cambio de arena del filtro', 'Reparación de bomba', 'Instalación de bomba', 'Aspirado y cepillado', 'Limpieza de jacuzzi', 'Diagnóstico'],
   general: ['Visita y diagnóstico', 'Reparación', 'Instalación', 'Mantenimiento', 'Estimado'],
 }
 
@@ -162,5 +165,6 @@ export const PROBLEM_EXAMPLE: Record<Trade, string> = {
   plumbing: 'Salidero debajo del fregadero',
   electrical: 'El breaker de la cocina se dispara',
   auto: 'Los frenos chillan al parar',
+  pool: 'El agua está verde',
   general: 'Lo que le dijo el cliente',
 }

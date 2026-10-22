@@ -28,6 +28,7 @@ const TRADES: { emoji: string; name: string; text: string }[] = [
   { emoji: '🚤', name: 'Mecánicos de botes', text: 'Botes y motores, marina y muelle, piezas, estimados, prueba en el agua y próximo servicio.' },
   { emoji: '🚗', name: 'Mecánica de autos', text: 'Carros con marca y modelo, piezas y mano de obra, estimados y cambio de aceite.' },
   { emoji: '❄️', name: 'Aire acondicionado', text: 'Equipos de cada cliente, mantenimientos y recordatorio de la próxima limpieza.' },
+  { emoji: '🏊', name: 'Piscinas', text: 'Cada piscina de tus clientes, limpiezas semanales, químicos, filtro y bomba, y el recordatorio de la próxima visita.' },
   { emoji: '🔧', name: 'Plomería', text: 'Propiedades de cada cliente, materiales, visitas y estimados que el cliente aprueba.' },
   { emoji: '⚡', name: 'Electricidad', text: 'Trabajos por propiedad, materiales, estimados y facturas con IVU.' },
   { emoji: '🛠️', name: 'Todo servicio en la calle', text: 'Si trabajas por cita y cobras por servicio, el app se adapta a tus palabras.' },

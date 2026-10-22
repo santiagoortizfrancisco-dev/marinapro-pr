@@ -1310,3 +1310,15 @@ test('página informativa (/info): se abre sin cuenta, dice lo que hace y lleva 
   await expect(page.getByLabel('Piden información')).toContainText('lola@curiosa.pr')
   await expect(page.getByLabel('Piden información')).toContainText('¿Cuánto cuesta?')
 })
+
+test('piscinas: el negocio de piscinas usa sus palabras y su color aqua', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Piscinas/ }).click()
+  await expect(page.getByRole('link', { name: /Factura rápida/ }).first()).toBeVisible()
+  await expect(page.locator('body')).toHaveAttribute('data-trade', 'pool')
+  await expect(page.locator('header').first()).toHaveCSS('background-color', 'rgb(14, 116, 144)')
+  await page.getByRole('link', { name: 'Clientes', exact: true }).first().click()
+  await page.getByRole('link', { name: /Ana Martínez/ }).first().click()
+  await expect(page.getByRole('heading', { name: 'Piscinas' })).toBeVisible()
+  await expect(page.getByText('Marca')).toHaveCount(0)
+})
