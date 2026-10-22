@@ -656,6 +656,28 @@ test('registro: crea su cuenta solo y entra enseguida, sin esperar aprobación',
   await nuevo.close()
 })
 
+test('registro de un salón: entra derecho al salón rosado, sin error de "No se pudo guardar"', async ({ browser }) => {
+  const nueva = await browser.newPage()
+  await nueva.goto('http://localhost:4321/')
+  await nueva.getByRole('button', { name: /Crea tu cuenta/ }).click()
+  await nueva.getByLabel('Tu nombre completo *').fill('Iris Rivera')
+  await nueva.getByLabel('Nombre de tu compañía').fill('Salón Iris')
+  await nueva.getByLabel('Teléfono / WhatsApp *').fill('787-555-0777')
+  await nueva.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await nueva.getByLabel('Tu email *').fill('iris@salon.test')
+  await nueva.getByLabel('Tu PIN').fill('482913')
+  await nueva.getByLabel('Repite el PIN').fill('482913')
+  await nueva.getByRole('button', { name: /Crear mi cuenta/ }).click()
+  await expect(nueva.locator('header').getByText('Salón Iris')).toBeVisible()
+  await expect(nueva.getByRole('link', { name: /Cobrar ahora/ })).toBeVisible()
+  await expect(nueva.getByText('No se pudo guardar')).toHaveCount(0)
+  await expect(nueva.locator('header').first()).toHaveCSS('background-color', 'rgb(219, 39, 119)')
+  const s = await state()
+  const p = s.profiles.find((x) => x.email === 'iris@salon.test')!
+  expect(s.mechanics.find((m) => m.profile_id === p.id)).toMatchObject({ business_type: 'beauty', use_estimates: false })
+  await nueva.close()
+})
+
 test('factura rápida: sin cita, con cliente nuevo; Ya me pagó deja la factura pagada y en Cobros', async ({ page }) => {
   await login(page)
   await page.getByRole('link', { name: 'Cobros' }).click()
@@ -872,7 +894,10 @@ test('factura rápida: lo que se escribe sin precio también va en la factura (c
   await page.getByLabel('Descripción 2').fill('Cambio de filtros de gasolina')
   await page.getByRole('button', { name: /Añadir línea/ }).click()
   await page.getByLabel('Descripción 3').fill('Lavado del motor')
-  await page.getByRole('button', { name: /Añadir línea/ }).click()
+  await expect(async () => {
+    await page.getByRole('button', { name: /Añadir línea/ }).click()
+    await expect(page.getByLabel('Precio 4')).toBeVisible({ timeout: 1000 })
+  }).toPass()
   await page.getByLabel('Precio 4').fill('25')
   await page.getByRole('button', { name: 'Hacer factura' }).click()
   await expect(page.getByRole('alert')).toContainText('línea 4')
@@ -1064,12 +1089,21 @@ test('salón: el inicio tiene su estilo de belleza (sin baterías) y "Cobrar aho
   await page.getByRole('button', { name: 'Añadir', exact: true }).click()
   await expect(page.getByRole('button', { name: /Diseño especial/ })).toBeVisible()
 
+  // Depósito: se guarda aparte y se resta al cobrar
+  await page.getByRole('button', { name: 'Cobrar depósito' }).click()
+  await page.getByRole('button', { name: '$10', exact: true }).click()
+  await page.getByRole('radio', { name: /Efectivo/ }).click()
+  await page.getByRole('button', { name: 'Guardar depósito $10.00' }).click()
+  await expect(page.getByText(/^Depósito \d/)).toBeVisible()
+  expect((await state()).payments.at(-1)).toMatchObject({ amount: 10, method: 'cash', tip: 0 })
+
   // Cambiar el precio tocando la línea
   await page.getByRole('button', { name: /Diseño especial/ }).click()
   await expect(page.getByLabel('Precio ($)')).toHaveValue('25')
   await page.getByLabel('Precio ($)').fill('30')
   await page.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByRole('button', { name: /Diseño especial/ })).toContainText('$30.00')
+  await expect(page.getByRole('button', { name: /^Cobrar \$/ })).toHaveText('Cobrar $23.45') // 30 + IVU − 10 de depósito
   const appt = (await state()).appointments.find((a) => a.title === 'Diseño especial')
   expect(appt).toBeTruthy()
 

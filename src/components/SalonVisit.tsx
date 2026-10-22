@@ -56,6 +56,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const { session, profile } = useAuth()
   const [params, setParams] = useSearchParams()
   const [payOpen, setPayOpen] = useState(false)
+  const [depositOpen, setDepositOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [edit, setEdit] = useState<Part | null>(null)
   const [busy, setBusy] = useState(false)
@@ -247,12 +248,12 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
             </div>
             {payments.length > 0 && !done && payments.map((p) => (
               <div key={p.id} className="flex justify-between py-1 text-base text-emerald-700">
-                <span>Pagó {formatDate(p.paid_at).slice(0, 5)}</span><span>−{formatMoney(Number(p.amount))}</span>
+                <span>Depósito {formatDate(p.paid_at).slice(0, 5)}</span><span>−{formatMoney(Number(p.amount))}</span>
               </div>
             ))}
             <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-2">
               <span className="text-lg font-extrabold text-slate-900">{payments.length && !done ? 'Falta' : 'Total'}</span>
-              <span className="text-3xl font-extrabold text-slate-900" aria-label="Total de la cuenta">{formatMoney(payments.length && !done ? balance : due)}</span>
+              <span className="text-3xl font-extrabold text-slate-900" aria-label="Total de la cuenta">{!done && totals.total <= 0 ? '—' : formatMoney(payments.length && !done ? balance : due)}</span>
             </div>
           </div>
         </div>
@@ -262,7 +263,14 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
             className="mt-4 flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-xl font-extrabold text-white shadow-lg shadow-emerald-900/20 active:bg-emerald-700 disabled:bg-slate-300 disabled:shadow-none">
             {unpriced ? <>Ponle precio a “{unpriced.description}”</> : balance > 0 ? <>Cobrar {formatMoney(balance)}</> : 'Añade lo que vas a cobrar'}
           </button>
-        ) : (
+        ) : null}
+        {!done && (
+          <button type="button" disabled={busy} onClick={() => setDepositOpen(true)}
+            className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-pink-700 ring-2 ring-pink-300 active:bg-pink-50">
+            <Banknote size={22} /> Cobrar depósito
+          </button>
+        )}
+        {done && (
           <div className="mt-4 space-y-3">
             <div className="rounded-3xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
               <p className="flex items-center gap-2 text-xl font-extrabold text-emerald-800"><CheckCircle2 /> Pagada el {formatDate(invoice?.paid_at ?? payments.at(-1)?.paid_at ?? wo.created_at)}</p>
@@ -313,6 +321,8 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
 
       {done && <Button variant="ghost" disabled={busy} onClick={unmarkPaid} className="mt-3">Desmarcar pagada</Button>}
 
+      <DepositSheet open={depositOpen} hasAth={Boolean(mech.ath_movil_number)} onClose={() => setDepositOpen(false)}
+        onSave={async (method, amount) => { await addPayment(woId, amount, method, 0); setDepositOpen(false); reload() }} />
       <CheckoutSheet open={payOpen} balance={balance} hasAth={Boolean(mech.ath_movil_number)} onClose={() => setPayOpen(false)} onPay={receive} />
       <AddServiceSheet open={addOpen} menu={menu} busy={busy} onClose={() => setAddOpen(false)} onAdd={addLine} />
       <LineSheet part={edit} busy={busy} onClose={() => setEdit(null)} onSave={saveLine} onRemove={removeLine} />
@@ -412,6 +422,75 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
           <CheckCircle2 /> {busy ? 'Guardando…' : `Cobrar ${formatMoney(total)}`}
         </button>
         {tipValue > 0 && <p className="-mt-3 text-center text-sm text-slate-500">Incluye {formatMoney(tipValue)} de propina para la empleada</p>}
+      </div>
+    </Sheet>
+  )
+}
+
+/** Depósito: la cantidad que ella quiera (antes de la cita o al llegar) y cómo pagó. Se resta al cobrar. */
+function DepositSheet({ open, hasAth, onClose, onSave }: { open: boolean; hasAth: boolean; onClose: () => void; onSave: (m: Method, amount: number) => Promise<void> }) {
+  const [amount, setAmount] = useState('')
+  const [method, setMethod] = useState<Method>('ath_movil')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    if (!open) return
+    setAmount('')
+    setMethod(hasAth ? 'ath_movil' : 'cash')
+    setError('')
+  }, [open, hasAth])
+  const value = num(amount) ?? 0
+
+  async function save() {
+    if (!(value > 0)) return setError('Escribe cuánto te dio de depósito.')
+    setBusy(true)
+    setError('')
+    try {
+      await onSave(method, value)
+    } catch {
+      setError('No se pudo guardar. Revisa la señal e intenta otra vez.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Sheet open={open} title="Cobrar depósito" onClose={onClose}>
+      <div className="space-y-5">
+        <div>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-extrabold text-slate-400">$</span>
+            <Input aria-label="Depósito ($)" inputMode="decimal" autoFocus value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="pl-10 text-2xl! font-extrabold" />
+          </div>
+          <div className="mt-2 grid grid-cols-4 gap-2">
+            {[10, 20, 25, 50].map((v) => (
+              <button key={v} type="button" onClick={() => setAmount(String(v))} aria-pressed={value === v}
+                className={`min-h-12 rounded-2xl text-lg font-extrabold ${value === v ? 'bg-pink-600 text-white' : 'bg-slate-100 text-slate-700'}`}>${v}</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="mb-2 text-base font-extrabold text-slate-800">¿Cómo pagó?</div>
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="¿Cómo pagó el depósito?">
+            {METHODS.map((m) => {
+              const on = method === m.value
+              const Icon = m.icon
+              return (
+                <button key={m.value} type="button" role="radio" aria-checked={on} onClick={() => setMethod(m.value)}
+                  className="flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl text-base font-bold transition"
+                  style={on ? { backgroundColor: m.color, color: '#fff' } : { backgroundColor: '#f1f5f9', color: '#334155' }}>
+                  <Icon size={26} /> {m.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <p className="text-sm text-slate-500">Se resta solo cuando le cobres el resto.</p>
+        {error && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}
+        <button type="button" disabled={busy} onClick={save}
+          className="flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl bg-pink-600 text-xl font-extrabold text-white active:bg-pink-700 disabled:opacity-60">
+          <CheckCircle2 /> {busy ? 'Guardando…' : value > 0 ? `Guardar depósito ${formatMoney(value)}` : 'Guardar depósito'}
+        </button>
       </div>
     </Sheet>
   )

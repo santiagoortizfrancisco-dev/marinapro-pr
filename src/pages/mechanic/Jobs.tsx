@@ -145,7 +145,7 @@ export default function Jobs() {
           reload()
         }}
       />
-      <Fab to="/cobrar" label="Factura rápida" icon={Zap} />
+      <Fab to="/cobrar" label={w.salon ? 'Cobrar ahora' : 'Factura rápida'} icon={Zap} />
     </>
   )
 }

@@ -28,9 +28,13 @@ export default function ChooseRole() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Una sola vez: si ya se está guardando (por ejemplo, solo al entrar), otro toque no hace nada
+  const running = useRef(false)
+
   async function save(e?: FormEvent) {
     e?.preventDefault()
-    if (!supabase) return
+    if (!supabase || running.current) return
+    running.current = true
     setBusy(true)
     setError('')
     const { error } = await supabase.rpc('set_my_role', {
@@ -46,9 +50,21 @@ export default function ChooseRole() {
       if (trade === 'beauty') await supabase.rpc('seed_beauty_services', { p_mech: session!.user.id })
       try { localStorage.setItem('tipo-de-negocio', trade) } catch { /* sin memoria: no pasa nada */ }
     }
+    running.current = false
     setBusy(false)
-    if (error) setError('No se pudo guardar. Intenta otra vez.')
+    // Si ya quedó guardado antes (otro toque), no es un error: entra
+    if (error && !/ya fue escogido/.test(error.message)) setError('No se pudo guardar. Intenta otra vez.')
     else await refreshProfile()
+  }
+
+  // Se registró con todo lleno: mientras se guarda, no se enseña el formulario (para que no lo toquen dos veces)
+  if (meta.signup && meta.full_name && busy) {
+    return (
+      <div className="safe-top flex min-h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-navy-100 border-t-navy-800" />
+        <p className="text-lg font-bold text-navy-900">Preparando tu cuenta…</p>
+      </div>
+    )
   }
 
   return (

@@ -299,7 +299,7 @@ export default function QuickInvoice() {
             <div className="divide-y divide-slate-200 border-b border-slate-200">
               {lines.map((l, i) => (
                 <div key={l.key} className="grid grid-cols-[1fr_5.5rem_1.75rem] items-center gap-1 px-1">
-                  <Input id={`qi-desc-${l.key}`} aria-label={`Descripción ${i + 1}`} list="qi-todo" value={l.desc} onChange={(e) => setLine(l.key, { desc: e.target.value })} placeholder={i === 0 ? JOB_IDEAS[tw.trade][0] : 'Otra cosa'} className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-2! text-base!" />
+                  <Input id={`qi-desc-${l.key}`} aria-label={`Descripción ${i + 1}`} list="qi-todo" value={l.desc} onChange={(e) => setLine(l.key, { desc: e.target.value })} placeholder={i === 0 ? '¿Qué fue? Escríbelo aquí' : 'Otra cosa'} className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-2! text-base!" />
                   <Input aria-label={`Precio ${i + 1}`} inputMode="decimal" value={l.price} onChange={(e) => setLine(l.key, { price: e.target.value })} placeholder="$0.00" className="min-h-12! rounded-lg! border-0! bg-transparent! focus:bg-navy-50! px-2! text-right font-semibold" />
                   {lines.length > 1 ? (
                     <button type="button" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} aria-label={`Quitar línea ${i + 1}`} className="flex h-12 w-7 items-center justify-center text-slate-400 active:text-red-600">

@@ -228,7 +228,7 @@ const RPC = {
     const p = db.profiles.find((x) => x.id === caller)
     if (p.role) throw Object.assign(new Error('El rol ya fue escogido'), { status: 400 })
     Object.assign(p, { role: p_role, full_name: p_full_name, phone: p_phone, town: p_town })
-    db.mechanics.push({ ...db.mechanics[0], profile_id: caller, business_name: p_business_name ?? p_full_name, ath_movil_number: null, labor_rate_hour: 0, logo_path: null, brand_color: '#0b3b5c', next_invoice_number: 1 })
+    db.mechanics.push({ ...db.mechanics[0], profile_id: caller, business_name: p_business_name ?? p_full_name, ath_movil_number: null, labor_rate_hour: 0, logo_path: null, brand_color: '#0b1220', next_invoice_number: 1 })
     return null
   },
   get_public_document: ({ p_token }) => publicDoc(p_token),
