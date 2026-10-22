@@ -42,6 +42,8 @@ export default function SalonAppointmentForm() {
   const [day, setDay] = useState(startDay)
   const [time, setTime] = useState(defaultTime(startDay, params.get('hora')))
   const [notes, setNotes] = useState('')
+  // Tiempo: según los servicios (o 1 hora), o el que ella escoja
+  const [length, setLength] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [sameDay, setSameDay] = useState<{ id: string; starts_at: string; duration_min: number; staff_id: string | null; boats: { name: string } | null }[]>([])
@@ -93,7 +95,8 @@ export default function SalonAppointmentForm() {
   }, [clients, search])
 
   const selected = menu.filter((m) => picked.includes(m.id))
-  const minutes = selected.reduce((t, s) => t + (s.duration_min ?? 30), 0)
+  const fromServices = selected.reduce((t, s) => t + (s.duration_min ?? 30), 0)
+  const minutes = length ?? (fromServices || 60)
   const price = selected.reduce((t, s) => t + Number(s.last_price ?? 0), 0)
   const categories = [...new Set(menu.map((m) => m.category ?? 'Otros'))]
   const busyThen = sameDay.filter((x) => !staffId || !x.staff_id || x.staff_id === staffId)
@@ -104,22 +107,23 @@ export default function SalonAppointmentForm() {
 
   async function save(e: FormEvent) {
     e.preventDefault()
+    // Lo único que hace falta: quién y a qué hora
     if (!chosen && !(newClient && newClient.full_name.trim().length > 1)) return setError('Escoge la clienta o toca “Clienta nueva”.')
-    if (selected.length === 0) return setError('Escoge por lo menos un servicio.')
+    if (!day || !time) return setError('Pon el día y la hora.')
     setBusy(true)
     setError('')
     try {
       const uid = session!.user.id
       let cid = chosen?.id ?? ''
       let name = chosen?.full_name ?? ''
-      if (!chosen && newClient) {
+      if (!chosen && newClient && newClient.full_name.trim()) {
         name = newClient.full_name.trim()
         const c = await db().from('clients').insert({ mechanic_id: uid, full_name: name, phone: blank(newClient.phone) }).select('id').single()
         if (c.error) throw c.error
         cid = (c.data as { id: string }).id
       }
       const recordId = await clientRecordId(cid, name)
-      const title = selected.map((s) => s.name).join(' + ')
+      const title = selected.map((s) => s.name).join(' + ') || null
       const row = { boat_id: recordId, staff_id: staffId, starts_at: prToISO(day, time), duration_min: Math.max(15, minutes), title, notes: blank(notes) }
       let apptId = id
       if (id) {
@@ -148,7 +152,7 @@ export default function SalonAppointmentForm() {
           if (w.error) throw w.error
           woId = (w.data as { id: string }).id
         }
-        const p = await db().from('work_order_parts').insert(selected.map((s) => ({
+        const p = selected.length === 0 ? { error: null } : await db().from('work_order_parts').insert(selected.map((s) => ({
           work_order_id: woId, kind: 'service', description: s.name, qty: 1, unit_cost: Number(s.last_price ?? 0), supplied_by: 'mechanic',
         })))
         if (p.error) throw p.error
@@ -204,7 +208,8 @@ export default function SalonAppointmentForm() {
 
         {/* Servicios */}
         <div role="group" aria-label="Servicios">
-          <span className="mb-1.5 block text-base font-semibold text-slate-800">Servicios *</span>
+          <span className="mb-0.5 block text-base font-semibold text-slate-800">Servicios (opcional)</span>
+          <span className="mb-2 block text-sm text-slate-500">El precio lo pones o lo cambias al cobrar.</span>
           {categories.map((cat) => (
             <div key={cat} className="mb-3">
               <div className="mb-1 text-xs font-bold uppercase tracking-wide text-navy-700">{cat}</div>
@@ -225,7 +230,7 @@ export default function SalonAppointmentForm() {
           ))}
           {selected.length > 0 && (
             <div className="flex items-center justify-between rounded-xl bg-pink-50 px-4 py-3 text-base font-bold text-pink-900" aria-label="Resumen de la cita">
-              <span>{minutesLabel(minutes)}</span><span>{formatMoney(price)}</span>
+              <span>{minutesLabel(fromServices)}</span><span>{formatMoney(price)}</span>
             </div>
           )}
         </div>
@@ -263,6 +268,14 @@ export default function SalonAppointmentForm() {
             <ul className="mt-1">{busyThen.map((x) => <li key={x.id}>{formatTime(x.starts_at)} a {formatTime(new Date(new Date(x.starts_at).getTime() + x.duration_min * 60000))} · {x.boats?.name}</li>)}</ul>
           </div>
         )}
+
+        <Field label="¿Cuánto tiempo? (opcional)">
+          <select aria-label="¿Cuánto tiempo?" value={length ?? ''} onChange={(e) => setLength(e.target.value ? Number(e.target.value) : null)}
+            className="block min-h-14 w-full rounded-xl border-2 border-slate-300 bg-white px-4 text-lg">
+            <option value="">{fromServices ? `Según los servicios (${minutesLabel(fromServices)})` : '1 hora'}</option>
+            {[15, 30, 45, 60, 90, 120, 150, 180, 240].map((m) => <option key={m} value={m}>{minutesLabel(m)}</option>)}
+          </select>
+        </Field>
 
         <Field label="Nota (opcional)" hint="Largo, color, diseño, lo que pidió">
           <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Almendrado largo, color nude" />
