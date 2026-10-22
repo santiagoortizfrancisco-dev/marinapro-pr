@@ -581,3 +581,34 @@ test('tarjetas de regalo: solo las ve su negocio; pagar con la tarjeta le resta,
   await as(A, `delete from payments where id = '${pay}'`)
   assert.equal(Number((await one(A, `select balance from gift_cards where id = '${card}'`)).balance), 50, 'se le devuelve')
 })
+
+test('registro: la cuenta nueva empieza con ejemplos de su oficio (se borran con un botón) y al admin le llega el registro con nombre, oficio, email y teléfono', async () => {
+  const C = (await db.query(`insert into auth.users(email) values ('glow@salon.test') returning id`)).rows[0].id
+  await as(C, `select set_my_role('mechanic','Gloria Rivera','787-555-0888','Salinas','Glow Studio')`)
+  await as(C, `update mechanics set business_type = 'beauty', business_type_set = true, use_estimates = false where profile_id = '${C}'`)
+
+  // Al admin: queda el registro con sus datos
+  const admin = (await sys(`select id from profiles where email = 'santiagoortizfrancisco@gmail.com'`))[0].id
+  assert.ok(await fails(() => as(C, `select admin_new_signups()`)), 'solo el admin ve los registros')
+  assert.ok(Number((await one(admin, `select admin_unseen_signups() n`)).n) >= 1)
+  const list = (await one(admin, `select admin_new_signups() d`)).d
+  assert.deepEqual((({ full_name, business_name, business_type, email, phone }) => ({ full_name, business_name, business_type, email, phone }))(list.find((s) => s.email === 'glow@salon.test')),
+    { full_name: 'Gloria Rivera', business_name: 'Glow Studio', business_type: 'beauty', email: 'glow@salon.test', phone: '787-555-0888' })
+  await as(admin, `select admin_mark_signups_seen()`)
+  assert.equal(Number((await one(admin, `select admin_unseen_signups() n`)).n), 0)
+  assert.equal(Number((await one(C, `select admin_unseen_signups() n`)).n), 0, 'a los demás les sale 0')
+
+  // Ejemplos de salón: clientas, empleadas, citas y cobros; se borran con un botón
+  await as(C, `select load_examples()`)
+  assert.equal((await one(C, `select count(*)::int n from clients where is_example`)).n, 4)
+  assert.equal((await one(C, `select count(*)::int n from staff where is_example`)).n, 2)
+  assert.ok((await one(C, `select count(*)::int n from invoices`)).n >= 4)
+  await as(C, `select load_examples()`) // otra vez no duplica
+  assert.equal((await one(C, `select count(*)::int n from clients`)).n, 4)
+  await as(C, `insert into clients (mechanic_id, full_name) values ('${C}', 'Clienta de verdad')`)
+  await as(C, `select clear_examples()`)
+  assert.deepEqual((await as(C, `select full_name from clients`)).map((r) => r.full_name), ['Clienta de verdad'])
+  assert.equal((await one(C, `select count(*)::int n from staff`)).n, 0)
+  assert.equal((await one(C, `select count(*)::int n from invoices`)).n, 0)
+  assert.equal((await one(C, `select next_invoice_number n from mechanics where profile_id = '${C}'`)).n, 1)
+})

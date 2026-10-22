@@ -20,6 +20,7 @@ export default function More() {
   }, [])
   const { data: unread } = useLoad(async () => (isAdmin ? Number((await db().rpc('admin_unread_messages')).data ?? 0) : 0), [isAdmin])
   const { data: pending } = useLoad(async () => (isAdmin ? Number((await db().rpc('admin_pending_count')).data ?? 0) : 0), [isAdmin])
+  const { data: signups } = useLoad(async () => (isAdmin ? Number((await db().rpc('admin_unseen_signups')).data ?? 0) : 0), [isAdmin])
   const [contactOpen, setContactOpen] = useState(false)
 
   const row = (label: string, value: string | null | undefined) => (
@@ -107,6 +108,7 @@ export default function More() {
           </span>
           <span className="flex flex-col items-end gap-1">
             {!!pending && <span className="rounded-full bg-red-600 px-2.5 py-1 text-sm font-extrabold text-white">{pending} por aprobar</span>}
+            {!!signups && <span className="rounded-full bg-red-600 px-2.5 py-1 text-sm font-extrabold text-white">{signups} {signups === 1 ? 'nuevo' : 'nuevos'}</span>}
             {!!unread && <span className="rounded-full bg-red-600 px-2.5 py-1 text-sm font-extrabold text-white">{unread} {unread === 1 ? 'mensaje' : 'mensajes'}</span>}
           </span>
           <ChevronRight />

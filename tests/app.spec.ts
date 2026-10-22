@@ -676,6 +676,14 @@ test('registro de un salón: entra derecho al salón rosado, sin error de "No se
   const p = s.profiles.find((x) => x.email === 'iris@salon.test')!
   expect(s.mechanics.find((m) => m.profile_id === p.id)).toMatchObject({ business_type: 'beauty', business_type_set: true, use_estimates: false })
 
+  // Empieza con ejemplos y los borra con un botón
+  await nueva.goto('http://localhost:4321/')
+  await expect(nueva.getByText('Estos son ejemplos')).toBeVisible()
+  nueva.once('dialog', (d) => d.accept())
+  await nueva.getByRole('button', { name: /Borrar ejemplos/ }).click()
+  await expect(nueva.getByText('Estos son ejemplos')).toHaveCount(0)
+  expect((await state()).clients.filter((c) => c.mechanic_id === p.id)).toHaveLength(0)
+
   // El oficio quedó fijo: en Mi negocio se ve, pero no se puede cambiar (solo el administrador)
   await nueva.goto('http://localhost:4321/mas/negocio')
   await expect(nueva.getByLabel('Tipo de negocio')).toContainText('Uñas, salón y spa')
@@ -1246,4 +1254,32 @@ test('salón: tarjetas de regalo — se vende con su código y se usa al cobrar 
   await expect(page.getByText(/Pagada el/)).toBeVisible()
   await expect(page.getByText(/Tarjeta de regalo/).first()).toBeVisible()
   expect((await state()).gift_cards.find((c) => c.id === card.id)!.balance).toBe(16.55)
+})
+
+test('admin: le sale quién se registró (nombre, negocio, oficio, email y teléfono) con el numerito de nuevos', async ({ page, browser }) => {
+  const nuevo = await browser.newPage()
+  await nuevo.goto('http://localhost:4321/')
+  await nuevo.getByRole('button', { name: /Crea tu cuenta/ }).click()
+  await nuevo.getByLabel('Tu nombre completo *').fill('Wanda Uñas')
+  await nuevo.getByLabel('Nombre de tu compañía').fill('Wanda Nails')
+  await nuevo.getByLabel('Teléfono / WhatsApp *').fill('787-555-0666')
+  await nuevo.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await nuevo.getByLabel('Tu email *').fill('wanda@nails.test')
+  await nuevo.getByLabel('Tu PIN').fill('482913')
+  await nuevo.getByLabel('Repite el PIN').fill('482913')
+  await nuevo.getByRole('button', { name: /Crear mi cuenta/ }).click()
+  await expect(nuevo.locator('header').getByText('Wanda Nails')).toBeVisible()
+  await nuevo.close()
+
+  await login(page)
+  await page.getByRole('link', { name: 'Más' }).click()
+  await expect(page.getByText(/1 nuevo/)).toBeVisible()
+  await page.getByRole('link', { name: /Admin/ }).click()
+  const box = page.getByLabel('Registros nuevos')
+  await expect(box).toContainText('Wanda Nails')
+  await expect(box).toContainText('Wanda Uñas')
+  await expect(box).toContainText('Uñas, salón y spa')
+  await expect(box).toContainText('787-555-0666')
+  await expect(box).toContainText('wanda@nails.test')
+  await expect.poll(async () => (await state()).admin_signups.every((x) => x.seen_at)).toBe(true)
 })

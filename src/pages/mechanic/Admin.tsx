@@ -6,6 +6,7 @@ import { BackTitle, ErrorBox, Loading } from '../../components/ui'
 import AdminDirectory from '../../components/AdminDirectory'
 import AdminMessages from '../../components/AdminMessages'
 import AdminPending from '../../components/AdminPending'
+import AdminSignups from '../../components/AdminSignups'
 
 interface Row {
   id: string
@@ -83,6 +84,7 @@ export default function Admin() {
         </div>
       )}
 
+      <AdminSignups />
       <AdminPending />
       <AdminMessages />
       <AdminDirectory />

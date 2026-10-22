@@ -6,6 +6,7 @@ import { GaugeIcon, PistonIcon, PropellerIcon, SparkPlugIcon } from '../../compo
 import { useAuth } from '../../auth/AuthProvider'
 import DueServices from '../../components/DueServices'
 import SalonReminders from '../../components/SalonReminders'
+import ExamplesBanner from '../../components/ExamplesBanner'
 import { db } from '../../lib/db'
 import { formatDate, formatLongDate, formatMoney, formatTime, prRange, prTime, todayPR } from '../../lib/format'
 import { WORK_ORDER_STATUS } from '../../lib/catalog'
@@ -118,6 +119,8 @@ export default function Home() {
         <h1 className="text-3xl font-extrabold tracking-tight text-navy-900">¡{greeting()}{first ? `, ${first}` : ''}!</h1>
         <p className="mt-1 text-base text-slate-600">{formatLongDate(today)}</p>
       </div>
+
+      <ExamplesBanner />
 
       {look === 'battery' && (
         <div className="grid grid-cols-2 gap-x-3 gap-y-4">

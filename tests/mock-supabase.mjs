@@ -70,6 +70,7 @@ function reset() {
     invoices: [],
     payments: [],
     gift_cards: [],
+    admin_signups: [],
     staff: [],
     maintenance_schedules: [],
     notifications: [],
@@ -80,7 +81,7 @@ reset()
 // ------------------------------------------------------------------------------------------
 // Valores por defecto al crear (como en las migraciones)
 const DEFAULTS = {
-  clients: () => ({ profile_id: null, email: null, town: null, address: null, preferred_contact: 'whatsapp', notes: null }),
+  clients: () => ({ profile_id: null, email: null, town: null, address: null, preferred_contact: 'whatsapp', notes: null, is_example: false }),
   boats: () => ({ make: null, model: null, year: null, length_ft: null, hull_id: null, registration_number: null, marbete_expires: null, hull_color: null, location_type: 'water_slip', marina_name: null, slip_number: null, town: null, lat: null, lng: null, location_notes: null, notes: null }),
   appointments: () => ({ duration_min: 60, status: 'requested', title: null, systems: [], notes: null, service_request_id: null, staff_id: null, reminded_at: null, source: 'app' }),
   staff: () => ({ phone: null, color: '#2563eb', commission_rate: 0, active: true }),
@@ -319,6 +320,29 @@ const RPC = {
     ]) db.catalog_items.push({ id: randomUUID(), mechanic_id: p_mech, kind: 'service', name, category, last_price: null, duration_min, use_count: 0 })
     return null
   },
+  // Como 0025: ejemplos en la cuenta nueva, y los registros nuevos para el admin
+  load_examples: () => {
+    const m = db.mechanics.find((x) => x.profile_id === caller)
+    if (!m || db.clients.some((c) => c.mechanic_id === caller)) return null
+    for (const name of ['Ana Martínez (ejemplo)', 'Karla Rivera (ejemplo)']) {
+      const cid = randomUUID()
+      db.clients.push({ ...DEFAULTS.clients(), id: cid, mechanic_id: caller, full_name: name, phone: '787-555-0111', is_example: true, created_at: new Date().toISOString() })
+      db.boats.push({ ...DEFAULTS.boats(), id: randomUUID(), client_id: cid, name, location_type: 'home', created_at: new Date().toISOString() })
+    }
+    return null
+  },
+  clear_examples: () => {
+    const gone = db.clients.filter((c) => c.mechanic_id === caller && c.is_example).map((c) => c.id)
+    db.clients = db.clients.filter((c) => !gone.includes(c.id))
+    db.boats = db.boats.filter((b) => !gone.includes(b.client_id))
+    return null
+  },
+  admin_new_signups: () => {
+    if (caller !== U) throw Object.assign(new Error('Solo para el administrador'), { status: 400 })
+    return [...db.admin_signups].reverse()
+  },
+  admin_unseen_signups: () => (caller === U ? db.admin_signups.filter((x) => !x.seen_at).length : 0),
+  admin_mark_signups_seen: () => { if (caller === U) db.admin_signups.forEach((x) => { x.seen_at ??= new Date().toISOString() }); return null },
   booking_page: ({ p_slug }) => {
     const m = db.mechanics.find((x) => x.booking_on && String(x.booking_slug).toLowerCase() === String(p_slug).toLowerCase())
     if (!m) return null
@@ -505,6 +529,13 @@ http.createServer((req, res) => {
       }
       if (req.method === 'PATCH') {
         const patch = json()
+        // Como el aviso de 0025: al escoger el oficio por primera vez, queda el registro para el admin
+        if (table === 'mechanics' && patch.business_type_set) for (const r of found) {
+          if (r.business_type_set) continue
+          const prof = db.profiles.find((x) => x.id === r.profile_id)
+          if (prof?.trial || signups[r.profile_id]?.is_anonymous) continue
+          db.admin_signups.push({ id: randomUUID(), profile_id: r.profile_id, full_name: prof?.full_name ?? null, business_name: r.business_name, business_type: patch.business_type ?? r.business_type, email: prof?.email ?? null, phone: prof?.phone ?? null, town: prof?.town ?? null, created_at: new Date().toISOString(), seen_at: null })
+        }
         found.forEach((r) => Object.assign(r, patch))
         return out(found)
       }
