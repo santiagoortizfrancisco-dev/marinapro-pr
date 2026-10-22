@@ -5,11 +5,19 @@ import { Send, BellRing, CalendarDays, Camera, CheckCircle2, FileText, Gift, Glo
 const FB = 'https://www.facebook.com/profile.php?id=61595681820713'
 
 /** Una pantalla del app dentro de un teléfono. */
-function Phone({ src, alt, className = '' }: { src: string; alt: string; className?: string }) {
-  return (
-    <div className={`shrink-0 rounded-[2.2rem] bg-slate-900 p-2 shadow-2xl shadow-black/30 ${className}`}>
+function Phone({ src, alt, className = '', label, labelColor = '#1d4ed8' }: { src: string; alt: string; className?: string; label?: string; labelColor?: string }) {
+  const phone = (
+    <div className="rounded-[2.2rem] bg-slate-900 p-2 shadow-2xl shadow-black/30">
       <img src={src} alt={alt} className="block w-full rounded-[1.7rem]" />
     </div>
+  )
+  if (!label) return <div className={`shrink-0 ${className}`}>{phone}</div>
+  // Con su letrero arriba (para qué negocio es)
+  return (
+    <figure className={`shrink-0 ${className}`}>
+      <figcaption className="mb-2 rounded-full px-2 py-1 text-center text-xs font-extrabold leading-tight text-white shadow-lg sm:text-sm" style={{ backgroundColor: labelColor }}>{label}</figcaption>
+      {phone}
+    </figure>
   )
 }
 
@@ -140,9 +148,10 @@ export default function Landing() {
               ))}
             </ul>
           </div>
-          <div className="flex justify-center gap-4 md:justify-end">
-            <Phone src="/info/m1-inicio.webp" alt="Inicio del app para un mecánico" className="mt-10 w-36 sm:w-52" />
-            <Phone src="/info/1-inicio.webp" alt="Inicio del app para un salón" className="w-40 sm:w-60" />
+          <div className="flex items-start justify-center gap-2 sm:gap-4 md:justify-end">
+            <Phone src="/info/m1-inicio.webp" alt="Inicio del app para un mecánico" label="🔧 Mecánicos" labelColor="#1e3a8a" className="mt-10 w-[30%] sm:w-44" />
+            <Phone src="/info/1-inicio.webp" alt="Inicio del app para un salón de belleza" label="💅 Salón de belleza" labelColor="#db2777" className="w-[33%] sm:w-48" />
+            <Phone src="/info/p1-inicio.webp" alt="Inicio del app para piscinas" label="🏊 Piscinas · Mantenimiento" labelColor="#0e7490" className="mt-10 w-[30%] sm:w-44" />
           </div>
         </div>
       </section>
