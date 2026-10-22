@@ -1,6 +1,7 @@
 import { Children, isValidElement, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ChevronLeft, ChevronRight, Loader2, Plus, type LucideIcon } from 'lucide-react'
+import { useWords } from '../lib/trade'
 
 /** "Powered by" del creador del app: abajo en todas las pantallas. */
 export function PoweredBy({ dark = false }: { dark?: boolean }) {
@@ -189,10 +190,13 @@ export function PageTitle({ children, subtitle }: { children: ReactNode; subtitl
 /** Botón grande "‹ Volver atrás": regresa a la pantalla anterior; si no hay (se abrió el app directo aquí), va a Inicio. */
 export function BackButton({ to }: { to?: string }) {
   const navigate = useNavigate()
+  const { salon } = useWords()
+  const canGoBack = (window.history.state?.idx ?? 0) > 0
   return (
     <button
       type="button"
-      onClick={() => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate(to ?? '/inicio'))}
+      // Salón: regresa a la pantalla de donde vino (ej. Inicio). Los demás oficios: como siempre
+      onClick={() => (salon ? (canGoBack ? navigate(-1) : navigate(to ?? '/inicio')) : to ? navigate(to) : canGoBack ? navigate(-1) : navigate('/inicio'))}
       className={`${CARD} -ml-1 mb-3 inline-flex min-h-12 items-center gap-1 px-4 text-lg font-bold text-navy-800 active:bg-navy-50`}
     >
       <ChevronLeft size={26} strokeWidth={2.5} /> Volver atrás

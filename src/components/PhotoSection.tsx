@@ -7,7 +7,8 @@ import { compressImage } from '../lib/image'
 import type { Photo } from '../lib/types'
 
 /** Fotos del trabajo: antes, pieza vieja, pieza nueva, después. Se achican en el celular antes de subirlas. */
-export default function PhotoSection({ workOrderId, photos, onChange }: { workOrderId: string; photos: Photo[]; onChange: () => void }) {
+/** only: qué fotos se piden (el salón solo usa Antes y Después; sin piezas). */
+export default function PhotoSection({ workOrderId, photos, onChange, only }: { workOrderId: string; photos: Photo[]; onChange: () => void; only?: string[] }) {
   const { session } = useAuth()
   const [urls, setUrls] = useState<Record<string, string>>({})
   const [uploading, setUploading] = useState<string | null>(null)
@@ -60,7 +61,7 @@ export default function PhotoSection({ workOrderId, photos, onChange }: { workOr
 
   return (
     <div className="space-y-4">
-      {PHOTO_KINDS.map((k) => {
+      {PHOTO_KINDS.filter((k) => !only || only.includes(k.value)).map((k) => {
         const list = photos.filter((p) => p.kind === k.value)
         return (
           <div key={k.value}>

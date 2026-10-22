@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Banknote, CalendarClock, Camera, Check, CheckCircle2, ChevronDown, CreditCard, ExternalLink, Phone, Plus, Smartphone, Trash2, XCircle, type LucideIcon } from 'lucide-react'
+import { Banknote, CalendarClock, Receipt, Camera, Check, CheckCircle2, ChevronDown, CreditCard, ExternalLink, Phone, Plus, Smartphone, Trash2, XCircle, type LucideIcon } from 'lucide-react'
 import { WhatsAppIcon } from './BrandIcons'
 import { useAuth } from '../auth/AuthProvider'
 import { APPOINTMENT_STATUS } from '../lib/catalog'
@@ -170,6 +170,14 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
     reload()
   }
 
+  /** Factura hecha, sin cobrar todavía: queda pendiente en Me deben. */
+  async function invoiceLater() {
+    setBusy(true)
+    const { error } = await db().rpc('create_invoice', { p_wo: woId })
+    setBusy(false)
+    if (!error) reload()
+  }
+
   async function unmarkPaid() {
     if (!window.confirm('¿Quitar el pago? La cuenta vuelve a quedar sin cobrar.')) return
     setBusy(true)
@@ -264,6 +272,22 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
             {unpriced ? <>Ponle precio a “{unpriced.description}”</> : balance > 0 ? <>Cobrar {formatMoney(balance)}</> : 'Añade lo que vas a cobrar'}
           </button>
         ) : null}
+        {!done && invoice && (
+          <div className="mt-3 space-y-2 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
+            <p className="text-base font-bold text-amber-900">Factura #{invoice.number} hecha · pendiente de cobrar</p>
+            {c.phone && (
+              <a href={whatsappLink(c.phone, `Hola ${firstName}, aquí está tu factura #${invoice.number} por ${formatMoney(Number(invoice.total))}: ${window.location.origin}/d/${invoice.public_token} . ${sign}`.trim())} target="_blank" rel="noreferrer"
+                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] text-base font-bold text-white"><WhatsAppIcon size={22} /> Enviar factura por WhatsApp</a>
+            )}
+            <Link to={`/d/${invoice.public_token}`} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-base font-bold text-slate-800 ring-1 ring-slate-200"><ExternalLink size={18} /> Ver factura o PDF</Link>
+          </div>
+        )}
+        {!done && !invoice && !unpriced && totals.total > 0 && (
+          <button type="button" disabled={busy} onClick={invoiceLater}
+            className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-slate-700 ring-2 ring-slate-200 active:bg-slate-50">
+            <Receipt size={22} /> Hacer factura y cobrar después
+          </button>
+        )}
         {!done && (
           <button type="button" disabled={busy} onClick={() => setDepositOpen(true)}
             className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-pink-700 ring-2 ring-pink-300 active:bg-pink-50">
@@ -315,7 +339,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
             <Camera size={22} className="text-pink-700" /> <span className="flex-1">Fotos {photos.length ? `(${photos.length})` : ''}</span>
             <span className="text-sm font-semibold text-slate-400">opcional</span> <ChevronDown size={20} className="text-slate-400 transition group-open:rotate-180" />
           </summary>
-          <div className="px-4 pb-4"><PhotoSection workOrderId={woId} photos={photos} onChange={reload} /></div>
+          <div className="px-4 pb-4"><PhotoSection workOrderId={woId} photos={photos} onChange={reload} only={['before', 'after']} /></div>
         </details>
       </section>
 

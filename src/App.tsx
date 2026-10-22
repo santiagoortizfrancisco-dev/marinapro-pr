@@ -45,11 +45,6 @@ import MyBoats from './pages/client/MyBoats'
 import Report from './pages/client/Report'
 import Alerts from './pages/client/Alerts'
 
-/** En el salón, cobrar sin cita es "Cobrar ahora" (escoge la clienta y lo que se hizo, y cobra). */
-function QuickOrSalon() {
-  return useWords().salon ? <Navigate to="/citas/nueva?ahora=1" replace /> : <QuickInvoice />
-}
-
 export default function App() {
   const { loading, session, profile, demo } = useAuth()
   const { pathname } = useLocation()
@@ -106,7 +101,7 @@ export default function App() {
           <Route path="/equipos/:id/editar" element={<EquipmentForm />} />
           <Route path="/trabajos" element={<Jobs />} />
           <Route path="/trabajos/nuevo" element={<JobNew />} />
-          <Route path="/cobrar" element={<QuickOrSalon />} />
+          <Route path="/cobrar" element={<QuickInvoice />} />
           <Route path="/trabajos/:id" element={<JobDetail />} />
           <Route path="/mas/negocio" element={<BusinessSettings />} />
           <Route path="/mas/admin" element={<Admin />} />

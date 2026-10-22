@@ -596,7 +596,7 @@ test('Contactar al desarrollador: el mecánico escribe desde Más y al admin le 
   await s2.getByLabel('Tu mensaje').fill('La factura no sale por WhatsApp')
   await s2.getByRole('button', { name: /Enviar mensaje/ }).click()
   await expect(s2.getByText('¡Recibido!')).toBeVisible()
-  await s2.getByRole('button', { name: 'Cerrar', exact: true }).click()
+  await s2.getByRole('button', { name: 'Cerrar' }).click()
   expect((await state()).support_messages).toHaveLength(2)
 
   // El admin lo ve en Admin → Mensajes
@@ -669,7 +669,7 @@ test('registro de un salón: entra derecho al salón rosado, sin error de "No se
   await nueva.getByLabel('Repite el PIN').fill('482913')
   await nueva.getByRole('button', { name: /Crear mi cuenta/ }).click()
   await expect(nueva.locator('header').getByText('Salón Iris')).toBeVisible()
-  await expect(nueva.getByRole('link', { name: /Cobrar ahora/ })).toBeVisible()
+  await expect(nueva.getByRole('link', { name: /Factura rápida/ })).toBeVisible()
   await expect(nueva.getByText('No se pudo guardar')).toHaveCount(0)
   await expect(nueva.locator('header').first()).toHaveCSS('background-color', 'rgb(219, 39, 119)')
   const s = await state()
@@ -1054,6 +1054,12 @@ test('salón de uñas: cita con servicios y empleada (suma tiempo y precio), sin
   await page.getByRole('button', { name: 'Volver atrás' }).click()
   await expect(page.getByRole('heading', { name: 'Sin cobrar' })).toBeVisible()
 
+  // Fotos del salón: solo Antes y Después (sin piezas)
+  await page.getByRole('link', { name: /Ruth Prueba/ }).first().click()
+  await page.getByText('Fotos', { exact: false }).first().click()
+  await expect(page.getByText('Antes', { exact: false }).first()).toBeVisible()
+  await expect(page.getByText(/Pieza/)).toHaveCount(0)
+
   // Empleadas y comisiones: a Yari le toca su 40% de los servicios + la propina
   await page.goto('/mas/empleadas')
   await expect(page.getByLabel('Comisión de Yari')).toContainText('Le toca')
@@ -1086,16 +1092,15 @@ test('salón: solo la clienta y la hora son obligatorias; servicios, tiempo, emp
   expect(s.appointments.at(-1)).toMatchObject({ duration_min: 60, title: null })
 })
 
-test('salón: el inicio tiene su estilo de belleza (sin baterías) y "Cobrar ahora" va de la clienta al cobro; el precio se pone en la cuenta', async ({ page }) => {
+test('salón: el inicio tiene su estilo de belleza (sin baterías) y Factura rápida; "Cobrar ahora" va de la clienta al cobro; el precio se pone en la cuenta', async ({ page }) => {
   await page.goto('/demo')
   await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
-  await expect(page.getByRole('link', { name: /Cobrar ahora/ })).toBeVisible()
-  await expect(page.getByText('Factura rápida')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /Factura rápida/ })).toBeVisible()
   await expect(page.locator('body')).toHaveAttribute('data-trade', 'beauty')
   // Rosado y blanco: la barra de arriba y los botones
   await expect(page.locator('header').first()).toHaveCSS('background-color', 'rgb(219, 39, 119)')
 
-  await page.getByRole('link', { name: /Cobrar ahora/ }).click()
+  await page.goto('/citas/nueva?ahora=1')
   await expect(page.getByRole('heading', { name: 'Cobrar ahora' })).toBeVisible()
   await expect(page.getByText('¿Cuándo?')).toHaveCount(0)
   await page.getByRole('button', { name: /Clienta nueva/ }).click()
@@ -1125,6 +1130,11 @@ test('salón: el inicio tiene su estilo de belleza (sin baterías) y "Cobrar aho
   await page.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByRole('button', { name: /Diseño especial/ })).toContainText('$30.00')
   await expect(page.getByRole('button', { name: /^Cobrar \$/ })).toHaveText('Cobrar $23.45') // 30 + IVU − 10 de depósito
+
+  // Hacer la factura y cobrar después: queda pendiente (sale en Me deben)
+  await page.getByRole('button', { name: 'Hacer factura y cobrar después' }).click()
+  await expect(page.getByText(/Factura #\d+ hecha · pendiente de cobrar/)).toBeVisible()
+  await expect(page.getByRole('link', { name: /Ver factura o PDF/ })).toBeVisible()
   const appt = (await state()).appointments.find((a) => a.title === 'Diseño especial')
   expect(appt).toBeTruthy()
 

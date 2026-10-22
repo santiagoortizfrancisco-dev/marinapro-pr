@@ -1,8 +1,10 @@
 import { useEffect, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { useWords } from '../lib/trade'
 
 /** Ventana que sube desde abajo (fácil de alcanzar con el pulgar). */
 export function Sheet({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
+  const { salon } = useWords()
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -17,8 +19,8 @@ export function Sheet({ open, title, onClose, children }: { open: boolean; title
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-300" />
         <div className="mb-4 flex items-center gap-2">
           <h2 className="flex-1 text-xl font-extrabold text-navy-900">{title}</h2>
-          {/* Siempre hay cómo salir sin hacer nada */}
-          <button type="button" onClick={onClose} aria-label="Cerrar ventana" className="-mr-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:bg-slate-200"><X size={24} /></button>
+          {/* Salón: siempre hay cómo salir sin hacer nada */}
+          {salon && <button type="button" onClick={onClose} aria-label="Cerrar ventana" className="-mr-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:bg-slate-200"><X size={24} /></button>}
         </div>
         {children}
       </div>

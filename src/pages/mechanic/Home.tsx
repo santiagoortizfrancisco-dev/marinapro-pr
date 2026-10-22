@@ -129,7 +129,7 @@ export default function Home() {
       {look === 'beauty' && (
         <div className="grid grid-cols-2 gap-3">
           <BeautyTile to="/citas/nueva" icon={NailPolishIcon as unknown as LucideIcon} badge={<CalendarHeart size={15} strokeWidth={2.5} />} label="Hacer cita" from="#f472b6" color="#be185d" />
-          <BeautyTile to="/citas/nueva?ahora=1" icon={NailsHandIcon as unknown as LucideIcon} badge={<Sparkles size={15} strokeWidth={2.5} />} label="Cobrar ahora" from="#c084fc" color="#7e22ce" />
+          <BeautyTile to="/cobrar" icon={NailsHandIcon as unknown as LucideIcon} badge={<Sparkles size={15} strokeWidth={2.5} />} label="Factura rápida" from="#c084fc" color="#7e22ce" />
           <BeautyTile to="/clientes" icon={Users} badge={<Heart size={14} strokeWidth={2.5} />} label={words.Clients} from="#fb923c" color="#c2410c" />
           <BeautyTile to="/trabajos" icon={Wallet} label="Me deben" sub={debt} from="#fb7185" color="#be123c" />
         </div>
