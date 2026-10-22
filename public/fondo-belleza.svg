@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260">
+  <!-- Fondo del salón: dibujos de belleza casi transparentes (marca de agua). Se repite como un patrón. -->
+  <g fill="none" stroke="#9d174d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.08">
+    <!-- Pintura de uñas -->
+    <rect x="30" y="40" width="10" height="16" rx="2"/>
+    <path d="M24 56 h22 q4 0 4 4 v24 q0 6 -6 6 h-18 q-6 0 -6 -6 v-24 q0 -4 4 -4 z"/>
+    <!-- Brillito -->
+    <path d="M190 30 q3 12 14 14 q-11 2 -14 14 q-3 -12 -14 -14 q11 -2 14 -14 z"/>
+    <!-- Flor -->
+    <circle cx="120" cy="130" r="6"/>
+    <path d="M120 124 q-6 -14 0 -18 q6 4 0 18 M126 130 q14 -6 18 0 q-4 6 -18 0 M120 136 q6 14 0 18 q-6 -4 0 -18 M114 130 q-14 6 -18 0 q4 -6 18 0"/>
+    <!-- Mano con uña -->
+    <path d="M200 150 v-24 q0 -6 6 -6 q6 0 6 6 v24"/>
+    <path d="M202 126 q4 -4 8 0"/>
+    <!-- Labial -->
+    <rect x="44" y="190" width="16" height="26" rx="2"/>
+    <path d="M47 190 v-12 l10 -6 v18"/>
+    <!-- Brillito chico -->
+    <path d="M230 220 q2 7 8 8 q-6 1 -8 8 q-2 -7 -8 -8 q6 -1 8 -8 z"/>
+    <path d="M150 230 q2 7 8 8 q-6 1 -8 8 q-2 -7 -8 -8 q6 -1 8 -8 z"/>
+  </g>
+</svg>

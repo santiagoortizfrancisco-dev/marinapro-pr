@@ -25,6 +25,9 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
+/* Salón: rosado clarito con dibujos de belleza. Otros oficios (no marinos): sin dibujos de botes */
+body[data-trade="beauty"] { background-color: #fdf2f8; background-image: url("/fondo-belleza.svg"); }
+body[data-trade="ac"], body[data-trade="plumbing"], body[data-trade="electrical"], body[data-trade="general"], body[data-trade="auto"] { background-image: none; background-color: #eef2f7; }
 /* Respetar el "notch" del iPhone */
 .safe-top { padding-top: max(env(safe-area-inset-top), 0.25rem); }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }

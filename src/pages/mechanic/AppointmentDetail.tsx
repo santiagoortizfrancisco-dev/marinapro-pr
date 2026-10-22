@@ -13,6 +13,7 @@ import { must, useLoad } from '../../lib/useLoad'
 import { ensureWorkOrder } from '../../lib/workOrders'
 import ConfirmDelete from '../../components/ConfirmDelete'
 import JobPanel from '../../components/JobPanel'
+import SalonVisit from '../../components/SalonVisit'
 import { Sheet } from '../../components/Sheet'
 import { BackTitle, Button, ErrorBox, LinkButton, Loading } from '../../components/ui'
 
@@ -65,6 +66,9 @@ export default function AppointmentDetail() {
     <>
       <BackTitle to={`/agenda?dia=${prDay(a.starts_at)}`}>{w.salon ? c.full_name : <>{b.name} · {c.full_name.split(' ').slice(0, 2).join(' ')}</>}</BackTitle>
 
+      {w.salon && woId ? (
+        <SalonVisit appt={a} woId={woId} onEdit={() => navigate(`/citas/${a.id}/editar`)} onCancel={() => setCancelOpen(true)} onActivate={() => setStatus('confirmed')} />
+      ) : <>
       {/* La cita */}
       <section className="rounded-2xl border-2 border-slate-200 bg-white p-4">
         <div className="flex items-start justify-between gap-2">
@@ -130,6 +134,7 @@ export default function AppointmentDetail() {
 
       {/* El trabajo de esta visita */}
       {woId && <JobPanel woId={woId} embedded />}
+      </>}
 
       <Sheet open={cancelOpen} title="¿Cancelar esta cita?" onClose={() => setCancelOpen(false)}>
         <p className="mb-5 text-base text-slate-600">La cita queda marcada como cancelada y sale de la agenda. Acuérdate de avisarle al cliente.</p>

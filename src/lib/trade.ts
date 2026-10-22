@@ -124,6 +124,8 @@ export function TradeProvider({ children }: { children: ReactNode }) {
       if (t) setTrade(t)
     })
   }, [session?.user.id])
+  // El fondo y los colores cambian según el negocio (ver index.css)
+  useEffect(() => { document.body.dataset.trade = trade }, [trade])
   return createElement(TradeContext.Provider, { value: { words: wordsFor(trade), setTrade } }, children)
 }
 

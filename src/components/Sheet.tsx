@@ -12,7 +12,7 @@ export function Sheet({ open, title, onClose, children }: { open: boolean; title
   if (!open) return null
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/50" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
-      <div className="safe-bottom w-full max-w-xl rounded-t-3xl bg-white px-5 pb-6 pt-3" onClick={(e) => e.stopPropagation()}>
+      <div className="safe-bottom max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white px-5 pb-6 pt-3" onClick={(e) => e.stopPropagation()}>
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-300" />
         <h2 className="mb-4 text-xl font-extrabold text-navy-900">{title}</h2>
         {children}

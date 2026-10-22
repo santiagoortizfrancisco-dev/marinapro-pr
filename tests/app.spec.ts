@@ -981,12 +981,15 @@ test('salón de uñas: cita con servicios y empleada (suma tiempo y precio), sin
   expect(appt).toMatchObject({ duration_min: 135 })
   expect(s.work_order_parts.filter((x) => x.work_order_id === s.work_orders.find((w) => w.appointment_id === appt.id)!.id)).toHaveLength(2)
 
-  // Cobrar con propina
-  await page.getByRole('button', { name: /Recibir pago/ }).click()
-  await page.getByRole('button', { name: '$5', exact: true }).click()
-  await page.getByRole('button', { name: 'Guardar pago' }).click()
+  // Cobrar con propina: un solo botón
+  await page.getByRole('button', { name: /^Cobrar \$/ }).click()
+  const sheet = page.getByRole('dialog', { name: 'Cobrar' })
+  await sheet.getByRole('button', { name: '$5', exact: true }).click()
+  await sheet.getByRole('radio', { name: /Efectivo/ }).click()
+  await sheet.getByRole('button', { name: /^Cobrar \$/ }).click()
   await expect(page.getByText(/Pagada el/)).toBeVisible()
-  expect((await state()).payments.at(-1)).toMatchObject({ tip: 5 })
+  expect((await state()).payments.at(-1)).toMatchObject({ tip: 5, method: 'cash' })
+  await expect(page.getByRole('link', { name: /Ver recibo o PDF/ })).toBeVisible()
 
   // Empleadas y comisiones: a Yari le toca su 40% de los servicios + la propina
   await page.goto('/mas/empleadas')
@@ -1018,4 +1021,43 @@ test('salón: solo la clienta y la hora son obligatorias; servicios, tiempo, emp
   const s = await state()
   expect(s.clients.some((c) => c.full_name === 'Wanda Prueba')).toBe(true)
   expect(s.appointments.at(-1)).toMatchObject({ duration_min: 60, title: null })
+})
+
+test('salón: el inicio tiene su estilo de belleza (sin baterías) y "Cobrar ahora" va de la clienta al cobro; el precio se pone en la cuenta', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Cobrar ahora/ })).toBeVisible()
+  await expect(page.getByText('Factura rápida')).toHaveCount(0)
+  await expect(page.locator('body')).toHaveAttribute('data-trade', 'beauty')
+
+  await page.getByRole('link', { name: /Cobrar ahora/ }).click()
+  await expect(page.getByRole('heading', { name: 'Cobrar ahora' })).toBeVisible()
+  await expect(page.getByText('¿Cuándo?')).toHaveCount(0)
+  await page.getByRole('button', { name: /Clienta nueva/ }).click()
+  await page.getByPlaceholder('Nombre *').fill('Lola Walk-in')
+  await page.getByRole('button', { name: 'Seguir a cobrar' }).click()
+
+  // Llega con el cobro abierto; sin servicios no hay nada que cobrar todavía: se cierra y se añade uno
+  await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
+  await page.getByRole('button', { name: 'Añadir servicio' }).click()
+  await page.getByLabel('Nombre del servicio').fill('Diseño especial')
+  await page.getByLabel('Precio', { exact: true }).fill('25')
+  await page.getByRole('button', { name: 'Añadir', exact: true }).click()
+  await expect(page.getByRole('button', { name: /Diseño especial/ })).toBeVisible()
+
+  // Cambiar el precio tocando la línea
+  await page.getByRole('button', { name: /Diseño especial/ }).click()
+  await page.getByLabel('Precio ($)').fill('30')
+  await page.getByRole('button', { name: 'Guardar' }).click()
+  await expect(page.getByRole('button', { name: /Diseño especial/ })).toContainText('$30.00')
+  const appt = (await state()).appointments.find((a) => a.title === 'Diseño especial')
+  expect(appt).toBeTruthy()
+
+  // Un mecánico de botes sigue con sus baterías
+  await page.goto('/mas/negocio')
+  await page.getByRole('radio', { name: /Botes/ }).click()
+  await page.getByRole('button', { name: /Guardar/ }).first().click()
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: /Factura rápida/ })).toBeVisible()
+  await expect(page.locator('body')).toHaveAttribute('data-trade', 'marine')
 })
