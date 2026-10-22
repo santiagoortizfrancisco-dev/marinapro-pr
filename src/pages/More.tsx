@@ -20,7 +20,7 @@ export default function More() {
   }, [])
   const { data: unread } = useLoad(async () => (isAdmin ? Number((await db().rpc('admin_unread_messages')).data ?? 0) : 0), [isAdmin])
   const { data: pending } = useLoad(async () => (isAdmin ? Number((await db().rpc('admin_pending_count')).data ?? 0) : 0), [isAdmin])
-  const { data: signups } = useLoad(async () => (isAdmin ? Number((await db().rpc('admin_unseen_signups')).data ?? 0) : 0), [isAdmin])
+  const { data: signups } = useLoad(async () => (isAdmin ? Number((await db().rpc('admin_unseen_signups')).data ?? 0) + Number((await db().rpc('admin_unseen_info')).data ?? 0) : 0), [isAdmin])
   const [contactOpen, setContactOpen] = useState(false)
 
   const row = (label: string, value: string | null | undefined) => (

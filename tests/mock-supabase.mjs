@@ -71,6 +71,7 @@ function reset() {
     payments: [],
     gift_cards: [],
     admin_signups: [],
+    info_requests: [],
     staff: [],
     maintenance_schedules: [],
     notifications: [],
@@ -337,6 +338,18 @@ const RPC = {
     db.boats = db.boats.filter((b) => !gone.includes(b.client_id))
     return null
   },
+  request_info: ({ p_name, p_email, p_type, p_message }) => {
+    if (String(p_name ?? '').trim().length < 2) throw Object.assign(new Error('Escribe tu nombre.'), { status: 400 })
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(p_email ?? '').trim())) throw Object.assign(new Error('Escribe tu email.'), { status: 400 })
+    db.info_requests.push({ id: randomUUID(), full_name: p_name.trim(), email: p_email.trim().toLowerCase(), business_type: p_type ?? null, message: p_message ?? null, created_at: new Date().toISOString(), seen_at: null })
+    return null
+  },
+  admin_info_requests: () => {
+    if (caller !== U) throw Object.assign(new Error('Solo para el administrador'), { status: 400 })
+    return [...db.info_requests].reverse()
+  },
+  admin_unseen_info: () => (caller === U ? db.info_requests.filter((x) => !x.seen_at).length : 0),
+  admin_mark_info_seen: () => { if (caller === U) db.info_requests.forEach((x) => { x.seen_at ??= new Date().toISOString() }); return null },
   admin_new_signups: () => {
     if (caller !== U) throw Object.assign(new Error('Solo para el administrador'), { status: 400 })
     return [...db.admin_signups].reverse()

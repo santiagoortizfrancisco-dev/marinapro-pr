@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
-import { BellRing, CalendarDays, Camera, CheckCircle2, FileText, Gift, Globe, HandCoins, Palette, Receipt, ShieldCheck, Smartphone, Sparkles, Users, Wallet, Zap, type LucideIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { supabase } from '../../lib/supabase'
+import { Send, BellRing, CalendarDays, Camera, CheckCircle2, FileText, Gift, Globe, HandCoins, Palette, Receipt, ShieldCheck, Smartphone, Sparkles, Users, Wallet, Zap, type LucideIcon } from 'lucide-react'
 
 const FB = 'https://www.facebook.com/profile.php?id=61595681820713'
 
@@ -32,6 +33,56 @@ const TRADES: { emoji: string; name: string; text: string }[] = [
   { emoji: '🛠️', name: 'Todo servicio en la calle', text: 'Si trabajas por cita y cobras por servicio, el app se adapta a tus palabras.' },
 ]
 
+/** "¿Quieres más información?": nombre, email, tipo de negocio y mensaje. Le llega al administrador. */
+function InfoForm() {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [type, setType] = useState('')
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [sent, setSent] = useState(false)
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault()
+    if (name.trim().length < 2) return setError('Escribe tu nombre.')
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return setError('Escribe tu email.')
+    if (!supabase) return
+    setBusy(true)
+    setError('')
+    const { error } = await supabase.rpc('request_info', { p_name: name.trim(), p_email: email.trim(), p_type: type || null, p_message: message.trim() || null })
+    setBusy(false)
+    if (error) return setError(error.message || 'No se pudo enviar. Intenta otra vez.')
+    setSent(true)
+  }
+
+  if (sent) {
+    return (
+      <div className="rounded-3xl bg-white p-8 text-center text-slate-900 shadow-xl">
+        <CheckCircle2 size={52} className="mx-auto text-emerald-600" />
+        <h3 className="mt-2 text-2xl font-black">¡Gracias, {name.trim().split(' ')[0]}!</h3>
+        <p className="mt-1 text-lg text-slate-600">Te escribimos pronto a <b>{email.trim()}</b>.</p>
+      </div>
+    )
+  }
+  const field = 'block min-h-14 w-full rounded-2xl border-2 border-slate-200 bg-white px-4 text-lg text-slate-900 outline-none focus:border-blue-600'
+  return (
+    <form onSubmit={send} className="space-y-3 rounded-3xl bg-white p-5 text-left shadow-xl sm:p-6">
+      <input aria-label="Tu nombre" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" className={field} />
+      <input aria-label="Tu email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Tu email" className={field} />
+      <select aria-label="Tu negocio" value={type} onChange={(e) => setType(e.target.value)} className={field}>
+        <option value="">¿A qué te dedicas? (opcional)</option>
+        {TRADES.map((t) => <option key={t.name} value={t.name}>{t.emoji} {t.name}</option>)}
+      </select>
+      <textarea aria-label="Tu mensaje" rows={3} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="¿Qué te gustaría saber? (opcional)" className={`${field} py-3`} />
+      {error && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}
+      <button type="submit" disabled={busy} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#f97316] text-lg font-extrabold text-white hover:bg-orange-600 disabled:opacity-60">
+        <Send size={20} /> {busy ? 'Enviando…' : 'Pedir información'}
+      </button>
+    </form>
+  )
+}
+
 /**
  * Página informativa de FacturaFácil PR (pública, sin cuenta): qué hace el app,
  * cómo se adapta a cada negocio de servicio, y cómo probarlo.
@@ -51,6 +102,7 @@ export default function Landing() {
           <nav className="ml-auto flex items-center gap-2">
             <a href="#negocios" className="hidden rounded-full px-3 py-2 text-sm font-semibold text-white/80 hover:text-white sm:block">Negocios</a>
             <a href="#funciones" className="hidden rounded-full px-3 py-2 text-sm font-semibold text-white/80 hover:text-white sm:block">Qué hace</a>
+            <a href="#informacion" className="hidden rounded-full px-3 py-2 text-sm font-semibold text-white/80 hover:text-white sm:block">Información</a>
             <a href="/" className="hidden rounded-full px-3 py-2 text-sm font-semibold text-white/90 hover:text-white sm:block">Entrar</a>
             <a href="/demo" className="whitespace-nowrap rounded-full bg-[#f97316] px-4 py-2 text-sm font-extrabold text-white shadow-lg shadow-orange-900/30">Pruébalo gratis</a>
           </nav>
@@ -76,6 +128,9 @@ export default function Landing() {
               </a>
               <a href="/" className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white/10 px-6 text-base font-bold text-white ring-1 ring-white/30 hover:bg-white/20 sm:w-auto sm:text-lg">
                 Crear mi cuenta
+              </a>
+              <a href="#informacion" className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl px-6 text-base font-bold text-white underline sm:w-auto sm:text-lg">
+                Pedir información
               </a>
             </div>
             <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-blue-100 sm:text-base">
@@ -196,6 +251,17 @@ export default function Landing() {
               </details>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Pedir información */}
+      <section id="informacion" className="scroll-mt-20 bg-gradient-to-br from-orange-500 to-orange-600 py-16">
+        <div className="mx-auto grid max-w-5xl items-center gap-8 px-4 md:grid-cols-2">
+          <div className="text-white">
+            <h2 className="text-3xl font-black leading-tight sm:text-5xl">¿Quieres más información?</h2>
+            <p className="mt-3 text-lg text-orange-50">Déjanos tu nombre y tu email y te escribimos para contestarte todo y ayudarte a empezar.</p>
+          </div>
+          <InfoForm />
         </div>
       </section>
 

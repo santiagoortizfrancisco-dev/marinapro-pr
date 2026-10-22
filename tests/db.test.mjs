@@ -612,3 +612,25 @@ test('registro: la cuenta nueva empieza con ejemplos de su oficio (se borran con
   assert.equal((await one(C, `select count(*)::int n from invoices`)).n, 0)
   assert.equal((await one(C, `select next_invoice_number n from mechanics where profile_id = '${C}'`)).n, 1)
 })
+
+test('pedir información (página /info): un visitante sin cuenta deja nombre y email (sin teléfono); solo el admin los ve; no se puede llenar de basura', async () => {
+  await as(null, `select request_info('Lola Curiosa', 'Lola@Test.pr', 'Salón / uñas / spa', '¿Cuánto cuesta?')`, 'anon')
+  assert.ok(await fails(() => as(null, `select request_info('L', 'lola@test.pr')`, 'anon')), 'nombre muy corto')
+  assert.ok(await fails(() => as(null, `select request_info('Lola', 'no-es-email')`, 'anon')), 'email malo')
+  await as(null, `select request_info('Lola Curiosa', 'lola@test.pr')`, 'anon')
+  await as(null, `select request_info('Lola Curiosa', 'lola@test.pr')`, 'anon')
+  assert.ok(await fails(() => as(null, `select request_info('Lola Curiosa', 'lola@test.pr')`, 'anon')), 'máximo 3 por email al día')
+  const seen = await as(null, `select count(*)::int n from info_requests`, 'anon').catch(() => [{ n: 0 }])
+  assert.equal(seen[0].n, 0, 'el visitante no ve la lista')
+  const D = (await sys(`insert into auth.users(email) values ('curioso@mecanico.test') returning id`))[0].id
+  assert.ok(await fails(() => as(D, `select admin_info_requests()`)), 'otro usuario no la ve')
+  assert.equal(Number((await one(D, `select admin_unseen_info() n`)).n), 0)
+
+  const admin = (await sys(`select id from profiles where email = 'santiagoortizfrancisco@gmail.com'`))[0].id
+  const list = (await one(admin, `select admin_info_requests() d`)).d
+  assert.equal(list.length, 3)
+  assert.deepEqual([list.at(-1).email, list.at(-1).message], ['lola@test.pr', '¿Cuánto cuesta?'])
+  assert.equal(Number((await one(admin, `select admin_unseen_info() n`)).n), 3)
+  await as(admin, `select admin_mark_info_seen()`)
+  assert.equal(Number((await one(admin, `select admin_unseen_info() n`)).n), 0)
+})

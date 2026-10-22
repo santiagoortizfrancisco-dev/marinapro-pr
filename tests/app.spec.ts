@@ -1292,4 +1292,21 @@ test('página informativa (/info): se abre sin cuenta, dice lo que hace y lleva 
   for (const t of ['Salones, uñas y spa', 'Mecánicos de botes', 'Aire acondicionado', 'Plomería', 'Electricidad']) await expect(page.getByText(t).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: /Todo tu salón en el celular/ })).toBeVisible()
   await expect(page.getByRole('link', { name: /Pruébalo gratis/ }).first()).toHaveAttribute('href', '/demo')
+
+  // Pedir información (sin teléfono): le llega al admin
+  await page.getByRole('heading', { name: /¿Quieres más información\?/ }).scrollIntoViewIfNeeded()
+  await expect(page.getByLabel(/teléfono/i)).toHaveCount(0)
+  await page.getByLabel('Tu nombre').fill('Lola Curiosa')
+  await page.getByLabel('Tu email').fill('lola@curiosa.pr')
+  await page.getByLabel('Tu negocio').selectOption({ label: '💅 Salones, uñas y spa' })
+  await page.getByLabel('Tu mensaje').fill('¿Cuánto cuesta?')
+  await page.getByRole('button', { name: 'Pedir información' }).click()
+  await expect(page.getByText('¡Gracias, Lola!')).toBeVisible()
+  expect((await state()).info_requests.at(-1)).toMatchObject({ full_name: 'Lola Curiosa', email: 'lola@curiosa.pr', business_type: 'Salones, uñas y spa', message: '¿Cuánto cuesta?' })
+
+  await login(page)
+  await page.getByRole('link', { name: 'Más' }).click()
+  await page.getByRole('link', { name: /Admin/ }).click()
+  await expect(page.getByLabel('Piden información')).toContainText('lola@curiosa.pr')
+  await expect(page.getByLabel('Piden información')).toContainText('¿Cuánto cuesta?')
 })

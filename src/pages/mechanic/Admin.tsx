@@ -7,6 +7,7 @@ import AdminDirectory from '../../components/AdminDirectory'
 import AdminMessages from '../../components/AdminMessages'
 import AdminPending from '../../components/AdminPending'
 import AdminSignups from '../../components/AdminSignups'
+import AdminInfoRequests from '../../components/AdminInfoRequests'
 
 interface Row {
   id: string
@@ -85,6 +86,7 @@ export default function Admin() {
       )}
 
       <AdminSignups />
+      <AdminInfoRequests />
       <AdminPending />
       <AdminMessages />
       <AdminDirectory />
