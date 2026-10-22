@@ -1193,6 +1193,7 @@ test('salón: recordatorio de mañana — Recordarle abre WhatsApp con el mensaj
   await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
   const tomorrow = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Puerto_Rico' }).format(new Date(Date.now() + 86400000))
   await page.goto(`/citas/nueva?dia=${tomorrow}&hora=14:00`)
+  await expect(page.locator('select[aria-label="Hora"] option:checked')).toHaveText('2:00 PM') // hora regular, no de 24 horas
   await page.getByLabel('Buscar clienta').fill('Ana')
   await page.getByRole('button', { name: /Ana Martínez/ }).first().click()
   await page.getByRole('button', { name: 'Guardar cita' }).click()

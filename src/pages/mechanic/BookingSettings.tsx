@@ -6,6 +6,7 @@ import { db } from '../../lib/db'
 import { whatsappLink } from '../../lib/links'
 import { must, useLoad } from '../../lib/useLoad'
 import { BackTitle, Button, ErrorBox, Field, Input, Loading, Toggle } from '../../components/ui'
+import TimeSelect from '../../components/TimeSelect'
 
 type Hours = Record<string, [string, string] | null>
 const DAYS = [['1', 'Lunes'], ['2', 'Martes'], ['3', 'Miércoles'], ['4', 'Jueves'], ['5', 'Viernes'], ['6', 'Sábado'], ['0', 'Domingo']] as const
@@ -85,9 +86,9 @@ export default function BookingSettings() {
                   </label>
                   {h ? (
                     <div className="flex flex-1 items-center gap-1">
-                      <Input type="time" step={1800} aria-label={`${label} abre`} value={h[0]} onChange={(e) => setHours({ ...hours, [k]: [e.target.value, h[1]] })} className="min-h-11! px-2! text-base!" />
+                      <TimeSelect step={30} from={5} to={23} aria-label={`${label} abre`} value={h[0]} onChange={(v) => setHours({ ...hours, [k]: [v, h[1]] })} className="min-h-11 px-1 text-base" />
                       <span className="text-slate-400">a</span>
-                      <Input type="time" step={1800} aria-label={`${label} cierra`} value={h[1]} onChange={(e) => setHours({ ...hours, [k]: [h[0], e.target.value] })} className="min-h-11! px-2! text-base!" />
+                      <TimeSelect step={30} from={5} to={23} aria-label={`${label} cierra`} value={h[1]} onChange={(v) => setHours({ ...hours, [k]: [h[0], v] })} className="min-h-11 px-1 text-base" />
                     </div>
                   ) : <span className="text-base text-slate-400">Cerrado</span>}
                 </div>

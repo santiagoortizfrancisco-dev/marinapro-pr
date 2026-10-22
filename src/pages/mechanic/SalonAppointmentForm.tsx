@@ -7,6 +7,7 @@ import { formatMoney, formatTime, prDay, prRange, prTime, prToISO, todayPR } fro
 import { clientRecordId, loadSalonMenu, loadStaff, minutesLabel, type SalonService, type Staff } from '../../lib/salon'
 import { blank } from '../../lib/useLoad'
 import { BackTitle, Field, FormActions, Input, Loading } from '../../components/ui'
+import TimeSelect from '../../components/TimeSelect'
 
 /** Tarjeta blanca con su número de paso: así la cita se llena de arriba a abajo. */
 function Step({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) {
@@ -295,7 +296,7 @@ export default function SalonAppointmentForm() {
                 <Input type="date" required value={day} onChange={(e) => setDay(e.target.value)} />
               </Field>
               <Field label="Hora *">
-                <Input type="time" required step={900} value={time} onChange={(e) => setTime(e.target.value)} />
+                <TimeSelect aria-label="Hora" required value={time} onChange={setTime} />
               </Field>
             </div>
             {busyThen.length > 0 && (
