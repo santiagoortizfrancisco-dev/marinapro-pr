@@ -1322,3 +1322,21 @@ test('piscinas: el negocio de piscinas usa sus palabras y su color aqua', async 
   await expect(page.getByRole('heading', { name: 'Piscinas' })).toBeVisible()
   await expect(page.getByText('Marca')).toHaveCount(0)
 })
+
+test('salón: Confirmar por WhatsApp sale aunque la clienta no tenga teléfono (lo pide y lo guarda)', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/citas/nueva')
+  await page.getByRole('button', { name: /Clienta nueva/ }).click()
+  await page.getByPlaceholder('Nombre *').fill('Sin Teléfono')
+  await page.getByRole('button', { name: 'Guardar cita' }).click()
+  await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
+  page.once('dialog', (d) => d.accept('787-555-0321'))
+  const popup = page.waitForEvent('popup')
+  await page.getByRole('button', { name: /Confirmar/ }).first().click()
+  const wa = await popup
+  await expect.poll(() => wa.url()).toContain('17875550321')
+  await wa.close()
+  expect((await state()).clients.find((c) => c.full_name === 'Sin Teléfono')?.phone).toBe('787-555-0321')
+})

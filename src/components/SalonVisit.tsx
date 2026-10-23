@@ -236,7 +236,17 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
           {a.notes && <p className="mt-2 whitespace-pre-line text-base text-slate-700">{a.notes}</p>}
         </div>
         <div className="mt-3 flex">
-          {c.phone && <Action label="Confirmar" href={whatsappLink(c.phone, confirmMsg)} external icon={<WhatsAppIcon size={26} />} tone="bg-[#25D366] text-white" />}
+          {c.phone ? <Action label="Confirmar" href={whatsappLink(c.phone, confirmMsg)} external icon={<WhatsAppIcon size={26} />} tone="bg-[#25D366] text-white" /> : (
+            // Sin teléfono: se lo pide, lo guarda en la clienta y abre WhatsApp
+            <Action label="Confirmar" icon={<WhatsAppIcon size={26} />} tone="bg-[#25D366] text-white" onClick={async () => {
+              const phone = window.prompt(`¿Cuál es el teléfono (WhatsApp) de ${firstName}?`)?.trim()
+              if (!phone || phone.replace(/\D/g, '').length < 7) return
+              const win = window.open('', '_blank')
+              await db().from('clients').update({ phone }).eq('id', c.id)
+              if (win) win.location.href = whatsappLink(phone, confirmMsg)
+              else window.location.href = whatsappLink(phone, confirmMsg)
+            }} />
+          )}
           {c.phone && <Action label="Llamar" href={telLink(c.phone)} icon={<Phone size={24} />} tone="bg-sky-100 text-sky-700" />}
           <Action label="Mover" onClick={onEdit} icon={<CalendarClock size={24} />} tone="bg-pink-100 text-pink-700" />
           {a.status === 'cancelled'
