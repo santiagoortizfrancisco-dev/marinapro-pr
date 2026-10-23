@@ -130,7 +130,7 @@ export default function QuickInvoice() {
 
   /** Crea cliente y bote (si hacen falta), el trabajo terminado, sus líneas y la factura. */
   /** paid: lo que le dio hoy (todo, una parte o nada). */
-  async function createAll(paid = 0, method: NonNullable<Invoice['payment_method']> = 'cash') {
+  async function createAll(paid = 0, method: NonNullable<Invoice['payment_method']> = 'cash', giftCardId?: string) {
     const problem = check()
     if (problem) return setError(problem)
     if (!mech) return
@@ -180,7 +180,7 @@ export default function QuickInvoice() {
       const inv = await db().rpc('create_invoice', { p_wo: woId })
       if (inv.error) throw inv.error
       // Lo que le dio (todo o una parte): si completa el total, la factura queda pagada sola
-      if (paid > 0) await addPayment(woId, paid, method)
+      if (paid > 0) await addPayment(woId, paid, method, 0, giftCardId)
       const { data: invoice } = await db().from('invoices').select('*').eq('id', inv.data as string).single()
       setPayOpen(false)
       setDone({ woId, invoice: invoice as Invoice, phone, first, boat: boatName.trim() || chosenBoat?.name || tw.itemOf(first), paid })
@@ -352,7 +352,7 @@ export default function QuickInvoice() {
       </div>
       <p className="pb-4 text-center text-sm text-slate-500">¿Te dio una parte? Toca “Ya me pagó” y cambia la cantidad.</p>
 
-      <PaySheet open={payOpen} balance={totals.total} title="¿Cuánto te pagó?" onClose={() => setPayOpen(false)} onPay={(method, amount) => createAll(amount, method)} />
+      <PaySheet open={payOpen} withGift={tw.salon} balance={totals.total} title="¿Cuánto te pagó?" onClose={() => setPayOpen(false)} onPay={(method, amount, _tip, giftCardId) => createAll(amount, method, giftCardId)} />
     </>
   )
 }

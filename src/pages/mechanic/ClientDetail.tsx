@@ -185,9 +185,10 @@ export default function ClientDetail() {
         open={!!paying}
         balance={paying ? balanceOf(paying) : 0}
         onClose={() => setPaying(null)}
-        onPay={async (method, amount) => {
+        withGift={w.salon}
+        onPay={async (method, amount, _tip, giftCardId) => {
           if (!paying) return
-          await addPayment(paying.id, amount, method)
+          await addPayment(paying.id, amount, method, 0, giftCardId)
           setPaying(null)
           reload()
         }}

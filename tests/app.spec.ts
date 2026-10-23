@@ -1415,3 +1415,28 @@ test('tarjeta de regalo: el link de la clienta la enseña en grande (con confeti
   await expect(c.locator('canvas')).toHaveCount(1)
   await c.close()
 })
+
+test('salón: la factura rápida y "Recibir pago" también se pagan con tarjeta de regalo', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/mas/regalos')
+  await page.getByRole('button', { name: /Vender tarjeta de regalo/ }).click()
+  await page.getByRole('button', { name: '$50', exact: true }).click()
+  await page.getByLabel('Para quién').fill('Rápida Regalo')
+  await page.getByRole('button', { name: 'Vender tarjeta de $50.00' }).click()
+  const card = (await state()).gift_cards.at(-1)!
+
+  await page.goto('/cobrar')
+  await page.getByRole('button', { name: /Clienta nueva|Cliente nuevo/ }).click()
+  await page.getByPlaceholder(/Nombre/).first().fill('Joy Prueba')
+  await page.getByLabel('Descripción 1').fill('Uñas de gel')
+  await page.getByLabel('Precio 1').fill('20')
+  await page.getByRole('button', { name: 'Ya me pagó' }).click()
+  const sheet = page.getByRole('dialog')
+  await sheet.getByRole('radio', { name: /Tarjeta de regalo/ }).click()
+  await sheet.getByRole('radio', { name: /Para Rápida Regalo/ }).click()
+  await sheet.getByRole('button', { name: 'Guardar pago' }).click()
+  await expect(page.getByText('Pagada ✓')).toBeVisible()
+  await expect.poll(async () => (await state()).gift_cards.find((c) => c.id === card.id)!.balance).toBeLessThan(50)
+})

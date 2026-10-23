@@ -187,12 +187,12 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   }
 
   /** Recibir un pago (completo, depósito o abono). Si paga todo y no hay factura, la factura se hace sola para que quede el récord. */
-  async function receive(method: NonNullable<Invoice['payment_method']>, amount: number, tip = 0) {
+  async function receive(method: NonNullable<Invoice['payment_method']>, amount: number, tip = 0, giftCardId?: string) {
     if (!invoice && due > 0 && amount >= due - paid - 0.004) {
       const { error } = await db().rpc('create_invoice', { p_wo: wo.id })
       if (error) throw error
     }
-    await addPayment(wo.id, amount, method, tip)
+    await addPayment(wo.id, amount, method, tip, giftCardId)
     // Salón: cobrada la cuenta, la cita queda hecha
     if (w.salon && wo.appointment_id && amount >= due - paid - 0.004) {
       await db().from('appointments').update({ status: 'done' }).eq('id', wo.appointment_id)
@@ -501,7 +501,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
       {!billed && cobrarBlock}
 
-      <PaySheet withTip={w.salon} open={payOpen} balance={balance} title={invoice ? 'Recibir pago' : 'Recibir pago o depósito'} onClose={() => setPayOpen(false)} onPay={receive} />
+      <PaySheet withTip={w.salon} withGift={w.salon} open={payOpen} balance={balance} title={invoice ? 'Recibir pago' : 'Recibir pago o depósito'} onClose={() => setPayOpen(false)} onPay={receive} />
 
       <PartSheet open={partOpen} workOrderId={wo.id} part={editPart} onClose={() => setPartOpen(false)} onSaved={reload} />
 
