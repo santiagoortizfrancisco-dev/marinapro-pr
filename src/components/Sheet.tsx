@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { useWords } from '../lib/trade'
 
-/** Ventana que sube desde abajo (fácil de alcanzar con el pulgar). */
+/** Ventana que sube desde abajo (fácil de alcanzar con el pulgar); en la computadora sale en el centro. */
 export function Sheet({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
   const { salon } = useWords()
   useEffect(() => {
@@ -14,9 +14,9 @@ export function Sheet({ open, title, onClose, children }: { open: boolean; title
 
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/50" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
-      <div className="safe-bottom max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white px-5 pb-6 pt-3" onClick={(e) => e.stopPropagation()}>
-        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-300" />
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/50 md:items-center md:p-6" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
+      <div className="safe-bottom max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white px-5 pb-6 pt-3 shadow-2xl md:max-h-[85vh] md:rounded-3xl md:pt-5" onClick={(e) => e.stopPropagation()}>
+        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-300 md:hidden" />
         <div className="mb-4 flex items-center gap-2">
           <h2 className="flex-1 text-xl font-extrabold text-navy-900">{title}</h2>
           {/* Salón: siempre hay cómo salir sin hacer nada */}
