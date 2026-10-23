@@ -5,7 +5,7 @@ import { WhatsAppIcon } from './BrandIcons'
 import { useAuth } from '../auth/AuthProvider'
 import { APPOINTMENT_STATUS } from '../lib/catalog'
 import { db } from '../lib/db'
-import { formatDate, formatLongDate, formatMoney, formatTime } from '../lib/format'
+import { formatDate, formatLongDate, formatMoney, formatTime, prDay, todayPR } from '../lib/format'
 import { telLink, whatsappLink } from '../lib/links'
 import { addPayment, paidSoFar } from '../lib/money'
 import { loadSalonMenu, minutesLabel, type SalonService } from '../lib/salon'
@@ -67,6 +67,9 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const [askDep, setAskDepState] = useState<string | null>(() => { try { return localStorage.getItem(depKey) } catch { return null } })
   const setAskDep = (v: string) => { setAskDepState(v); try { localStorage.setItem(depKey, v) } catch { /* nada */ } }
   const [otherDep, setOtherDep] = useState(false)
+  // Ya se le envió la confirmación por WhatsApp (en este celular)
+  const sentKey = `sent:${a.id}`
+  const [sent, setSent] = useState(() => { try { return Boolean(localStorage.getItem(sentKey)) } catch { return false } })
   const [athInput, setAthInput] = useState('')
   const [prices, setPrices] = useState<Record<string, string>>({})
   const [skipNext, setSkipNext] = useState(false)
@@ -243,6 +246,8 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
 
   /** Confirmar por WhatsApp: si no tiene teléfono, se lo pide y lo guarda. */
   function saveAsked() {
+    setSent(true)
+    try { localStorage.setItem(sentKey, '1') } catch { /* nada */ }
     db().from('appointments').update({ deposit_asked: depAmount > 0 ? depAmount : null }).eq('id', a.id).then(() => reload())
   }
 
@@ -296,7 +301,9 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   }
 
   // Pedida por internet o con depósito que verificar: eso va primero; si no, cerrado abajo
-  const urgent = a.status === 'requested' || reported > 0
+  // Cita para otro día sin confirmar todavía: lo primero es confirmarla y pedir el depósito
+  const later = prDay(a.starts_at) > todayPR() && !done && paid === 0 && !sent && a.status !== 'cancelled'
+  const urgent = a.status === 'requested' || reported > 0 || later
   const confirmSummary = [a.status === 'requested' ? 'Sin confirmar' : a.status === 'cancelled' ? 'Cancelada' : 'Confirmada ✓',
     payments.length && !done ? `Depósito ${formatMoney(paid)} ✓` : depAmount > 0 ? `Depósito ${formatMoney(depAmount)}` : null].filter(Boolean).join(' · ')
   const changed = params.get('cambio') === '1'
