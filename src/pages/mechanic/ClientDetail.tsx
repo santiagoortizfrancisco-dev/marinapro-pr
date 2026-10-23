@@ -154,7 +154,7 @@ export default function ClientDetail() {
         ))}
       </div>
 
-      {boats.length > 0 && (
+      {boats.length > 0 && !w.storage && (
         <>
           <SectionHeader title="Próximas citas" addTo={`/citas/nueva?bote=${boats[0].id}`} addLabel="Cita" />
           {appts.length === 0 && <p className="text-base text-slate-600">No tiene citas pendientes.</p>}

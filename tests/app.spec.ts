@@ -1847,6 +1847,15 @@ test('guardería: bote con su espacio (precio por pie), cobro de un toque, factu
   await expect(page.getByRole('link', { name: 'Agenda' })).toHaveCount(0)
   await expect(page.getByText(/No tienes citas hoy/)).toHaveCount(0)
   await page.screenshot({ path: 'test-results/guarderia-inicio.png' })
+  // La ficha del cliente y del bote tampoco hablan de citas
+  await page.goto('/clientes/c1')
+  await expect(page.getByRole('link', { name: /La Tranquila/ })).toBeVisible()
+  await expect(page.getByText('Próximas citas')).toHaveCount(0)
+  await page.goto('/botes/b1')
+  await expect(page.getByRole('heading', { name: 'La Tranquila' }).first()).toBeVisible()
+  await expect(page.getByText('Próximos servicios')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /Cita/ })).toHaveCount(0)
+  await page.goto('/inicio')
   await page.getByRole('link', { name: /Guardería/ }).first().click()
   await expect(page.getByText('Todavía no hay botes en la guardería')).toBeVisible()
 

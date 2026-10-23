@@ -115,6 +115,8 @@ export default function BoatDetail() {
       </div>
       </>}
 
+      {/* La guardería no trabaja con citas ni recordatorios de servicio */}
+      {!w.storage && <>
       <SectionHeader title="Citas" addTo={`/citas/nueva?bote=${b.id}`} addLabel="Cita" />
       {appts.length === 0 && <p className="text-base text-slate-600">{`No hay citas para ${w.item === 'propiedad' ? 'esta' : 'este'} ${w.item}.`}</p>}
       <div className="space-y-2">
@@ -155,6 +157,7 @@ export default function BoatDetail() {
           <Plus size={20} /> Recordatorio
         </button>
       )}
+      </>}
 
       {/* Historial: cada visita con su fecha y lo que se hizo y se cambió */}
       <SectionHeader title="Historial" />
