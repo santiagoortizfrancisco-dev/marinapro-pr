@@ -1,7 +1,7 @@
 import { TRADES, useWords } from '../lib/trade'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Gift, CalendarHeart, Briefcase, ChevronRight, Globe, KeyRound, LifeBuoy, ListChecks, ShieldCheck, Users } from 'lucide-react'
+import { Anchor, Gift, CalendarHeart, Briefcase, ChevronRight, Globe, KeyRound, LifeBuoy, ListChecks, ShieldCheck, Users } from 'lucide-react'
 import ContactSheet from '../components/ContactSheet'
 import { db } from '../lib/db'
 import { useLoad } from '../lib/useLoad'
@@ -41,6 +41,17 @@ export default function More() {
           <span className="flex-1">
             <span className="block text-lg font-bold">Mi negocio</span>
             <span className="block text-sm text-navy-100">{words.salon ? "ATH Móvil, IVU, facturas y políticas" : "ATH Móvil, tarifa, IVU, facturas y garantía"}</span>
+          </span>
+          <ChevronRight />
+        </Link>
+      )}
+
+      {profile?.role === 'mechanic' && words.storage && (
+        <Link to="/guarderia" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+          <IconBadge icon={Anchor} tone="teal" />
+          <span className="flex-1">
+            <span className="block text-lg font-bold">Guardería</span>
+            <span className="block text-sm text-slate-600">Precios, contratos y la factura del mes</span>
           </span>
           <ChevronRight />
         </Link>

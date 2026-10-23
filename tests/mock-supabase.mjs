@@ -38,7 +38,7 @@ function reset() {
     mechanics: [{
       profile_id: U, business_name: 'JQR Boat Repair', ath_movil_number: '787-555-0100', labor_rate_hour: 85, ivu_rate: 0.115,
       ivu_on_labor: true, ivu_on_parts: true, warranty_days: 90, policies_text: 'Garantía de mano de obra: 90 días.', policies_version: 1,
-      next_invoice_number: 1, business_type: 'marine', business_type_set: true, use_estimates: true, logo_path: '/brands/jqr-boat-repair.jpg', brand_color: '#0b0b0f', created_at: now,
+      next_invoice_number: 1, business_type: 'marine', business_type_set: true, storage_due_days: 10, storage_late_fee: null, use_estimates: true, logo_path: '/brands/jqr-boat-repair.jpg', brand_color: '#0b0b0f', created_at: now,
       listed: false, approved: false, slug: null, public_description: null, public_towns: [], public_services: [], public_brands: [], public_locations: [],
       booking_on: false, booking_slug: null, booking_hours: HOURS(),
     }],
@@ -75,6 +75,10 @@ function reset() {
     staff: [],
     maintenance_schedules: [],
     notifications: [],
+    storage_rates: [],
+    storage_contracts: [],
+    storage_charges: [],
+    storage_bills: [],
   }
 }
 reset()
@@ -116,6 +120,11 @@ function withRelations(table, row) {
     r.staff = db.staff.find((x) => x.id === row.staff_id) ?? null
   }
   if (table === 'maintenance_schedules') r.boats = boat(row.boat_id)
+  if (table === 'storage_contracts') r.boats = boat(row.boat_id)
+  if (table === 'storage_bills') {
+    const wo = db.work_orders.find((w) => w.id === row.work_order_id)
+    r.work_orders = wo ? withRelations('work_orders', wo) : null
+  }
   if (table === 'work_orders') {
     r.work_order_parts = db.work_order_parts.filter((p) => p.work_order_id === row.id)
     r.boats = boat(row.boat_id)
@@ -441,6 +450,43 @@ const RPC = {
     }
     return null
   },
+  // Guardería: lista de ejemplo, facturar el mes (renta + cobros sueltos) y cuándo vence
+  seed_storage_rates: ({ p_mech }) => {
+    if (db.storage_rates.some((r) => r.mechanic_id === p_mech)) return null
+    const add = (kind, name, basis, price, unit, sort, bands = null) => db.storage_rates.push({ id: randomUUID(), mechanic_id: p_mech, kind, name, basis, price, bands, unit, active: true, sort, created_at: new Date().toISOString() })
+    add('space', 'Guardería en seco (rack)', 'per_foot', 12, 'mes', 1)
+    add('space', 'Muelle / slip', 'per_foot', 15, 'mes', 2)
+    add('space', 'Patio con carretón', 'bands', null, 'mes', 3, [{ max_ft: 20, price: 80 }, { max_ft: 25, price: 100 }, { max_ft: 30, price: 125 }, { max_ft: 99, price: 160 }])
+    add('extra', 'Uso de rampa', 'flat', 15, 'uso', 1)
+    add('extra', 'Noche / transitorio', 'per_foot', 2, 'noche', 2)
+    add('extra', 'Bajar o subir el bote', 'flat', 25, 'vez', 3)
+    return null
+  },
+  storage_bill_month: ({ p_month }) => {
+    const month = String(p_month).slice(0, 8) + '01'
+    const d = new Date(`${month}T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1)
+    const next = d.toISOString().slice(0, 10)
+    const m = db.mechanics.find((x) => x.profile_id === caller)
+    let n = 0
+    for (const k of db.storage_contracts.filter((c) => c.mechanic_id === caller && c.status === 'active' && c.start_date < next && (!c.end_date || c.end_date >= month))) {
+      if (db.storage_bills.some((b) => b.contract_id === k.id && b.month === month)) continue
+      const wo = { ...DEFAULTS.work_orders(), id: randomUUID(), boat_id: k.boat_id, complaint: 'Renta del mes', work_done: 'Renta del mes', status: 'done', labor_hours: 0, labor_rate: 0, charge_ivu_labor: false, charge_ivu_parts: false, created_at: new Date().toISOString() }
+      db.work_orders.push(wo)
+      db.work_order_parts.push({ ...DEFAULTS.work_order_parts(), id: randomUUID(), work_order_id: wo.id, kind: 'service', description: 'Renta del mes' + (k.space_label ? ` ${k.space_label}` : ''), qty: 1, unit_cost: Number(k.monthly_price) })
+      for (const ch of db.storage_charges.filter((x) => x.mechanic_id === caller && x.boat_id === k.boat_id && !x.work_order_id && x.charged_on < next)) {
+        db.work_order_parts.push({ ...DEFAULTS.work_order_parts(), id: randomUUID(), work_order_id: wo.id, kind: 'service', description: ch.description, qty: Number(ch.qty), unit_cost: Number(ch.unit_price) })
+        ch.work_order_id = wo.id
+      }
+      RPC.create_invoice({ p_wo: wo.id })
+      const inv = db.invoices.find((i) => i.work_order_id === wo.id)
+      const due = new Date(`${month > new Date().toISOString().slice(0, 10) ? month : new Date().toISOString().slice(0, 10)}T00:00:00Z`); due.setUTCDate(due.getUTCDate() + Number(m?.storage_due_days ?? 10))
+      inv.due_date = due.toISOString().slice(0, 10)
+      db.storage_bills.push({ contract_id: k.id, month, work_order_id: wo.id })
+      n++
+    }
+    return n
+  },
+  invoice_due_date: ({ p_token }) => db.invoices.find((i) => i.public_token === p_token)?.due_date ?? null,
   create_invoice: ({ p_wo }) => {
     const wo = db.work_orders.find((w) => w.id === p_wo)
     if (!wo) throw Object.assign(new Error('No autorizado'), { status: 400 })
@@ -584,6 +630,8 @@ http.createServer((req, res) => {
       }
       if (req.method === 'DELETE') {
         db[table] = rows.filter((r) => !found.includes(r))
+        // Como en la base de datos: los cobros de la guardería vuelven a quedar pendientes
+        if (table === 'work_orders') db.storage_charges.forEach((x) => { if (found.some((w) => w.id === x.work_order_id)) x.work_order_id = null })
         if (table === 'payments') found.forEach((x) => {
           const card = x.gift_card_id && db.gift_cards.find((c) => c.id === x.gift_card_id)
           if (card) card.balance = Math.min(Number(card.amount), r2(Number(card.balance) + Number(x.amount)))

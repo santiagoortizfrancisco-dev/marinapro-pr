@@ -662,3 +662,39 @@ test('link de la cita: la clienta ve su cita y estimado sin cuenta, acepta, y di
   assert.ok(after.client_ok_at && after.deposit_reported_at, 'quedó aceptada y con depósito reportado')
   assert.equal((await one(null, `select cita_public('00000000-0000-4000-8000-000000000000') d`, 'anon')).d, null, 'otra cita no existe')
 })
+
+test('guardería: precios de ejemplo, contrato por bote, cobros sueltos y "Facturar el mes" (una vez por mes, vence, atraso)', async () => {
+  const G = (await db.query(`insert into auth.users(email) values ('marina@guarderia.test') returning id`)).rows[0].id
+  await as(G, `select set_my_role('mechanic','Luis Marina','787-555-0777','Fajardo','Marina del Este')`)
+  await as(G, `update mechanics set business_type = 'storage', business_type_set = true, storage_late_fee = 25 where profile_id = '${G}'`)
+  await as(G, `select seed_storage_rates('${G}')`)
+  await as(G, `select seed_storage_rates('${G}')`)
+  assert.equal((await one(G, `select count(*)::int n from storage_rates`)).n, 9, 'la lista de ejemplo sale una sola vez')
+  assert.ok(await fails(() => as(B, `select seed_storage_rates('${G}')`)), 'otro no le llena la lista')
+
+  const cl = (await one(G, `insert into clients (mechanic_id, full_name, phone) values ('${G}', 'Carlos Vega', '787-555-0778') returning id`)).id
+  const bt = (await one(G, `insert into boats (client_id, name, length_ft) values ('${cl}', 'Sea Ray', 24) returning id`)).id
+  const rack = (await one(G, `select id from storage_rates where name like 'Guardería en seco%'`)).id
+  const k = (await one(G, `insert into storage_contracts (mechanic_id, boat_id, rate_id, space_label, monthly_price, start_date) values ('${G}', '${bt}', '${rack}', 'Rack A-12', 288, '2026-09-15') returning id`)).id
+  await as(G, `insert into storage_charges (mechanic_id, boat_id, description, qty, unit_price, charged_on) values ('${G}', '${bt}', 'Uso de rampa', 2, 15, '2026-10-05')`)
+  await as(G, `insert into storage_charges (mechanic_id, boat_id, description, qty, unit_price, charged_on) values ('${G}', '${bt}', 'Lavado del bote', 1, 40, '2026-11-02')`)
+
+  assert.equal((await one(G, `select storage_bill_month('2026-10-01') n`)).n, 1)
+  assert.equal((await one(G, `select storage_bill_month('2026-10-01') n`)).n, 0, 'el mismo mes no se factura dos veces')
+  const inv = await one(G, `select i.labor_subtotal + i.parts_subtotal as total, i.due_date, i.public_token from storage_bills sb join invoices i on i.work_order_id = sb.work_order_id where sb.contract_id = '${k}' and sb.month = '2026-10-01'`)
+  assert.equal(Number(inv.total), 318, 'renta 288 + 2 usos de rampa (el lavado de noviembre se queda para noviembre)')
+  assert.ok(inv.due_date, 'tiene fecha de vencimiento')
+  assert.equal(String((await one(null, `select invoice_due_date('${inv.public_token}') d`, 'anon')).d), String(inv.due_date))
+  assert.equal((await one(G, `select count(*)::int n from storage_charges where work_order_id is null`)).n, 1)
+
+  // Si la de octubre se pasó de la fecha sin pagar, noviembre lleva el cargo por atraso
+  await sys(`update invoices set due_date = '2026-01-01' where public_token = '${inv.public_token}'`)
+  assert.equal((await one(G, `select storage_bill_month('2026-11-01') n`)).n, 1)
+  const nov = await one(G, `select i.labor_subtotal + i.parts_subtotal as total from storage_bills sb join invoices i on i.work_order_id = sb.work_order_id where sb.month = '2026-11-01'`)
+  assert.equal(Number(nov.total), 288 + 40 + 25)
+
+  assert.equal((await as(A, `select * from storage_contracts`)).length, 0, 'otro negocio no ve los contratos')
+  assert.equal((await as(A, `select * from storage_charges`)).length, 0)
+  assert.equal((await as(A, `select * from storage_bills`)).length, 0)
+  assert.equal((await one(A, `select storage_bill_month('2026-10-01') n`)).n, 0, 'ni los factura')
+})

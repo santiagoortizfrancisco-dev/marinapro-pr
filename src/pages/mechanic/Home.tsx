@@ -1,6 +1,6 @@
 import { useWords } from '../../lib/trade'
 import { Link } from 'react-router'
-import { CalendarDays, CalendarHeart, ChevronRight, Heart, Receipt, Sparkles, Users, Wallet, Wrench, Zap, type LucideIcon } from 'lucide-react'
+import { Anchor, CalendarDays, CalendarHeart, ChevronRight, Heart, Receipt, Sparkles, Users, Wallet, Wrench, Zap, type LucideIcon } from 'lucide-react'
 import { NailPolishIcon, NailsHandIcon } from '../../components/BeautyIcons'
 import { GaugeIcon, PistonIcon, PropellerIcon, SparkPlugIcon } from '../../components/PartIcons'
 import { useAuth } from '../../auth/AuthProvider'
@@ -111,7 +111,7 @@ export default function Home() {
   const first = (profile?.full_name ?? '').split(' ')[0]
   const debt = data ? formatMoney(data.debt) : '…'
   // Cada negocio con su estilo: baterías para los mecánicos (botes y autos), belleza para el salón, sencillo para los demás
-  const look = words.salon ? 'beauty' : ['marine', 'auto'].includes(words.trade) ? 'battery' : 'plain'
+  const look = words.salon ? 'beauty' : ['marine', 'auto', 'storage'].includes(words.trade) ? 'battery' : 'plain'
 
   return (
     <>
@@ -145,6 +145,17 @@ export default function Home() {
           <PlainTile to="/clientes" icon={Users} label={words.Clients} color="#334155" />
           <PlainTile to="/trabajos" icon={Wallet} label="Me deben" sub={debt} color="#dc2626" />
         </div>
+      )}
+
+      {words.storage && (
+        <Link to="/guarderia" className="mt-4 flex min-h-20 items-center gap-3 rounded-2xl bg-navy-800 px-4 py-3 text-white shadow-lg shadow-navy-900/20 transition active:scale-[0.99]">
+          <Anchor size={30} />
+          <span className="flex-1">
+            <span className="block text-xl font-extrabold">Guardería</span>
+            <span className="block text-sm text-navy-100">Botes guardados, cobros de un toque y la factura del mes</span>
+          </span>
+          <ChevronRight />
+        </Link>
       )}
 
       {words.salon && <SalonReminders />}

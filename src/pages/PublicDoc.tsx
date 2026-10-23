@@ -111,6 +111,7 @@ export default function PublicDoc() {
   const pago = useSearchParams()[0].get('pago')
   const [doc, setDoc] = useState<Doc | null>(null)
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading')
+  const [due, setDue] = useState<string | null>(null)
   // El mecánico (que tiene sesión) ve un botón para volver: en el app instalada del iPhone no hay "atrás"
   const [isMechanic, setIsMechanic] = useState(false)
   const paper = useRef<HTMLElement>(null)
@@ -148,6 +149,8 @@ export default function PublicDoc() {
       setDoc(data as Doc)
       setState('ok')
       document.title = (data as Doc).kind === 'invoice' ? `Factura ${(data as Doc).number}` : 'Estimado'
+      // La factura de la guardería dice cuándo vence
+      if ((data as Doc).kind === 'invoice') supabase!.rpc('invoice_due_date', { p_token: token }).then(({ data: d }) => setDue((d as string | null) ?? null))
     })
   }, [token])
 
@@ -200,6 +203,7 @@ export default function PublicDoc() {
           <div className="sm:text-right">
             <div className="inline-block rounded-full px-4 py-1 text-lg font-extrabold tracking-wide text-white" style={{ backgroundColor: accent }}>{isInvoice ? `FACTURA #${doc.number}` : 'ESTIMADO'}</div>
             <div className="text-base text-slate-600">{formatDate(doc.date)}</div>
+            {isInvoice && due && <div className="text-base font-bold text-slate-900">Vence: {formatDate(due)}</div>}
           </div>
         </header>
 

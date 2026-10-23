@@ -1831,3 +1831,39 @@ test('salón: en Factura rápida, arriba se puede vender una tarjeta de regalo',
   await page.getByRole('link', { name: /Vender tarjeta de regalo/ }).click()
   await expect(page.getByRole('dialog', { name: 'Vender tarjeta de regalo' })).toBeVisible()
 })
+
+test('guardería: bote con su espacio (precio por pie), cobro de un toque, facturar el mes y borrar la factura hecha por error', async ({ page }) => {
+  await fetch(`${MOCK}/rest/v1/mechanics?profile_id=eq.11111111-1111-4111-8111-111111111111`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ business_type: 'storage' }) })
+  await login(page)
+  await page.getByRole('link', { name: /Guardería/ }).first().click()
+  await expect(page.getByText('Todavía no hay botes en la guardería')).toBeVisible()
+
+  await page.getByRole('button', { name: /Añadir bote a la guardería/ }).click()
+  await page.getByLabel('Bote', { exact: true }).selectOption('b1')
+  await page.getByLabel('Espacio', { exact: true }).selectOption({ label: 'Guardería en seco (rack)' })
+  await expect(page.getByLabel('Precio del mes')).toHaveValue('300') // $12 × 25 pies
+  await page.getByLabel(/Número o lugar/).fill('Rack A-12')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  const card = page.getByRole('article', { name: 'Guardería de La Tranquila' })
+  await expect(card.getByText('$300.00 al mes')).toBeVisible()
+
+  await card.getByRole('button', { name: /Cobro/ }).click()
+  await page.getByRole('button', { name: /Uso de rampa/ }).click()
+  await expect(page.getByRole('region', { name: 'Cobros pendientes' }).getByText('Uso de rampa')).toBeVisible()
+  await page.getByRole('button', { name: 'Listo' }).click()
+  await expect(card.getByText(/Cobros para la próxima factura: \$15\.00/)).toBeVisible()
+
+  await page.getByRole('tab', { name: 'Facturar el mes' }).click()
+  await page.getByRole('button', { name: /^Facturar / }).click()
+  const bill = page.getByRole('article', { name: 'Factura de La Tranquila' })
+  await expect(bill.getByText(/\$315\.00 · vence/)).toBeVisible()
+  await expect(bill.getByRole('link', { name: /Enviar/ })).toHaveAttribute('href', /Vence/)
+  await expect(page.getByText(/ya está facturado/)).toBeVisible()
+
+  page.once('dialog', (d) => d.accept())
+  await bill.getByRole('button', { name: /Borrar esta factura/ }).click()
+  await expect(page.getByRole('button', { name: /^Facturar / })).toBeVisible()
+  const s = await state()
+  expect(s.storage_bills).toHaveLength(0)
+  expect(s.storage_charges.filter((x: { work_order_id: string | null }) => !x.work_order_id)).toHaveLength(1)
+})
