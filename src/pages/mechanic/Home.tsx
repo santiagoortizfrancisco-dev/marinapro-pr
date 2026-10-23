@@ -172,6 +172,7 @@ export default function Home() {
       {data && words.salon && (() => {
         const now = Date.now()
         const due = data.working.filter((x) => !x.appointments || new Date(x.appointments.starts_at).getTime() <= now)
+          .sort((x, y) => (y.appointments?.starts_at ?? '').localeCompare(x.appointments?.starts_at ?? ''))
         return due.length > 0 && (
           <section className="mt-6">
             <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><Wallet size={22} /> Sin cobrar</h2>

@@ -1562,6 +1562,7 @@ test('salón: la clienta abre el link de su cita, acepta y dice que pagó; la du
 
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /Depósitos por verificar/ })).toBeVisible()
+  await expect(page.getByText(/Dice que envió \$20\.00 el \d\d\/\d\d/)).toBeVisible()
   await page.getByRole('link', { name: /Link Prueba/ }).first().click()
   await expect(page.getByText(/aceptó la cita/)).toBeVisible()
   await page.getByRole('button', { name: /Sí, me llegó/ }).click()
