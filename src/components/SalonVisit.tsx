@@ -432,31 +432,22 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         </section>
       )}
 
-      {/* La clienta y la cita */}
-      <section className="rounded-3xl bg-white p-4 shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100">
-        <div className="flex items-center gap-3">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-pink-600 text-2xl font-extrabold text-white">{initial(c.full_name)}</span>
-          <Link to={`/clientes/${c.id}`} className="min-w-0 flex-1">
-            <span className="block text-xl font-extrabold leading-tight text-slate-900">{c.full_name}</span>
-            <span className="mt-1 flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-0.5 text-sm font-bold ${st.style}`}>{st.label}</span><span className="text-sm font-semibold text-pink-700">Ver su ficha</span></span>
-          </Link>
+      {/* La cita, compacta: cuándo, con quién y los botones (el nombre ya está arriba) */}
+      <section className="rounded-3xl bg-white p-3 shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100">
+        <div className="text-lg font-extrabold leading-tight text-slate-900">{formatLongDate(a.starts_at)} · {formatTime(a.starts_at)}</div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
+          <span>{minutesLabel(a.duration_min)}</span>
+          {who && <span className="flex items-center gap-1 font-bold" style={{ color: who.color }}><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: who.color }} />Con {who.name}</span>}
+          <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${st.style}`}>{st.label}</span>
+          <Link to={`/clientes/${c.id}`} className="font-semibold text-pink-700">Ver su ficha</Link>
         </div>
-        <div className="mt-4 rounded-2xl bg-pink-50 p-3">
-          <div className="text-lg font-extrabold text-slate-900">{formatLongDate(a.starts_at)}</div>
-          <div className="text-base text-slate-700">{formatTime(a.starts_at)} · {minutesLabel(a.duration_min)}</div>
-          {who && (
-            <div className="mt-1 flex items-center gap-2 text-base font-bold" style={{ color: who.color }}>
-              <span className="h-3 w-3 rounded-full" style={{ backgroundColor: who.color }} /> Con {who.name}
-            </div>
-          )}
-          {a.notes && <p className="mt-2 whitespace-pre-line text-base text-slate-700">{a.notes}</p>}
-        </div>
-        <div className="mt-3 flex">
-          {c.phone && <Action label="Llamar" href={telLink(c.phone)} icon={<Phone size={24} />} tone="bg-sky-100 text-sky-700" />}
-          <Action label="Cambiar" onClick={onEdit} icon={<CalendarClock size={24} />} tone="bg-pink-100 text-pink-700" />
+        {a.notes && <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{a.notes}</p>}
+        <div className="mt-2 flex gap-2">
+          {c.phone && <a href={telLink(c.phone)} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full text-sm font-bold bg-sky-50 text-sky-700"><Phone size={18} /> Llamar</a>}
+          <button type="button" onClick={onEdit} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full text-sm font-bold bg-pink-50 text-pink-700"><CalendarClock size={18} /> Cambiar</button>
           {a.status === 'cancelled'
-            ? <Action label="Activar" onClick={onActivate} icon={<Check size={24} />} tone="bg-emerald-100 text-emerald-700" />
-            : <Action label="Cancelar" onClick={onCancel} icon={<XCircle size={24} />} tone="bg-red-50 text-red-600" />}
+            ? <button type="button" onClick={onActivate} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full text-sm font-bold bg-emerald-50 text-emerald-700"><Check size={18} /> Activar</button>
+            : <button type="button" onClick={onCancel} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full text-sm font-bold bg-red-50 text-red-600"><XCircle size={18} /> Cancelar</button>}
         </div>
       </section>
 
