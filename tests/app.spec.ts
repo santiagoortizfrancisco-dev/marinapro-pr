@@ -1210,7 +1210,7 @@ test('salón: recordatorio de mañana — Recordarle abre WhatsApp con el mensaj
   await page.getByLabel('Buscar clienta').fill('Ana')
   await page.getByRole('button', { name: /Ana Martínez/ }).first().click()
   await page.getByRole('button', { name: 'Guardar cita' }).click()
-  await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /La cuenta|Servicios y precios/ })).toBeVisible()
 
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /Mañana · recordarles/ })).toBeVisible()
@@ -1758,6 +1758,10 @@ test('salón: cita para otro día — lo primero es confirmar y pedir el depósi
   const d = new Date(Date.now() + 3 * 86400000)
   await page.getByLabel('Día *').fill(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Puerto_Rico' }).format(d))
   await page.getByRole('button', { name: /Guardar cita/ }).click()
+  // Primero los precios, después el depósito y confirmar
+  const precios = await page.getByRole('heading', { name: 'Servicios y precios' }).boundingBox()
+  const deposito = await page.getByRole('radio', { name: '$15' }).boundingBox()
+  expect(precios!.y).toBeLessThan(deposito!.y)
   await page.getByRole('radio', { name: '$15' }).click()
   const popup = page.waitForEvent('popup')
   await page.getByRole('button', { name: /Confirmar y pedir \$15\.00/ }).click()

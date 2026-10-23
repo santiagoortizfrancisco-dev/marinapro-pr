@@ -303,7 +303,9 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   // Pedida por internet o con depósito que verificar: eso va primero; si no, cerrado abajo
   // Cita para otro día sin confirmar todavía: lo primero es confirmarla y pedir el depósito
   const later = prDay(a.starts_at) > todayPR() && !done && paid === 0 && !sent && a.status !== 'cancelled'
-  const urgent = a.status === 'requested' || reported > 0 || later
+  // Pedida por internet o depósito por verificar: eso va arriba de todo
+  const top = a.status === 'requested' || reported > 0
+  const urgent = top || later
   const confirmSummary = [a.status === 'requested' ? 'Sin confirmar' : a.status === 'cancelled' ? 'Cancelada' : 'Confirmada ✓',
     payments.length && !done ? `Depósito ${formatMoney(paid)} ✓` : depAmount > 0 ? `Depósito ${formatMoney(depAmount)}` : null].filter(Boolean).join(' · ')
   const changed = params.get('cambio') === '1'
@@ -323,6 +325,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       <Step flat title={depAmount > 0 ? 'Confirmar y pedir depósito' : 'Confirmar la cita'} ok={confirmed}>
         {a.status !== 'cancelled' && !done && paid === 0 && (
           <div className="mb-3">
+            {unpriced && <p className="mb-3 rounded-xl bg-amber-50 p-2 text-sm text-amber-900">Ponle precio a “{unpriced.description}” arriba para que le llegue el estimado completo.</p>}
             <p className="mb-2 text-base font-bold text-slate-800">¿Le pides depósito?</p>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Depósito que le pides">
               {['0', '10', '15', '20', '25'].map((v) => {
@@ -458,10 +461,10 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         </div>
       </section>
 
-      {urgent && confirmBlock()}
+      {top && confirmBlock()}
 
       {/* Lo primero: la cuenta (los precios) y cobrar */}
-      <Step title="La cuenta" ok={parts.length > 0 && !unpriced}>
+      <Step title={later ? 'Servicios y precios' : 'La cuenta'} ok={parts.length > 0 && !unpriced}>
         <div className="-mx-4 overflow-hidden border-y border-pink-100">
           <div className="divide-y divide-dashed divide-slate-200 px-4">
             {parts.length === 0 && <p className="py-4 text-base text-slate-500">Todavía no hay servicios. Toca “Añadir servicio”.</p>}
@@ -524,6 +527,9 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         </div>
         {!done && parts.length > 0 && <p className="mt-2 text-sm text-slate-500">Toca un servicio para cambiarle el precio o quitarlo.</p>}
       </Step>
+
+      {/* Cita para otro día: después de los precios, el depósito y confirmar (le llega con el estimado) */}
+      {later && !top && confirmBlock()}
 
       {/* 4 · Cobrar */}
       <Step title="Cobrar" ok={done}>
