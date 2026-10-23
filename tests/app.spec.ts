@@ -1846,7 +1846,11 @@ test('guardería: bote con su espacio (precio por pie), cobro de un toque, factu
   await expect(page.getByRole('link', { name: /Hacer cita/ })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Agenda' })).toHaveCount(0)
   await expect(page.getByText(/No tienes citas hoy/)).toHaveCount(0)
-  await page.screenshot({ path: 'test-results/guarderia-inicio.png' })
+  // Al comenzar: primeros pasos, y el próximo en azul
+  const steps = page.getByRole('region', { name: 'Primeros pasos' })
+  await expect(steps).toBeVisible()
+  await expect(steps.getByRole('link', { name: /Meter el bote en su espacio/ })).toBeVisible()
+  await page.screenshot({ path: 'test-results/guarderia-inicio.png', fullPage: true })
   // La ficha del cliente y del bote tampoco hablan de citas
   await page.goto('/clientes/c1')
   await expect(page.getByRole('link', { name: /La Tranquila/ })).toBeVisible()
@@ -1902,6 +1906,11 @@ test('guardería: bote con su espacio (precio por pie), cobro de un toque, factu
   await page.goto('/mas')
   await page.getByRole('link', { name: /^Precios/ }).click()
   await expect(page.getByRole('tab', { name: 'Precios' })).toHaveAttribute('aria-selected', 'true')
+  // Ya todo listo: Inicio dice lo próximo que toca (facturar el mes)
+  await page.goto('/inicio')
+  await expect(page.getByRole('region', { name: 'Primeros pasos' })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Lo próximo que toca' }).getByRole('link', { name: /Facturar .*1 bote sin facturar/ })).toBeVisible()
+  await page.screenshot({ path: 'test-results/guarderia-proximo.png' })
   await page.goto('/trabajos')
   await page.getByRole('link', { name: /Facturar el mes/ }).click()
 

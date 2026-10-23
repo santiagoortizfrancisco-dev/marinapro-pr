@@ -4,6 +4,7 @@ import { AlertTriangle, ExternalLink, FileText, Pencil, Plus, Ship, Trash2, Ware
 import { useAuth } from '../../auth/AuthProvider'
 import { WhatsAppIcon } from '../../components/BrandIcons'
 import { Sheet, Toast } from '../../components/Sheet'
+import { PRICES_SEEN } from '../../components/StorageNext'
 import { BackTitle, Button, CARD, EmptyState, Field, Input, Loading, Select, Textarea } from '../../components/ui'
 import { db } from '../../lib/db'
 import { addDays, daysUntil, formatDate, formatMoney, todayPR } from '../../lib/format'
@@ -435,6 +436,8 @@ function BillTab({ data, me, month, setMonth, reload, flash, signature }: { data
 
 // ---------------------------------------------------------------------------------------------
 function RatesTab({ rates, me, reload }: { rates: Rate[]; me: string; reload: () => void }) {
+  // Primeros pasos: ya vio sus precios
+  useEffect(() => { try { localStorage.setItem(PRICES_SEEN, '1') } catch { /* sin memoria */ } }, [])
   const [edit, setEdit] = useState<Partial<Rate> | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)

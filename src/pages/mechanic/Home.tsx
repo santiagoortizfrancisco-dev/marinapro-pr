@@ -5,6 +5,7 @@ import { NailPolishIcon, NailsHandIcon } from '../../components/BeautyIcons'
 import { GaugeIcon, PistonIcon, PropellerIcon, SparkPlugIcon } from '../../components/PartIcons'
 import { useAuth } from '../../auth/AuthProvider'
 import DueServices from '../../components/DueServices'
+import StorageNext from '../../components/StorageNext'
 import SalonReminders from '../../components/SalonReminders'
 import ExamplesBanner from '../../components/ExamplesBanner'
 import { db } from '../../lib/db'
@@ -96,7 +97,7 @@ function PlainTile({ to, icon: Icon, label, sub, color }: { to: string; icon: Lu
 /** Pantalla de inicio: lo que puedes hacer (4 botones grandes) y lo que tienes hoy. */
 export default function Home() {
   const words = useWords()
-  const { profile } = useAuth()
+  const { profile, session } = useAuth()
   const today = todayPR()
   const { data } = useLoad(async () => {
     const [start, end] = prRange(today, 1)
@@ -154,6 +155,8 @@ export default function Home() {
 
       {look === 'storage' && (
         <>
+          {/* Lo primero: los primeros pasos o lo próximo que toca */}
+          {session && <div className="-mt-4 mb-4"><StorageNext me={session.user.id} debt={data?.debt ?? null} /></div>}
           <Link to="/guarderia" className="flex min-h-36 flex-col justify-between rounded-3xl bg-navy-800 p-5 text-white shadow-xl shadow-navy-900/25 transition active:scale-[0.99]">
             <span className="flex items-center gap-3">
               <Anchor size={40} />
