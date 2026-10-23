@@ -79,6 +79,8 @@ function reset() {
     storage_contracts: [],
     storage_charges: [],
     storage_bills: [],
+    storage_zones: [],
+    storage_spots: [],
   }
 }
 reset()
@@ -486,6 +488,19 @@ const RPC = {
     }
     return n
   },
+  storage_add_spots: ({ p_zone, p_prefix, p_from, p_count }) => {
+    const z = db.storage_zones.find((x) => x.id === p_zone)
+    if (!z || z.mechanic_id !== caller) throw Object.assign(new Error('No autorizado'), { status: 400 })
+    let n = 0
+    const base = Math.max(0, ...db.storage_spots.filter((x) => x.zone_id === p_zone).map((x) => x.sort))
+    for (let i = p_from; i < p_from + p_count; i++) {
+      const label = `${p_prefix ?? ''}${i}`
+      if (db.storage_spots.some((x) => x.zone_id === p_zone && x.label === label)) continue
+      db.storage_spots.push({ id: randomUUID(), mechanic_id: caller, zone_id: p_zone, label, status: 'ok', note: null, sort: base + i - p_from + 1, created_at: new Date().toISOString() })
+      n++
+    }
+    return n
+  },
   invoice_due_date: ({ p_token }) => db.invoices.find((i) => i.public_token === p_token)?.due_date ?? null,
   create_invoice: ({ p_wo }) => {
     const wo = db.work_orders.find((w) => w.id === p_wo)
@@ -502,6 +517,19 @@ const RPC = {
     settle(wo.id)
     return inv.id
   },
+}
+
+// Como el candado de 0032: un espacio no puede tener dos botes ni estar fuera de servicio
+function checkSpot(row, old = null) {
+  if (row.status !== 'active') { row.away_since = null; row.away_spot_id = null; return }
+  if (!row.away_since) row.away_spot_id = null
+  for (const sid of [row.spot_id, row.away_spot_id].filter(Boolean)) {
+    const sp = db.storage_spots.find((x) => x.id === sid)
+    if (!sp) throw Object.assign(new Error('Ese espacio no existe'), { status: 400 })
+    if (sp.status === 'out_of_service' && sid !== old?.spot_id && sid !== old?.away_spot_id) throw Object.assign(new Error(`El espacio ${sp.label} está fuera de servicio`), { status: 400 })
+    const other = db.storage_contracts.find((c) => c.status === 'active' && c.id !== row.id && (c.spot_id === sid || c.away_spot_id === sid))
+    if (other) throw Object.assign(new Error(`El espacio ${sp.label} ya está ocupado por ${db.boats.find((b) => b.id === other.boat_id)?.name ?? 'otro bote'}`), { status: 400 })
+  }
 }
 
 // ------------------------------------------------------------------------------------------
@@ -612,6 +640,7 @@ http.createServer((req, res) => {
           if (!card || Number(card.balance) < Number(x.amount) - 0.004) throw Object.assign(new Error('A la tarjeta no le queda suficiente'), { status: 400 })
           card.balance = r2(Number(card.balance) - Number(x.amount))
         }
+        if (table === 'storage_contracts') items.forEach((x) => { x.spot_id ??= null; x.away_spot_id ??= null; x.away_since ??= null; checkSpot(x) })
         rows.push(...items)
         if (table === 'payments') items.forEach((x) => settle(x.work_order_id))
         return out(items)
@@ -625,7 +654,9 @@ http.createServer((req, res) => {
           if (prof?.trial || signups[r.profile_id]?.is_anonymous) continue
           db.admin_signups.push({ id: randomUUID(), profile_id: r.profile_id, full_name: prof?.full_name ?? null, business_name: r.business_name, business_type: patch.business_type ?? r.business_type, email: prof?.email ?? null, phone: prof?.phone ?? null, town: prof?.town ?? null, created_at: new Date().toISOString(), seen_at: null })
         }
+        if (table === 'storage_contracts') found.forEach((r) => checkSpot({ ...r, ...patch }, r))
         found.forEach((r) => Object.assign(r, patch))
+        if (table === 'storage_contracts') found.forEach((r) => checkSpot(r, r))
         return out(found)
       }
       if (req.method === 'DELETE') {

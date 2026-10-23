@@ -698,3 +698,42 @@ test('guardería: precios de ejemplo, contrato por bote, cobros sueltos y "Factu
   assert.equal((await as(A, `select * from storage_bills`)).length, 0)
   assert.equal((await one(A, `select storage_bill_month('2026-10-01') n`)).n, 0, 'ni los factura')
 })
+
+test('guardería: zonas y espacios numerados; nunca dos botes en el mismo espacio; salir al agua reserva su espacio', async () => {
+  const G = (await sys(`select profile_id from mechanics where business_name = 'Marina del Este'`))[0].profile_id
+  const patio = (await one(G, `insert into storage_zones (mechanic_id, name, kind) values ('${G}', 'Patio A', 'land') returning id`)).id
+  const muelle = (await one(G, `insert into storage_zones (mechanic_id, name, kind) values ('${G}', 'Muelle C', 'water') returning id`)).id
+  assert.equal((await one(G, `select storage_add_spots('${patio}', 'A-', 1, 5) n`)).n, 5)
+  assert.equal((await one(G, `select storage_add_spots('${patio}', 'A-', 4, 3) n`)).n, 1, 'los que ya existen no se repiten (A-6 es el único nuevo)')
+  assert.equal((await one(G, `select storage_add_spots('${muelle}', 'C-', 1, 2) n`)).n, 2)
+  assert.ok(await fails(() => as(B, `select storage_add_spots('${patio}', 'X-', 1, 2)`)), 'otro no le crea espacios')
+  const spot = async (z, l) => (await one(G, `select id from storage_spots where zone_id = '${z}' and label = '${l}'`)).id
+  const a1 = await spot(patio, 'A-1'), a2 = await spot(patio, 'A-2'), c1 = await spot(muelle, 'C-1')
+
+  const cl = (await one(G, `select id from clients where full_name = 'Carlos Vega'`)).id
+  const b2 = (await one(G, `insert into boats (client_id, name, length_ft) values ('${cl}', 'Boston Whaler', 21) returning id`)).id
+  const k1 = (await one(G, `select id from storage_contracts where status = 'active' limit 1`)).id
+  await as(G, `update storage_contracts set spot_id = '${a1}' where id = '${k1}'`)
+  await assert.rejects(as(G, `insert into storage_contracts (mechanic_id, boat_id, monthly_price, spot_id) values ('${G}', '${b2}', 200, '${a1}')`), /ya está ocupado por Sea Ray/)
+  const k2 = (await one(G, `insert into storage_contracts (mechanic_id, boat_id, monthly_price, spot_id) values ('${G}', '${b2}', 200, '${a2}') returning id`)).id
+
+  // Sale al agua: A-1 queda reservado para él y ocupa C-1 mientras tanto; nadie más puede usar ni A-1 ni C-1
+  await as(G, `update storage_contracts set away_since = now(), away_spot_id = '${c1}' where id = '${k1}'`)
+  await assert.rejects(as(G, `update storage_contracts set spot_id = '${a1}' where id = '${k2}'`), /ocupado/)
+  await assert.rejects(as(G, `update storage_contracts set away_since = now(), away_spot_id = '${c1}' where id = '${k2}'`), /ocupado/)
+  // Vuelve: el muelle se libera solo
+  await as(G, `update storage_contracts set away_since = null where id = '${k1}'`)
+  assert.equal((await one(G, `select away_spot_id from storage_contracts where id = '${k1}'`)).away_spot_id, null)
+  await as(G, `update storage_contracts set away_since = now(), away_spot_id = '${c1}' where id = '${k2}'`)
+
+  // Fuera de servicio: no se le puede asignar un bote nuevo; terminar el contrato libera el espacio
+  const a3 = await spot(patio, 'A-3')
+  await as(G, `update storage_spots set status = 'out_of_service' where id = '${a3}'`)
+  await assert.rejects(as(G, `update storage_contracts set spot_id = '${a3}' where id = '${k2}'`), /fuera de servicio/)
+  await as(G, `update storage_contracts set status = 'ended' where id = '${k2}'`)
+  assert.equal((await one(G, `select away_spot_id from storage_contracts where id = '${k2}'`)).away_spot_id, null)
+  await as(G, `insert into storage_contracts (mechanic_id, boat_id, monthly_price, spot_id) values ('${G}', '${b2}', 200, '${a2}')`)
+
+  assert.equal((await as(B, `select * from storage_zones`)).length, 0, 'otro negocio no ve las zonas')
+  assert.equal((await as(B, `select * from storage_spots`)).length, 0)
+})

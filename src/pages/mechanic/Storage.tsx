@@ -5,19 +5,15 @@ import { useAuth } from '../../auth/AuthProvider'
 import { WhatsAppIcon } from '../../components/BrandIcons'
 import { Sheet, Toast } from '../../components/Sheet'
 import { PRICES_SEEN } from '../../components/StorageNext'
+import StorageSpaces from '../../components/StorageSpaces'
 import { BackTitle, Button, CARD, EmptyState, Field, Input, Loading, Select, Textarea } from '../../components/ui'
 import { db } from '../../lib/db'
 import { addDays, daysUntil, formatDate, formatMoney, todayPR } from '../../lib/format'
 import { whatsappLink } from '../../lib/links'
-import { basisText, priceFor, type Basis, type Rate } from '../../lib/storage'
+import { basisText, priceFor, spotName, spotState, type Basis, type Contract, type Rate, type Spot, type StorageBoat, type Zone } from '../../lib/storage'
 import { must, num, useLoad } from '../../lib/useLoad'
 
-interface Boat { id: string; name: string; length_ft: number | null; clients: { full_name: string; phone: string | null } | null }
-interface Contract {
-  id: string; boat_id: string; rate_id: string | null; space_label: string | null; monthly_price: number
-  start_date: string; end_date: string | null; insurance_expires: string | null; status: 'active' | 'ended'; notes: string | null
-  boats: Boat | null
-}
+type Boat = StorageBoat
 interface Charge { id: string; boat_id: string; description: string; qty: number; unit_price: number; charged_on: string }
 interface Bill {
   contract_id: string; month: string; work_order_id: string | null
@@ -35,7 +31,7 @@ const firstOf = (day: string) => day.slice(0, 8) + '01'
 const nextMonth = (m: string) => firstOf(addDays(m, 32))
 const prevMonth = (m: string) => firstOf(addDays(m, -1))
 
-type Tab = 'boats' | 'bill' | 'rates'
+type Tab = 'boats' | 'spaces' | 'bill' | 'rates'
 
 /** Guardería / Marina: los botes guardados (contrato y cobros sueltos), facturar el mes y la lista de precios. */
 export default function Storage() {
@@ -43,19 +39,23 @@ export default function Storage() {
   const me = session!.user.id
   // ?tab=bill|rates abre esa parte; ?bote=ID abre el contrato de ese bote (desde su ficha)
   const [params] = useSearchParams()
-  const [tab, setTab] = useState<Tab>(() => (['bill', 'rates'].includes(params.get('tab') ?? '') ? params.get('tab') as Tab : 'boats'))
+  const [tab, setTab] = useState<Tab>(() => (['spaces', 'bill', 'rates'].includes(params.get('tab') ?? '') ? params.get('tab') as Tab : 'boats'))
+  // Desde un cuadro de Espacios: abrir el contrato de un bote, o uno nuevo con ese espacio
+  const [intent, setIntent] = useState<{ boat?: string; spot?: string } | null>(params.get('bote') ? { boat: params.get('bote')! } : null)
   const [month, setMonth] = useState(firstOf(todayPR()))
   const [toast, setToast] = useState<string | null>(null)
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500) }
 
   const { data, loading, reload } = useLoad<Data>(async () => {
-    const [r, c, ch, b, m, bl] = await Promise.all([
+    const [r, c, ch, b, m, bl, z, sp] = await Promise.all([
       db().from('storage_rates').select('*').order('kind').order('sort'),
       db().from('storage_contracts').select('*, boats(id, name, length_ft, clients(full_name, phone))').order('created_at'),
       db().from('storage_charges').select('*').is('work_order_id', null).order('charged_on'),
       db().from('boats').select('id, name, length_ft, clients(full_name, phone)').order('name'),
       db().from('mechanics').select('storage_due_days, storage_late_fee, ath_movil_number').eq('profile_id', me).maybeSingle(),
       db().from('storage_bills').select('contract_id, month, work_order_id, work_orders(id, boats(id, name, length_ft, clients(full_name, phone)), invoices(number, total, public_token, paid_at, due_date), payments(amount))').eq('month', month),
+      db().from('storage_zones').select('*').order('sort'),
+      db().from('storage_spots').select('*').order('sort'),
     ])
     return {
       rates: (r.data ?? []) as Rate[],
@@ -64,6 +64,8 @@ export default function Storage() {
       boats: (b.data ?? []) as unknown as Boat[],
       settings: (m.data ?? { storage_due_days: 10, storage_late_fee: null, ath_movil_number: null }) as Data['settings'],
       bills: (bl.data ?? []) as unknown as Bill[],
+      zones: (z.data ?? []) as Zone[],
+      spots: (sp.data ?? []) as Spot[],
     }
   }, [month])
 
@@ -79,12 +81,14 @@ export default function Storage() {
     <>
       <BackTitle subtitle="Espacios, contratos y la factura del mes">Guardería / Marina</BackTitle>
       <div className="mb-4 flex gap-2" role="tablist" aria-label="Secciones">
-        {([['boats', 'Botes'], ['bill', 'Facturar el mes'], ['rates', 'Precios']] as [Tab, string][]).map(([v, l]) => (
-          <button key={v} type="button" role="tab" aria-selected={tab === v} onClick={() => setTab(v)}
+        {([['boats', 'Botes'], ['spaces', 'Espacios'], ['bill', 'Facturar'], ['rates', 'Precios']] as [Tab, string][]).map(([v, l]) => (
+          <button key={v} type="button" role="tab" aria-selected={tab === v} onClick={() => { setIntent(null); setTab(v) }}
             className={`min-h-12 flex-1 rounded-full px-2 text-sm font-bold ${tab === v ? 'bg-navy-800 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-300'}`}>{l}</button>
         ))}
       </div>
-      {tab === 'boats' && <BoatsTab data={data} me={me} reload={reload} flash={flash} openBoat={params.get('bote')} />}
+      {tab === 'boats' && <BoatsTab key={JSON.stringify(intent)} data={data} me={me} reload={reload} flash={flash} openBoat={intent?.boat ?? null} openSpot={intent?.spot ?? null} />}
+      {tab === 'spaces' && <StorageSpaces zones={data.zones} spots={data.spots} contracts={data.contracts} me={me} reload={reload} flash={flash}
+        onNewContract={(spot) => { setIntent({ spot }); setTab('boats') }} onOpenContract={(boat) => { setIntent({ boat }); setTab('boats') }} />}
       {tab === 'bill' && <BillTab data={data} me={me} month={month} setMonth={setMonth} reload={reload} flash={flash} signature={profile?.full_name ?? ''} />}
       {tab === 'rates' && <RatesTab rates={data.rates} me={me} reload={reload} />}
       <Toast message={toast} />
@@ -93,13 +97,17 @@ export default function Storage() {
 }
 
 interface Data {
-  rates: Rate[]; contracts: Contract[]; charges: Charge[]; boats: Boat[]; bills: Bill[]
+  rates: Rate[]; contracts: Contract[]; charges: Charge[]; boats: Boat[]; bills: Bill[]; zones: Zone[]; spots: Spot[]
   settings: { storage_due_days: number; storage_late_fee: number | null; ath_movil_number: string | null }
 }
 
 // ---------------------------------------------------------------------------------------------
-function BoatsTab({ data, me, reload, flash, openBoat }: { data: Data; me: string; reload: () => void; flash: (m: string) => void; openBoat: string | null }) {
+function BoatsTab({ data, me, reload, flash, openBoat, openSpot }: { data: Data; me: string; reload: () => void; flash: (m: string) => void; openBoat: string | null; openSpot: string | null }) {
   const [edit, setEdit] = useState<Partial<Contract> | null>(() => {
+    if (openSpot) {
+      const sp = data.spots.find((x) => x.id === openSpot)
+      return { start_date: todayPR(), status: 'active', spot_id: openSpot, space_label: sp ? spotName(sp, data.zones) : null }
+    }
     if (!openBoat) return null
     const c = data.contracts.find((x) => x.boat_id === openBoat && x.status === 'active')
     if (c) return c
@@ -139,6 +147,7 @@ function BoatsTab({ data, me, reload, flash, openBoat }: { data: Data; me: strin
           <span className="min-w-0 flex-1">
             <span className="block truncate text-lg font-extrabold text-navy-900">{c.boats?.name ?? 'Bote'}{c.boats?.length_ft ? ` · ${Number(c.boats.length_ft)}'` : ''}</span>
             <span className="block text-sm text-slate-600">{c.boats?.clients?.full_name ?? ''}{c.space_label ? ` · ${c.space_label}` : ''}</span>
+            {c.away_since && <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-sm font-bold text-amber-900">En el agua{c.away_spot_id ? ` · ${data.spots.find((x) => x.id === c.away_spot_id)?.label ?? ''}` : ''} (su espacio está reservado)</span>}
             <span className="block text-base font-bold text-slate-900">{formatMoney(Number(c.monthly_price))} al mes{c.status === 'ended' ? ' · terminado' : ''}</span>
           </span>
           <button type="button" onClick={() => setEdit(c)} aria-label={`Cambiar contrato de ${c.boats?.name ?? 'bote'}`} className="flex h-12 w-12 items-center justify-center text-slate-500"><Pencil size={20} /></button>
@@ -194,13 +203,14 @@ function ContractSheet({ edit, setEdit, data, me, reload }: { edit: Partial<Cont
     setBusy(true)
     setError('')
     const row = {
-      boat_id: edit.boat_id, rate_id: edit.rate_id || null, space_label: edit.space_label?.trim() || null, monthly_price: price,
+      boat_id: edit.boat_id, rate_id: edit.rate_id || null, space_label: edit.space_label?.trim() || null, monthly_price: price, spot_id: edit.spot_id ?? null,
       start_date: edit.start_date || todayPR(), end_date: edit.end_date || null, insurance_expires: edit.insurance_expires || null,
       status: edit.status ?? 'active', notes: edit.notes?.trim() || null,
     }
     const res = edit.id ? await db().from('storage_contracts').update(row).eq('id', edit.id) : await db().from('storage_contracts').insert({ ...row, mechanic_id: me })
     setBusy(false)
-    if (res.error) return setError('No se pudo guardar. Intenta otra vez.')
+    // El candado de la base de datos dice por qué (ej. "El espacio A-1 ya está ocupado por La Tranquila")
+    if (res.error) return setError(/ocupado|fuera de servicio/.test(res.error.message) ? res.error.message : 'No se pudo guardar. Intenta otra vez.')
     setEdit(null)
     reload()
   }
@@ -226,9 +236,23 @@ function ContractSheet({ edit, setEdit, data, me, reload }: { edit: Partial<Cont
               {spaces.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </Select>
           </Field>
-          <Field label="Número o lugar (opcional)" hint="Ej.: Rack A-12, Muelle C-4">
-            <Input value={edit.space_label ?? ''} onChange={(e) => set({ space_label: e.target.value })} />
-          </Field>
+          {data.spots.length > 0 ? (
+            <Field label="Su cuadro" hint="Solo salen los libres. Los cuadros se crean en Espacios.">
+              <Select aria-label="Su cuadro" value={edit.spot_id ?? ''} onChange={(e) => {
+                const sp = data.spots.find((x) => x.id === e.target.value)
+                set({ spot_id: sp?.id ?? null, space_label: sp ? spotName(sp, data.zones) : null })
+              }}>
+                <option value="">Sin cuadro todavía</option>
+                {data.spots.filter((sp) => sp.id === edit.spot_id || ['free', 'reserved'].includes(spotState(sp, data.contracts).state)).map((sp) => (
+                  <option key={sp.id} value={sp.id}>{spotName(sp, data.zones)}</option>
+                ))}
+              </Select>
+            </Field>
+          ) : (
+            <Field label="Número o lugar (opcional)" hint="Ej.: Rack A-12, Muelle C-4. Para usar cuadros, créalos en Espacios.">
+              <Input value={edit.space_label ?? ''} onChange={(e) => set({ space_label: e.target.value })} />
+            </Field>
+          )}
           <Field label="Precio del mes *" hint={boat && !boat.length_ft ? 'Este bote no tiene el largo puesto; escribe el precio' : 'Se calcula con el largo del bote; lo puedes cambiar'}>
             <Input aria-label="Precio del mes" inputMode="decimal" value={edit.monthly_price ?? ''} onChange={(e) => set({ monthly_price: e.target.value as unknown as number })} />
           </Field>
@@ -436,8 +460,8 @@ function BillTab({ data, me, month, setMonth, reload, flash, signature }: { data
 
 // ---------------------------------------------------------------------------------------------
 function RatesTab({ rates, me, reload }: { rates: Rate[]; me: string; reload: () => void }) {
-  // Primeros pasos: ya vio sus precios
-  useEffect(() => { try { localStorage.setItem(PRICES_SEEN, '1') } catch { /* sin memoria */ } }, [])
+  // Primeros pasos: ya vio sus precios (al abrir, sin esperar)
+  useState(() => { try { localStorage.setItem(PRICES_SEEN, '1') } catch { /* sin memoria */ } })
   const [edit, setEdit] = useState<Partial<Rate> | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)

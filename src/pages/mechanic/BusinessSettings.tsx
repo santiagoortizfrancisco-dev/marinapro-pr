@@ -1,6 +1,6 @@
 import TradePicker from '../../components/TradePicker'
 import { TRADES, useSetTrade, type Trade } from '../../lib/trade'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Check, ImagePlus, Trash2 } from 'lucide-react'
 import { BRAND_COLORS, DEFAULT_BRAND, logoUrl, notifyBrandChanged } from '../../lib/brand'
 import { compressImage } from '../../lib/image'
@@ -48,8 +48,11 @@ export default function BusinessSettings() {
   const [saveError, setSaveError] = useState('')
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }))
 
+  // Se llena una sola vez: si la sesión se refresca mientras escribe, no se pierde lo que cambió
+  const filled = useRef(false)
   useEffect(() => {
-    if (!m) return
+    if (!m || !profile || filled.current) return
+    filled.current = true
     setColor(m.brand_color || DEFAULT_BRAND)
     setTradeLocal(((m as { business_type?: Trade }).business_type) ?? 'marine')
     setUseEstimates(m.use_estimates !== false)
