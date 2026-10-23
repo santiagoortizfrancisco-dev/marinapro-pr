@@ -70,7 +70,7 @@ export default function ClientForm() {
 
   return (
     <>
-      <BackTitle subtitle={id || w.salon ? undefined : `Después de guardar añades su ${w.item}`}>{id ? 'Editar cliente' : 'Cliente nuevo'}</BackTitle>
+      <BackTitle subtitle={id || w.salon ? undefined : `Después de guardar añades su ${w.item}`}>{w.salon ? (id ? 'Editar clienta' : 'Clienta nueva') : id ? 'Editar cliente' : 'Cliente nuevo'}</BackTitle>
       <form onSubmit={save} className="space-y-4">
         <Field label="Nombre completo *" icon={User}>
           <Input required autoComplete="off" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} placeholder="Ana Martínez" />

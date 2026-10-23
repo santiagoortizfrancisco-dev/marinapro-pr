@@ -71,7 +71,7 @@ export default function ClientDetail() {
             {debt.map((r) => (
               <div key={r.id} className="rounded-xl bg-white p-3">
                 <Link to={`/trabajos/${r.id}`} className="flex justify-between gap-2 text-base">
-                  <span className="min-w-0 truncate">Factura #{r.invoice!.number} · {r.boats.name} · {ago(r.invoice!.created_at)}{r.payments.length > 0 ? ` · ya pagó ${formatMoney(paidSoFar(r.payments))}` : ''}</span>
+                  <span className="min-w-0 truncate">Factura #{r.invoice!.number} · {w.salon ? '' : `${r.boats.name} · `}{ago(r.invoice!.created_at)}{r.payments.length > 0 ? ` · ya pagó ${formatMoney(paidSoFar(r.payments))}` : ''}</span>
                   <b className="shrink-0">{formatMoney(balanceOf(r))}</b>
                 </Link>
                 <div className="mt-2 grid grid-cols-2 gap-2">
@@ -195,9 +195,9 @@ export default function ClientDetail() {
       />
 
       <ConfirmDelete
-        label="Borrar cliente"
+        label={`Borrar ${w.client}`}
         question={`¿Borrar a ${c.full_name}?`}
-        detail={`Se borran también sus ${w.items}${w.engines ? ', motores, equipos' : ''} y citas. Esto no se puede deshacer.`}
+        detail={w.salon ? 'Se borran también sus citas y su historial. Esto no se puede deshacer.' : `Se borran también sus ${w.items}${w.engines ? ', motores, equipos' : ''} y citas. Esto no se puede deshacer.`}
         onConfirm={async () => {
           must(await db().from('clients').delete().eq('id', c.id))
           navigate('/clientes', { replace: true })

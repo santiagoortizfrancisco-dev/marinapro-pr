@@ -1,7 +1,7 @@
 import { useWords } from '../../lib/trade'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { CheckCircle2, ChevronDown, FileText, HandCoins, Receipt, Zap } from 'lucide-react'
+import { CheckCircle2, ChevronDown, FileText, Gift, HandCoins, Receipt, Zap } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import { WhatsAppIcon } from '../../components/BrandIcons'
 import PaySheet from '../../components/PaySheet'
@@ -48,6 +48,13 @@ export default function Jobs() {
         <span className="flex-1 text-lg font-extrabold">Todas las facturas</span>
         <span className="text-sm font-bold text-slate-500">Ver o PDF ›</span>
       </Link>
+      {w.salon && (
+        <Link to="/mas/regalos" className={`${CARD} -mt-2 mb-4 flex min-h-14 items-center gap-3 px-3 py-2 text-navy-900 active:bg-slate-50`}>
+          <IconBadge icon={Gift} tone="blue" size="sm" />
+          <span className="flex-1 text-lg font-extrabold">Tarjetas de regalo</span>
+          <span className="text-sm font-bold text-slate-500">Vender ›</span>
+        </Link>
+      )}
 
       {/* Lo que me deben */}
       <div className={`${CARD} mb-6 flex items-center gap-4 p-4`}>
@@ -72,7 +79,7 @@ export default function Jobs() {
                 <Link to={`/trabajos/${r.id}`} className="flex items-start justify-between gap-2">
                   <span className="min-w-0">
                     <span className="block truncate text-lg font-bold text-slate-900">{r.boats.clients.full_name}</span>
-                    <span className="block truncate text-sm text-slate-600">{r.boats.name} · Factura #{r.invoice!.number} · {ago(r.invoice!.created_at)}</span>
+                    <span className="block truncate text-sm text-slate-600">{w.salon ? '' : `${r.boats.name} · `}Factura #{r.invoice!.number} · {ago(r.invoice!.created_at)}</span>
                     {r.payments.length > 0 && <span className="block text-sm text-slate-600">De {formatMoney(Number(r.invoice!.total))} · ya pagó {formatMoney(paidSoFar(r.payments))}</span>}
                   </span>
                   <span className="shrink-0 text-xl font-extrabold text-navy-900">{formatMoney(balanceOf(r))}</span>
@@ -102,7 +109,7 @@ export default function Jobs() {
               <article key={r.id} className={`${CARD} flex items-center gap-3 p-3`}>
                 <Link to={`/trabajos/${r.id}`} className="min-w-0 flex-1">
                   <span className="block truncate text-lg font-bold text-slate-900">{r.boats.clients.full_name}</span>
-                  <span className="block truncate text-sm text-slate-600">{r.boats.name} · terminado {formatDate(r.completed_at ?? r.created_at)}</span>
+                  <span className="block truncate text-sm text-slate-600">{w.salon ? '' : `${r.boats.name} · `}terminado {formatDate(r.completed_at ?? r.created_at)}</span>
                 </Link>
                 <button disabled={busy === r.id} onClick={() => invoiceNow(r)} className="min-h-12 shrink-0 rounded-xl bg-navy-800 px-3 text-base font-bold text-white disabled:bg-slate-400">
                   {busy === r.id ? '…' : 'Hacer factura'}

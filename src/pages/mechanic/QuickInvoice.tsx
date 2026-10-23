@@ -69,7 +69,7 @@ export default function QuickInvoice() {
       const phoneMatch = digits.length >= 3 && (c.phone ?? '').replace(/\D/g, '').includes(digits)
       if (c.boats.length === 0 && (match(c.full_name) || phoneMatch)) rows.push({ key: c.id, title: c.full_name, sub: c.phone ?? '', pick: { kind: 'client', clientId: c.id } })
       for (const b of c.boats) {
-        if (match(c.full_name) || match(b.name) || phoneMatch) rows.push({ key: b.id, title: `${c.full_name} · ${b.name}`, sub: c.phone ?? '', pick: { kind: 'boat', boatId: b.id, clientId: c.id } })
+        if (match(c.full_name) || match(b.name) || phoneMatch) rows.push({ key: b.id, title: tw.salon ? c.full_name : `${c.full_name} · ${b.name}`, sub: c.phone ?? '', pick: { kind: 'boat', boatId: b.id, clientId: c.id } })
       }
     }
     return rows.slice(0, term ? 12 : 5)
@@ -120,7 +120,7 @@ export default function QuickInvoice() {
   )
 
   function check(): string | null {
-    if (!pick) return 'Escoge el cliente o toca “Cliente nuevo”.'
+    if (!pick) return tw.salon ? 'Escoge la clienta o toca “Clienta nueva”.' : 'Escoge el cliente o toca “Cliente nuevo”.'
     if (pick.kind === 'new' && newClient.full_name.trim().length < 2) return 'Escribe el nombre del cliente.'
     if (noName >= 0) return `Escribe qué es la línea ${noName + 1} (tiene precio pero no dice qué es).`
     if (filled.length === 0) return 'Escribe por lo menos una cosa de lo que cobras.'
@@ -218,7 +218,7 @@ export default function QuickInvoice() {
             <div className="flex"><LinkButton href={whatsappLink(done.phone, msg)} external variant="whatsapp"><WhatsAppIcon size={24} /> Enviar factura por WhatsApp</LinkButton></div>
           )}
           <div className="flex"><LinkButton href={`/d/${done.invoice.public_token}?pago=${way}`}><ExternalLink size={20} /> Ver factura o PDF</LinkButton></div>
-          <Button variant="secondary" onClick={() => navigate(`/trabajos/${done.woId}`)}>Abrir el trabajo</Button>
+          <Button variant="secondary" onClick={() => navigate(`/trabajos/${done.woId}`)}>{tw.salon ? 'Abrir la cuenta (cambiar o borrar)' : 'Abrir el trabajo'}</Button>
           <Button variant="ghost" onClick={() => navigate('/trabajos')}>Listo</Button>
         </div>
       </>
@@ -243,20 +243,20 @@ export default function QuickInvoice() {
 
           {/* Cliente */}
           <div>
-            <div className="mb-1 text-xs font-bold uppercase tracking-wide text-navy-700">Cliente</div>
+            <div className="mb-1 text-xs font-bold uppercase tracking-wide text-navy-700">{tw.Client}</div>
             {pick && pick.kind !== 'new' && chosen ? (
               <div className="flex min-h-14 items-center gap-3 rounded-xl border-2 border-navy-800 bg-navy-50 px-3 py-2">
-                <Ship size={22} className="shrink-0 text-navy-700" />
+                {tw.salon ? <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pink-100 font-extrabold text-pink-700">{chosen.full_name.charAt(0)}</span> : <Ship size={22} className="shrink-0 text-navy-700" />}
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-lg font-bold text-navy-900">{chosen.full_name}</div>
-                  <div className="truncate text-sm text-slate-600">{chosenBoat?.name ?? tw.newItem}</div>
+                  <div className="truncate text-sm text-slate-600">{tw.salon ? chosen.phone ?? '' : chosenBoat?.name ?? tw.newItem}</div>
                 </div>
                 <button type="button" onClick={() => setPick(null)} aria-label="Cambiar cliente" className="flex h-12 w-12 items-center justify-center text-slate-600"><X /></button>
               </div>
             ) : pick?.kind === 'new' ? (
               <div className="space-y-2 rounded-xl border-2 border-navy-200 bg-navy-50 p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-base font-bold text-navy-900">Cliente nuevo</span>
+                  <span className="text-base font-bold text-navy-900">{tw.salon ? 'Clienta nueva' : 'Cliente nuevo'}</span>
                   <button type="button" onClick={() => setPick(null)} aria-label="Cancelar cliente nuevo" className="flex h-10 w-10 items-center justify-center text-slate-600"><X /></button>
                 </div>
                 <Input autoComplete="off" value={newClient.full_name} onChange={(e) => setNewClient({ ...newClient, full_name: e.target.value })} placeholder="Nombre del cliente *" />
@@ -266,11 +266,11 @@ export default function QuickInvoice() {
               <div className="space-y-2">
                 <div className="relative">
                   <Search size={22} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <Input type="search" aria-label="Buscar cliente" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Buscar cliente, ${tw.item} o teléfono`} className="pl-12" />
+                  <Input type="search" aria-label="Buscar cliente" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tw.salon ? 'Buscar clienta o teléfono' : `Buscar cliente, ${tw.item} o teléfono`} className="pl-12" />
                 </div>
                 {results.map((r) => (
                   <button key={r.key} type="button" onClick={() => setPick(r.pick)} className="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-left active:bg-slate-50">
-                    <Ship size={22} className="shrink-0 text-navy-700" />
+                    {tw.salon ? <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pink-100 font-extrabold text-pink-700">{r.title.charAt(0)}</span> : <Ship size={22} className="shrink-0 text-navy-700" />}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-base font-bold text-slate-900">{r.title}</span>
                       {r.sub && <span className="block truncate text-sm text-slate-600">{r.sub}</span>}
@@ -282,7 +282,7 @@ export default function QuickInvoice() {
                   onClick={() => { setPick({ kind: 'new' }); setNewClient({ full_name: /\d/.test(search) ? '' : search, phone: /\d/.test(search) ? search : '' }) }}
                   className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-700 text-base font-bold text-navy-800 active:bg-navy-50"
                 >
-                  <UserPlus size={20} /> Cliente nuevo
+                  <UserPlus size={20} /> {tw.salon ? 'Clienta nueva' : 'Cliente nuevo'}
                 </button>
               </div>
             )}

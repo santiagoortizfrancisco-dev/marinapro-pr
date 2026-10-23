@@ -50,16 +50,16 @@ export default function Clients() {
 
   return (
     <>
-      <PageTitle subtitle={data ? `${data.length} ${data.length === 1 ? 'cliente' : 'clientes'}` : undefined}>Clientes</PageTitle>
+      <PageTitle subtitle={data ? `${data.length} ${data.length === 1 ? w.client : w.clients}` : undefined}>{w.Clients}</PageTitle>
 
       <Link to="/clientes/nuevo" className="mb-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900">
-        <UserPlus size={22} /> Añadir cliente
+        <UserPlus size={22} /> Añadir {w.client}
       </Link>
 
       {data && data.length > 0 && (
         <div className="relative mb-4">
           <Search size={22} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Buscar nombre, ${w.item}, pueblo o teléfono`} className="pl-12" />
+          <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={w.salon ? 'Buscar nombre o teléfono' : `Buscar nombre, ${w.item}, pueblo o teléfono`} className="pl-12" />
         </div>
       )}
 
@@ -67,7 +67,7 @@ export default function Clients() {
       {error && <ErrorBox message={error} onRetry={reload} />}
 
       {data && data.length === 0 && (
-        <EmptyState icon={Users} title="Todavía no tienes clientes" text={`Toca “Añadir cliente” arriba para añadir el primero, con su ${w.item}${w.engines ? ' y sus motores' : ''}.`} />
+        <EmptyState icon={Users} title={`Todavía no tienes ${w.clients}`} text={`Toca “Añadir ${w.client}” arriba para añadir el primero, con su ${w.item}${w.engines ? ' y sus motores' : ''}.`} />
       )}
       {data && data.length > 0 && list.length === 0 && <p className="py-6 text-center text-base text-slate-600">Nadie con “{q}”.</p>}
 

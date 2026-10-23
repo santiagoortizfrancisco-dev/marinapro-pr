@@ -337,7 +337,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </div>
       ) : (
         <>
-          <BackTitle to="/trabajos" subtitle={`Abierto el ${formatDate(wo.created_at)}`}>Trabajo · {boat.name}</BackTitle>
+          <BackTitle to="/trabajos" subtitle={`Abierto el ${formatDate(wo.created_at)}`}>{w.salon ? 'Cuenta' : 'Trabajo'} · {boat.name}</BackTitle>
           <div className="mb-3 flex items-center justify-between gap-2">
             <Link to={`/botes/${boat.id}`} className="flex min-h-12 flex-1 items-center gap-2 rounded-xl bg-slate-100 px-4 text-base font-semibold text-slate-800">
               <Ship size={20} /> {boat.name} · {client.full_name}
@@ -396,7 +396,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
               <span className="shrink-0 text-right text-base font-bold text-slate-900">{p.supplied_by === 'client' ? <span className="text-sm text-slate-500">No se cobra</span> : Number(p.unit_cost) === 0 ? <span className="text-sm text-slate-500">Incluido</span> : formatMoney(Number(p.qty) * Number(p.unit_cost))}</span>
             </button>
           ))}
-          <Row icon={Clock} title="Mano de obra por hora" summary={Number(wo.labor_hours) > 0 ? `${Number(wo.labor_hours)} h × ${formatMoney(Number(wo.labor_rate))} = ${formatMoney(totals.hours)}` : 'Solo si cobras por hora'}>
+          {!w.salon && <Row icon={Clock} title="Mano de obra por hora" summary={Number(wo.labor_hours) > 0 ? `${Number(wo.labor_hours)} h × ${formatMoney(Number(wo.labor_rate))} = ${formatMoney(totals.hours)}` : 'Solo si cobras por hora'}>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Horas">
                 <Input inputMode="decimal" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} onBlur={() => patch({ labor_hours: num(laborHours) ?? 0 })} />
@@ -406,7 +406,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
               </Field>
             </div>
             <p className="mt-2 text-right text-lg font-bold text-navy-900">{formatMoney(totals.hours)}</p>
-          </Row>
+          </Row>}
           <dl className="px-3 py-2 text-base">
             <div className="flex justify-between py-0.5 text-slate-600"><dt>Mano de obra y servicios</dt><dd>{formatMoney(totals.labor)}</dd></div>
             <div className="flex justify-between py-0.5 text-slate-600"><dt>Piezas</dt><dd>{formatMoney(totals.parts)}</dd></div>
@@ -436,8 +436,8 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
               <AutoText label="Lo que se hizo" hint="Sale en la factura para el cliente" value={wo.work_done} onSave={(v) => patch({ work_done: v })} rows={4} />
             </div>
           </Row>}
-          <Row icon={Camera} title="Fotos" summary={photos.length ? `${photos.length} ${photos.length === 1 ? 'foto' : 'fotos'}` : 'Antes, pieza vieja, pieza nueva, después'}>
-            <PhotoSection workOrderId={wo.id} photos={photos} onChange={reload} />
+          <Row icon={Camera} title="Fotos" summary={photos.length ? `${photos.length} ${photos.length === 1 ? 'foto' : 'fotos'}` : w.salon ? 'Antes y después' : 'Antes, pieza vieja, pieza nueva, después'}>
+            <PhotoSection workOrderId={wo.id} photos={photos} onChange={reload} {...(w.salon ? { only: ['before', 'after'] as Photo['kind'][] } : {})} />
           </Row>
           {w.seaTrial && <Row icon={Waves} title="Prueba en el agua" summary={!wo.sea_trial_required ? 'No hace falta' : wo.sea_trial_method === 'not_allowed' ? 'El cliente no la permitió' : wo.sea_trial_done ? 'Hecha ✓' : 'Pendiente'}>
             <div className="space-y-3">
@@ -511,6 +511,19 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
           question="¿Borrar este trabajo?"
           detail="Se borran también sus piezas y fotos. Esto no se puede deshacer."
           onConfirm={async () => {
+            if (photos.length) await db().storage.from('photos').remove(photos.map((p) => p.storage_path))
+            must(await db().from('work_orders').delete().eq('id', wo.id))
+            navigate('/trabajos', { replace: true })
+          }}
+        />
+      )}
+      {invoice && !embedded && w.salon && paid === 0 && (
+        <ConfirmDelete
+          label="Borrar factura"
+          question={`¿Borrar la factura #${invoice.number}?`}
+          detail="Úsalo si la hiciste por error. Se borra la factura con sus servicios. Todavía no tiene pagos."
+          onConfirm={async () => {
+            must(await db().from('invoices').delete().eq('id', invoice.id))
             if (photos.length) await db().storage.from('photos').remove(photos.map((p) => p.storage_path))
             must(await db().from('work_orders').delete().eq('id', wo.id))
             navigate('/trabajos', { replace: true })

@@ -78,7 +78,7 @@ export default function DueServices() {
             <div key={d.key} className="rounded-xl bg-white p-3">
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="text-base font-extrabold text-slate-900">{d.boatName} <span className="font-semibold text-slate-600">· {d.clientName}</span></div>
+                  <div className="text-base font-extrabold text-slate-900">{words.salon ? d.clientName : <>{d.boatName} <span className="font-semibold text-slate-600">· {d.clientName}</span></>}</div>
                   <div className="text-base text-slate-800">{d.what}</div>
                   <div className={`text-sm font-bold ${w.late ? 'text-red-700' : 'text-slate-600'}`}>{w.text}</div>
                 </div>

@@ -44,7 +44,7 @@ export default function Invoices() {
               <span className="shrink-0 rounded-lg bg-navy-50 px-2 py-1 text-sm font-extrabold text-navy-800">#{r.invoice!.number}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-base font-bold text-slate-900">{r.boats.clients.full_name}</span>
-                <span className="block truncate text-sm text-slate-600">{r.boats.name} · {formatDate(r.invoice!.created_at)}</span>
+                <span className="block truncate text-sm text-slate-600">{w.salon ? '' : `${r.boats.name} · `}{formatDate(r.invoice!.created_at)}</span>
               </span>
               <span className="shrink-0 text-right">
                 <span className="block text-base font-extrabold text-navy-900">{formatMoney(Number(r.invoice!.total))}</span>
