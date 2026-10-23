@@ -370,12 +370,12 @@ export default function SalonAppointmentForm() {
           </div>
         </details>
 
-        <div className="sticky bottom-[calc(4.4rem+env(safe-area-inset-bottom))] z-10 -mx-4 space-y-2 border-t border-pink-100 bg-white/95 px-4 pb-3 pt-2 backdrop-blur">
-          {error && <p className="rounded-xl bg-red-100 p-3 text-base font-semibold text-red-800">{error}</p>}
-          <p className="truncate text-center text-sm font-semibold text-slate-600">
-            {[chosen?.full_name ?? newClient?.full_name?.trim() ?? null, now ? 'Ahora' : day && time ? `${formatDate(prToISO(day, time)).slice(0, 5)} · ${formatTime(prToISO(day, time))}` : null, selected.length ? minutesLabel(minutes) : null].filter(Boolean).join(' · ')}
-          </p>
-          <Button type="submit" disabled={busy} className="bg-pink-600! active:bg-pink-700!">{busy ? 'Guardando…' : id ? 'Guardar cambios' : now ? 'Seguir a cobrar' : 'Guardar cita'}</Button>
+        <div className="sticky bottom-[calc(4.4rem+env(safe-area-inset-bottom))] z-10 -mx-4 bg-white/95 px-4 py-2 backdrop-blur">
+          {error && <p className="mb-2 rounded-xl bg-red-100 p-3 text-base font-semibold text-red-800">{error}</p>}
+          <button type="submit" disabled={busy} className="flex min-h-14 w-full flex-col items-center justify-center rounded-2xl bg-pink-600 px-3 py-1 text-white shadow-lg shadow-pink-900/20 active:bg-pink-700 disabled:opacity-60">
+            <span className="text-lg font-extrabold leading-tight">{busy ? 'Guardando…' : id ? 'Guardar cambios' : now ? 'Seguir a cobrar' : 'Guardar cita'}</span>
+            <span className="max-w-full truncate text-sm font-semibold text-pink-100">{[chosen?.full_name ?? newClient?.full_name?.trim() ?? null, now ? 'Ahora' : day && time ? `${formatDate(prToISO(day, time)).slice(0, 5)} · ${formatTime(prToISO(day, time))}` : null, selected.length ? minutesLabel(minutes) : null].filter(Boolean).join(' · ')}</span>
+          </button>
         </div>
         <Button type="button" variant="ghost" onClick={() => navigate(-1)}>Cancelar</Button>
       </form>
