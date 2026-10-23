@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { Check, CheckCircle2, ChevronDown, Search, UserPlus, X } from 'lucide-react'
+import { Check, CheckCircle2, ChevronDown, Plus, Search, UserPlus, X } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import { db } from '../../lib/db'
 import { formatDate, formatMoney, formatTime, prDay, prRange, prTime, prToISO, todayPR } from '../../lib/format'
@@ -137,7 +137,7 @@ export default function SalonAppointmentForm() {
   const hasUsage = inTab.some((m) => Number(m.use_count ?? 0) > 0)
   const shown = showAll || !hasUsage ? inTab : inTab.slice(0, 6)
   // Al cambiar una cita que ya tiene servicios, empieza cerrado en una línea
-  const open = listOpen ?? !(id && picked.length > 0)
+  const open = listOpen ?? false
   const busyThen = sameDay.filter((x) => !staffId || !x.staff_id || x.staff_id === staffId)
 
   function toggle(sid: string) {
@@ -243,23 +243,26 @@ export default function SalonAppointmentForm() {
                 <Search size={22} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input type="search" aria-label="Buscar clienta" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre o teléfono" className="pl-12" />
               </div>
+              {search.trim() && results.length === 0 && <p className="px-1 text-base font-bold text-slate-700">No encontré a “{search.trim()}”.</p>}
+              <button type="button" onClick={() => setNewClient({ full_name: /\d/.test(search) ? '' : search, phone: /\d/.test(search) ? search : '' })}
+                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pink-50 text-base font-bold text-pink-700 active:bg-pink-100">
+                <UserPlus size={20} /> {search.trim() && !/\d/.test(search) ? `Clienta nueva: ${search.trim()}` : 'Clienta nueva'}
+              </button>
               {results.map((c) => (
                 <button key={c.id} type="button" onClick={() => setClientId(c.id)} className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-slate-50 px-3 text-left active:bg-pink-50">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pink-100 font-extrabold text-pink-700">{initial(c.full_name)}</span>
                   <span className="min-w-0 flex-1"><span className="block truncate text-base font-bold text-slate-900">{c.full_name}</span>{c.phone && <span className="block text-sm text-slate-600">{c.phone}</span>}</span>
                 </button>
               ))}
-              <button type="button" onClick={() => setNewClient({ full_name: /\d/.test(search) ? '' : search, phone: /\d/.test(search) ? search : '' })}
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pink-50 text-base font-bold text-pink-700 active:bg-pink-100">
-                <UserPlus size={20} /> Clienta nueva
-              </button>
             </div>
           )}
         </Step>
 
         {/* 2. Los servicios: pestañas por tipo, botones en dos columnas; al escoger queda en una línea */}
         <Step n={2} title="¿Qué se va a hacer?" hint="opcional">
-          {!open && selected.length > 0 ? (
+          {!open && selected.length === 0 ? (
+            <button type="button" onClick={() => setListOpen(true)} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-pink-50 text-lg font-bold text-pink-700 ring-1 ring-pink-200 active:bg-pink-100"><Plus size={22} /> Escoger servicios</button>
+          ) : !open ? (
             <div className="rounded-2xl bg-pink-50 p-3 ring-1 ring-pink-200" aria-label="Resumen de la cita">
               <div className="flex items-start gap-2">
                 <CheckCircle2 size={22} className="mt-0.5 shrink-0 text-pink-600" />

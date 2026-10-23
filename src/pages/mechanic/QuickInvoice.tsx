@@ -199,6 +199,16 @@ export default function QuickInvoice() {
     }
   }
 
+  const newButton = (
+    <button
+      type="button"
+      onClick={() => { setPick({ kind: 'new' }); setNewClient({ full_name: /\d/.test(search) ? '' : search, phone: /\d/.test(search) ? search : '' }) }}
+      className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-700 text-base font-bold text-navy-800 active:bg-navy-50"
+    >
+      <UserPlus size={20} /> {tw.salon ? (search.trim() && !/\d/.test(search) ? `Clienta nueva: ${search.trim()}` : 'Clienta nueva') : 'Cliente nuevo'}
+    </button>
+  )
+
   if (loading || !clients) return <Loading />
   if (mechError || !mech) return <ErrorBox message={mechError || 'No se encontraron los datos del negocio.'} />
 
@@ -299,6 +309,8 @@ export default function QuickInvoice() {
                   <Search size={22} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <Input type="search" aria-label="Buscar cliente" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tw.salon ? 'Buscar clienta o teléfono' : `Buscar cliente, ${tw.item} o teléfono`} className="pl-12" />
                 </div>
+                {tw.salon && search.trim() && results.length === 0 && <p className="px-1 text-base font-bold text-slate-700">No encontré a “{search.trim()}”.</p>}
+                {tw.salon && newButton}
                 {results.map((r) => (
                   <button key={r.key} type="button" onClick={() => setPick(r.pick)} className="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-left active:bg-slate-50">
                     {tw.salon ? <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pink-100 font-extrabold text-pink-700">{r.title.charAt(0)}</span> : <Ship size={22} className="shrink-0 text-navy-700" />}
@@ -308,13 +320,7 @@ export default function QuickInvoice() {
                     </span>
                   </button>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => { setPick({ kind: 'new' }); setNewClient({ full_name: /\d/.test(search) ? '' : search, phone: /\d/.test(search) ? search : '' }) }}
-                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-700 text-base font-bold text-navy-800 active:bg-navy-50"
-                >
-                  <UserPlus size={20} /> {tw.salon ? 'Clienta nueva' : 'Cliente nuevo'}
-                </button>
+                {!tw.salon && newButton}
               </div>
             )}
             {pick && pick.kind !== 'boat' && !tw.salon && (
