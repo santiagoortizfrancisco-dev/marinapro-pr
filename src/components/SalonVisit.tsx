@@ -232,15 +232,6 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
     reload()
   }
 
-  /** Factura hecha, sin cobrar todavía: queda pendiente en Me deben. */
-  async function invoiceLater() {
-    setBusy(true)
-    await flushPrices()
-    const { error } = await db().rpc('create_invoice', { p_wo: woId })
-    setBusy(false)
-    if (!error) reload()
-  }
-
   async function unmarkPaid() {
     if (!window.confirm('¿Quitar el pago? La cuenta vuelve a quedar sin cobrar.')) return
     setBusy(true)
@@ -423,7 +414,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
             ))}
           </ul>
         )}
-        {!done && (
+        {!done && payments.length === 0 && (
           <button type="button" disabled={busy} onClick={() => setDepositOpen(true)}
             className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-pink-700 ring-2 ring-pink-300 active:bg-pink-50">
             <Banknote size={22} /> Cobrar depósito{(Number(link.deposit_asked) || depAmount) > 0 ? ` de ${formatMoney(Number(link.deposit_asked) || depAmount)}` : ''}
@@ -573,12 +564,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
                   </button>
                 )}
               </div>
-            ) : !unpriced && totals.total > 0 && (
-              <button type="button" disabled={busy} onClick={invoiceLater}
-                className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-slate-700 ring-2 ring-slate-200 active:bg-slate-50">
-                <Receipt size={22} /> Hacer factura y cobrar después
-              </button>
-            )}
+            ) : null}
           </>
         ) : (
           <>

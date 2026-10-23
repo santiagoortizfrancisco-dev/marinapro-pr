@@ -1146,10 +1146,9 @@ test('salón: el inicio tiene su estilo de belleza (sin baterías) y Factura rá
   await expect(page.getByRole('button', { name: /Diseño especial/ })).toContainText('$30.00')
   await expect(page.getByRole('button', { name: /^Pagar \$/ })).toHaveText('Pagar $23.45') // 30 + IVU − 10 de depósito
 
-  // Hacer la factura y cobrar después: queda pendiente (sale en Me deben)
-  await page.getByRole('button', { name: 'Hacer factura y cobrar después' }).click()
-  await expect(page.getByText(/Factura #\d+ hecha · pendiente de cobrar/)).toBeVisible()
-  await expect(page.getByRole('link', { name: /Ver factura o PDF/ })).toBeVisible()
+  // El depósito se cobra una sola vez
+  await page.getByText('Confirmar cita y depósito').click()
+  await expect(page.getByRole('button', { name: /Cobrar depósito/ })).toHaveCount(0)
   const appt = (await state()).appointments.find((a) => a.title === 'Diseño especial')
   expect(appt).toBeTruthy()
 
@@ -1466,14 +1465,8 @@ test('salón: la cita va por pasos y cada cosa se puede borrar (depósito, factu
   page.on('dialog', (d) => d.accept())
   await page.getByRole('button', { name: /Borrar depósito de \$10.00/ }).click()
   await expect(page.getByRole('button', { name: /Borrar depósito/ })).toHaveCount(0)
-  // Factura para después y borrarla
-  await page.getByRole('button', { name: 'Añadir servicio' }).click()
-  await page.getByLabel('Nombre del servicio').fill('Pedicura')
-  await page.getByLabel('Precio', { exact: true }).fill('20')
-  await page.getByRole('button', { name: 'Añadir', exact: true }).click()
-  await page.getByRole('button', { name: 'Hacer factura y cobrar después' }).click()
-  await page.getByRole('button', { name: 'Borrar factura' }).click()
-  await expect(page.getByRole('button', { name: 'Hacer factura y cobrar después' })).toBeVisible()
+  // Borrado el depósito, se puede cobrar otra vez
+  await expect(page.getByRole('button', { name: /Cobrar depósito/ })).toBeVisible()
 })
 
 test('salón: dice "clientas", Cobros tiene las tarjetas de regalo y la factura rápida hecha por error se borra', async ({ page }) => {
@@ -1486,15 +1479,7 @@ test('salón: dice "clientas", Cobros tiene las tarjetas de regalo y la factura 
   await page.goto('/trabajos')
   await expect(page.getByRole('link', { name: /Tarjetas de regalo/ })).toBeVisible()
   await page.goto('/cobrar')
-  await page.getByRole('button', { name: 'Clienta nueva' }).first().click()
-  await page.getByPlaceholder(/Nombre/).first().fill('Error Prueba')
-  await page.getByLabel('Descripción 1').fill('Uñas')
-  await page.getByLabel('Precio 1').fill('20')
-  await page.getByRole('button', { name: 'Hacer factura' }).click()
-  await page.getByRole('button', { name: /Abrir la cuenta/ }).click()
-  await page.getByRole('button', { name: 'Borrar factura' }).click()
-  await page.getByRole('button', { name: 'Sí, borrar' }).click()
-  await expect(page).toHaveURL(/\/trabajos$/)
+  await expect(page.getByRole('button', { name: /Hacer factura/ })).toHaveCount(0)
 })
 
 test('salón: al hacer la cita se escoge el depósito y el mismo WhatsApp confirma y lo pide', async ({ page }) => {
@@ -1629,8 +1614,7 @@ test('salón: factura rápida — en la misma pantalla se cobra, se pone el tel�
   await page.getByPlaceholder(/Nombre/).first().fill('Rápida Cobro')
   await page.getByLabel('Descripción 1').fill('Manicura')
   await page.getByLabel('Precio 1').fill('20')
-  await page.getByRole('button', { name: /Hacer factura/ }).click()
-  await page.getByRole('button', { name: /Pagar \$22\.30 ahora/ }).click()
+  await page.getByRole('button', { name: /^Pagar \$22\.30/ }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Efectivo' }).click()
   await page.getByRole('button', { name: 'Pagar', exact: true }).click()
   await expect(page.getByText('Pagada ✓')).toBeVisible()
@@ -1671,27 +1655,6 @@ test('salón: el precio se escribe ahí mismo en la cuenta y la próxima vez sug
       await expect(page.getByLabel('Total de la cuenta')).toHaveText('$20.07')
     }
   }
-})
-
-test('salón: si cambias la cuenta después de hacer la factura, la factura se pone al día sola', async ({ page }) => {
-  await page.goto('/demo')
-  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
-  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
-  await page.goto('/citas/nueva')
-  await page.getByRole('button', { name: /Clienta nueva/ }).click()
-  await page.getByPlaceholder('Nombre *').fill('Factura Al Día')
-  await page.getByRole('button', { name: 'Guardar cita' }).click()
-  await page.getByRole('button', { name: 'Añadir servicio' }).click()
-  await page.getByLabel('Nombre del servicio').fill('Uñas')
-  await page.getByLabel('Precio', { exact: true }).fill('20')
-  await page.getByRole('button', { name: 'Añadir', exact: true }).click()
-  await page.getByRole('button', { name: 'Hacer factura y cobrar después' }).click()
-  await expect(page.getByText(/pendiente de cobrar/)).toBeVisible()
-  await page.getByRole('button', { name: 'Añadir servicio' }).click()
-  await page.getByLabel('Nombre del servicio').fill('Diseño')
-  await page.getByLabel('Precio', { exact: true }).fill('10')
-  await page.getByRole('button', { name: 'Añadir', exact: true }).click()
-  await expect.poll(async () => Number((await state()).invoices.at(-1)!.total)).toBe(33.45)
 })
 
 test('salón: borrar una cita con pagos o una clienta con pagos explica qué hacer (no se pierden los números)', async ({ page }) => {

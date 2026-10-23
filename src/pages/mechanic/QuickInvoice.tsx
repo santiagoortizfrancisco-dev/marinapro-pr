@@ -388,7 +388,6 @@ export default function QuickInvoice() {
           <Button disabled={busy} onClick={() => { const p = check(); if (p) setError(p); else setPayOpen(true) }} className="min-h-16 bg-emerald-600! text-xl! active:bg-emerald-700!">
             <CheckCircle2 /> Pagar{totals.total > 0 ? ` ${formatMoney(totals.total)}` : ''}
           </Button>
-          <Button variant="secondary" disabled={busy} onClick={() => createAll()}><Zap /> {busy ? 'Haciendo…' : 'Hacer factura (cobrar después)'}</Button>
           <p className="pb-2 text-center text-sm text-slate-500">¿Te dio una parte? Toca “Pagar” y cambia la cantidad.</p>
         </div>
       ) : (
