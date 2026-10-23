@@ -1015,15 +1015,13 @@ test('salón de uñas: cita con servicios y empleada (suma tiempo y precio), sin
   await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Estimado' })).toHaveCount(0)
 
-  // Los servicios vienen sin precio (cambia por persona): el botón lleva a ponerlos uno por uno
-  await page.getByRole('button', { name: /Ponle precio a/ }).click()
-  const first = await page.getByLabel('Servicio').inputValue()
-  await page.getByLabel('Precio ($)').fill('40')
-  await page.getByRole('button', { name: 'Guardar precio' }).click()
-  await expect(page.getByLabel('Servicio')).not.toHaveValue(first) // sigue sola con el próximo que falta
-  await page.getByLabel('Precio ($)').fill('25')
-  await page.getByRole('button', { name: 'Guardar precio' }).click()
+  // Los servicios vienen sin precio (cambia por persona): se escribe ahí mismo en la cuenta
+  await expect(page.getByRole('button', { name: /Falta el precio de/ })).toBeVisible()
+  await page.getByLabel(/^Precio de Uñas acrílicas/).fill('40')
+  await page.getByLabel(/^Precio de (Diseño|Pedicura)/).fill('25')
   await expect(page.getByLabel('Total de la cuenta')).toHaveText('$72.48')
+  await page.getByLabel(/^Precio de (Diseño|Pedicura)/).press('Enter')
+  await expect(page.getByLabel(/^Precio de/)).toHaveCount(0)
   const s = await state()
   const appt = s.appointments.find((a) => (a.title ?? '').includes('Uñas acrílicas (set completo)') && (a.title ?? '').includes('Pedicura'))!
   expect(appt).toMatchObject({ duration_min: 135 })
@@ -1638,4 +1636,70 @@ test('salón: si la clienta no está, "Clienta nueva" sale arriba con el nombre 
   await expect(page.getByText('No encontré a “Mariela Nueva”.')).toBeVisible()
   await page.getByRole('button', { name: 'Clienta nueva: Mariela Nueva' }).click()
   await expect(page.getByPlaceholder('Nombre *')).toHaveValue('Mariela Nueva')
+})
+
+test('salón: el precio se escribe ahí mismo en la cuenta y la próxima vez sugiere el de la última vez', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  for (const [who, typed] of [['Precio Uno', true], ['Precio Dos', false]] as const) {
+    await page.goto('/citas/nueva')
+    await page.getByRole('button', { name: /Clienta nueva/ }).click()
+    await page.getByPlaceholder('Nombre *').fill(who)
+    await page.getByRole('button', { name: 'Escoger servicios' }).click()
+    await page.getByRole('button', { name: /^Pedicura/ }).click()
+    await page.getByRole('button', { name: 'Guardar cita' }).click()
+    await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
+    if (typed) {
+      await page.getByLabel('Precio de Pedicura').fill('18')
+      await page.getByLabel('Precio de Pedicura').press('Enter')
+      await expect(page.getByRole('button', { name: /Cobrar \$20\.07/ })).toBeVisible()
+    } else {
+      await page.getByRole('button', { name: /Última vez: \$18\.00/ }).click()
+      await expect(page.getByLabel('Total de la cuenta')).toHaveText('$20.07')
+    }
+  }
+})
+
+test('salón: si cambias la cuenta después de hacer la factura, la factura se pone al día sola', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/citas/nueva')
+  await page.getByRole('button', { name: /Clienta nueva/ }).click()
+  await page.getByPlaceholder('Nombre *').fill('Factura Al Día')
+  await page.getByRole('button', { name: 'Guardar cita' }).click()
+  await page.getByRole('button', { name: 'Añadir servicio' }).click()
+  await page.getByLabel('Nombre del servicio').fill('Uñas')
+  await page.getByLabel('Precio', { exact: true }).fill('20')
+  await page.getByRole('button', { name: 'Añadir', exact: true }).click()
+  await page.getByRole('button', { name: 'Hacer factura y cobrar después' }).click()
+  await expect(page.getByText(/pendiente de cobrar/)).toBeVisible()
+  await page.getByRole('button', { name: 'Añadir servicio' }).click()
+  await page.getByLabel('Nombre del servicio').fill('Diseño')
+  await page.getByLabel('Precio', { exact: true }).fill('10')
+  await page.getByRole('button', { name: 'Añadir', exact: true }).click()
+  await expect.poll(async () => Number((await state()).invoices.at(-1)!.total)).toBe(33.45)
+})
+
+test('salón: borrar una cita con pagos o una clienta con pagos explica qué hacer (no se pierden los números)', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/citas/nueva')
+  await page.getByRole('button', { name: /Clienta nueva/ }).click()
+  await page.getByPlaceholder('Nombre *').fill('Con Pagos')
+  await page.getByRole('button', { name: 'Guardar cita' }).click()
+  await page.getByRole('button', { name: 'Cobrar depósito' }).click()
+  await page.getByRole('button', { name: '$10', exact: true }).click()
+  await page.getByRole('radio', { name: /Efectivo/ }).click()
+  await page.getByRole('button', { name: 'Guardar depósito $10.00' }).click()
+  await page.getByRole('button', { name: 'Borrar cita' }).click()
+  await page.getByRole('button', { name: 'Sí, borrar' }).click()
+  await expect(page.getByText(/Esta cita ya tiene pagos/)).toBeVisible()
+  await page.getByRole('button', { name: 'Cancelar' }).last().click()
+  await page.getByRole('link', { name: /Ver su ficha/ }).click()
+  await page.getByRole('button', { name: 'Borrar clienta' }).click()
+  await page.getByRole('button', { name: 'Sí, borrar' }).click()
+  await expect(page.getByText(/tiene pagos guardados/)).toBeVisible()
 })

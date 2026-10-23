@@ -16,7 +16,7 @@ export default function ConfirmDelete({ label, question, detail, onConfirm }: { 
       await onConfirm()
     } catch (e) {
       console.error(e)
-      setError('No se pudo borrar. Intenta otra vez.')
+      setError(e instanceof Error && e.name === 'Aviso' ? e.message : 'No se pudo borrar. Intenta otra vez.')
       setBusy(false)
     }
   }

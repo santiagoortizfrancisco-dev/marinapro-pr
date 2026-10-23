@@ -156,8 +156,10 @@ export default function AppointmentDetail() {
         detail="Se borra también su trabajo, piezas y fotos, si no tiene factura. Usa esto solo si la creaste por error."
         onConfirm={async () => {
           if (woId) {
-            const { data: inv } = await db().from('invoices').select('id').eq('work_order_id', woId).limit(1)
-            if (inv && inv.length > 0) throw new Error('Tiene factura')
+            // Con pagos (depósito o cobro) no se borra: se perderían de tus cuentas
+            const { data: pays } = await db().from('payments').select('id').eq('work_order_id', woId).limit(1)
+            if (pays && pays.length > 0) throw Object.assign(new Error('Esta cita ya tiene pagos. Primero toca “Deshacer el pago” (o borra el depósito) y después la puedes borrar.'), { name: 'Aviso' })
+            await db().from('invoices').delete().eq('work_order_id', woId)
             const { data: photos } = await db().from('photos').select('storage_path').eq('work_order_id', woId)
             if (photos?.length) await db().storage.from('photos').remove(photos.map((p) => p.storage_path as string))
             must(await db().from('work_orders').delete().eq('id', woId))

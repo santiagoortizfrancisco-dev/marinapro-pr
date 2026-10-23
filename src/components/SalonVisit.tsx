@@ -68,6 +68,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const setAskDep = (v: string) => { setAskDepState(v); try { localStorage.setItem(depKey, v) } catch { /* nada */ } }
   const [otherDep, setOtherDep] = useState(false)
   const [athInput, setAthInput] = useState('')
+  const [prices, setPrices] = useState<Record<string, string>>({})
 
   const { data, loading, error, reload } = useLoad(async () => {
     const [wo, parts, invoice, mech, next, payments, photos, link] = await Promise.all([
@@ -84,6 +85,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       wo: must(wo) as WorkOrder, parts: must(parts) as Part[], invoice: (invoice.data as Invoice | null) ?? null, mech: must(mech) as Mechanic,
       next: ((next.data ?? [])[0] as { service_type: string; due_date: string } | undefined) ?? null, payments: (payments.data ?? []) as Payment[], photos: (photos.data ?? []) as Photo[],
       link: (link.data ?? {}) as { deposit_asked?: number | null; client_ok_at?: string | null; deposit_reported_at?: string | null; deposit_ok_at?: string | null },
+      last: await lastPrices((parts.data ?? []) as Part[], woId),
     }
   }, [woId])
 
@@ -105,7 +107,9 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const c = a.boats.clients
   const who = (a as unknown as { staff: { name: string; color: string } | null }).staff
   const st = APPOINTMENT_STATUS[a.status]
-  const totals = computeTotals(wo, parts, mech.ivu_rate)
+  // Lo que se va escribiendo cuenta enseguida en el total
+  const effParts = parts.map((x) => (prices[x.id] !== undefined && (num(prices[x.id]) ?? 0) > 0 ? { ...x, unit_cost: num(prices[x.id])! } : x))
+  const totals = computeTotals(wo, effParts, mech.ivu_rate)
   const paid = paidSoFar(payments)
   const tips = payments.reduce((t, p) => t + Number((p as Payment & { tip?: number }).tip ?? 0), 0)
   const done = Boolean(invoice?.paid_at) || wo.status === 'paid'
@@ -113,7 +117,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const balance = done ? 0 : Math.max(0, Math.round((due - paid) * 100) / 100)
   const firstName = c.full_name.split(' ')[0]
   // El precio se pone al cobrar (cambia por persona): el primer servicio que todavía no tiene precio
-  const unpriced = parts.find((p) => !(Number(p.unit_cost) > 0)) ?? null
+  const unpriced = effParts.find((p) => !(Number(p.unit_cost) > 0)) ?? null
   const sign = profile?.full_name ?? ''
 
   // Depósito: se le pide en el mismo WhatsApp que confirma la cita (si todavía no ha dado nada)
@@ -136,6 +140,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       db().from('appointments').update({ title }).eq('id', a.id),
       db().from('work_orders').update({ complaint: title }).eq('id', woId),
     ])
+    await refreshInvoice()
   }
 
   async function addLine(description: string, price: number) {
@@ -148,7 +153,22 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
     reload()
   }
 
+  /** Si ya hay factura sin cobrar, se pone al día con la cuenta (mismo número, total nuevo). */
+  async function refreshInvoice() {
+    if (invoice && !done) await db().rpc('create_invoice', { p_wo: woId })
+  }
+
+  /** Guarda los precios escritos en la cuenta. */
+  async function flushPrices() {
+    const pending = parts.filter((x) => prices[x.id] !== undefined && (num(prices[x.id]) ?? 0) > 0 && num(prices[x.id]) !== Number(x.unit_cost))
+    if (!pending.length) return
+    await Promise.all(pending.map((x) => db().from('work_order_parts').update({ unit_cost: num(prices[x.id]) }).eq('id', x.id)))
+    await refreshInvoice()
+    reload()
+  }
+
   async function saveLine(p: Part, description: string, price: number) {
+    setPrices(({ [p.id]: _drop, ...rest }) => rest)
     setBusy(true)
     await db().from('work_order_parts').update({ description, unit_cost: price }).eq('id', p.id)
     const list = parts.map((x) => (x.id === p.id ? { ...x, description, unit_cost: price } : x))
@@ -169,6 +189,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
 
   async function setIvu(on: boolean) {
     await db().from('work_orders').update({ charge_ivu_labor: on, charge_ivu_parts: on }).eq('id', woId)
+    await refreshInvoice()
     reload()
   }
 
@@ -199,6 +220,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   /** Factura hecha, sin cobrar todavía: queda pendiente en Me deben. */
   async function invoiceLater() {
     setBusy(true)
+    await flushPrices()
     const { error } = await db().rpc('create_invoice', { p_wo: woId })
     setBusy(false)
     if (!error) reload()
@@ -422,7 +444,24 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         <div className="-mx-4 overflow-hidden border-y border-pink-100">
           <div className="divide-y divide-dashed divide-slate-200 px-4">
             {parts.length === 0 && <p className="py-4 text-base text-slate-500">Todavía no hay servicios. Toca “Añadir servicio”.</p>}
-            {parts.map((x) => (
+            {parts.map((x) => !done && !(Number(x.unit_cost) > 0) ? (
+              <div key={x.id} className="py-2">
+                <div className="flex min-h-14 items-center gap-3">
+                  <button type="button" onClick={() => setEdit(x)} className="min-w-0 flex-1 text-left text-base font-bold text-slate-900">{x.description}</button>
+                  <div className="relative w-32 shrink-0">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg font-extrabold text-slate-400">$</span>
+                    <Input id={`precio-${x.id}`} aria-label={`Precio de ${x.description}`} inputMode="decimal" placeholder="Precio" value={prices[x.id] ?? ''}
+                      onChange={(e) => setPrices((m) => ({ ...m, [x.id]: e.target.value }))} onBlur={flushPrices}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                      className="pl-7 text-right text-lg! font-extrabold" />
+                  </div>
+                </div>
+                {data.last[x.description] && prices[x.id] === undefined && (
+                  <button type="button" onClick={() => setPrices((m) => ({ ...m, [x.id]: String(data.last[x.description]) }))}
+                    className="mt-1 rounded-full bg-pink-50 px-3 py-1 text-sm font-bold text-pink-700 active:bg-pink-100">Última vez: {formatMoney(data.last[x.description])} · usar</button>
+                )}
+              </div>
+            ) : (
               <button key={x.id} type="button" disabled={done} onClick={() => setEdit(x)} className="flex min-h-14 w-full items-center gap-3 py-2 text-left">
                 <span className="min-w-0 flex-1 text-base font-bold text-slate-900">{x.description}</span>
                 {Number(x.unit_cost) > 0
@@ -469,9 +508,13 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       <Step n={4} title="Cobrar" ok={done}>
         {!done ? (
           <>
-            <button type="button" disabled={busy || (balance <= 0 && !unpriced)} onClick={() => (unpriced ? setEdit(unpriced) : setPayOpen(true))}
+            <button type="button" disabled={busy || (balance <= 0 && !unpriced)} onClick={async () => {
+              if (unpriced) { document.getElementById(`precio-${unpriced.id}`)?.focus(); return }
+              await flushPrices()
+              setPayOpen(true)
+            }}
               className="flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-xl font-extrabold text-white shadow-lg shadow-emerald-900/20 active:bg-emerald-700 disabled:bg-slate-300 disabled:shadow-none">
-              {unpriced ? <>Ponle precio a “{unpriced.description}”</> : balance > 0 ? <>Cobrar {formatMoney(balance)}</> : 'Añade lo que vas a cobrar'}
+              {unpriced ? <>Falta el precio de “{unpriced.description}”</> : balance > 0 ? <>Cobrar {formatMoney(balance)}</> : 'Añade lo que vas a cobrar'}
             </button>
             {invoice ? (
               <div className="mt-3 space-y-2 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
@@ -560,6 +603,17 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       <LineSheet part={edit} busy={busy} onClose={() => setEdit(null)} onSave={saveLine} onRemove={removeLine} />
     </>
   )
+}
+
+async function lastPrices(parts: Part[], woId: string): Promise<Record<string, number>> {
+  const names = parts.filter((x) => !(Number(x.unit_cost) > 0)).map((x) => x.description)
+  if (!names.length) return {}
+  const { data } = await db().from('work_order_parts').select('description, unit_cost, work_order_id').in('description', names).gt('unit_cost', 0).order('created_at', { ascending: false }).limit(100)
+  const out: Record<string, number> = {}
+  for (const r of (data ?? []) as { description: string; unit_cost: number; work_order_id: string }[]) {
+    if (r.work_order_id !== woId && out[r.description] === undefined) out[r.description] = Number(r.unit_cost)
+  }
+  return out
 }
 
 /** Un paso de la visita: número (o ✓ si ya se hizo), título y lo que se hace ahí. */

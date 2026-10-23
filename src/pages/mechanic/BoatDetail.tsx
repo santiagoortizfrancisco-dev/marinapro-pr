@@ -187,6 +187,9 @@ export default function BoatDetail() {
         question={`¿Borrar ${w.elItem} ${b.name}?`}
         detail={`Se borran también sus ${w.engines ? 'motores, equipos y ' : ''}citas. Esto no se puede deshacer.`}
         onConfirm={async () => {
+          const jobIds = data.jobs.map((j) => j.id)
+          const { data: pays } = jobIds.length ? await db().from('payments').select('id').in('work_order_id', jobIds).limit(1) : { data: [] }
+          if (pays && pays.length > 0) throw Object.assign(new Error(`Tiene pagos guardados. Si lo borras, se pierden de tus cuentas, así que no se puede borrar. Si hay algo mal, toca “Editar”.`), { name: 'Aviso' })
           must(await db().from('boats').delete().eq('id', b.id))
           navigate(`/clientes/${b.client_id}`, { replace: true })
         }}

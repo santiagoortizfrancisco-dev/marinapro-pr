@@ -511,6 +511,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
           question="¿Borrar este trabajo?"
           detail="Se borran también sus piezas y fotos. Esto no se puede deshacer."
           onConfirm={async () => {
+            if (payments.length > 0) throw Object.assign(new Error('Tiene pagos guardados. Primero quita los pagos (la ✕ al lado de cada uno) y después lo puedes borrar.'), { name: 'Aviso' })
             if (photos.length) await db().storage.from('photos').remove(photos.map((p) => p.storage_path))
             must(await db().from('work_orders').delete().eq('id', wo.id))
             navigate('/trabajos', { replace: true })

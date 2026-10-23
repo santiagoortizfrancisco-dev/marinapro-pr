@@ -199,6 +199,9 @@ export default function ClientDetail() {
         question={`¿Borrar a ${c.full_name}?`}
         detail={w.salon ? 'Se borran también sus citas y su historial. Esto no se puede deshacer.' : `Se borran también sus ${w.items}${w.engines ? ', motores, equipos' : ''} y citas. Esto no se puede deshacer.`}
         onConfirm={async () => {
+          if (data.money.some((r) => r.payments.length > 0)) {
+            throw Object.assign(new Error(`${c.full_name.split(' ')[0]} tiene pagos guardados. Si la borras, se pierden de tus cuentas, así que no se puede borrar. Si hay algo mal en sus datos, toca “Editar”.`), { name: 'Aviso' })
+          }
           must(await db().from('clients').delete().eq('id', c.id))
           navigate('/clientes', { replace: true })
         }}

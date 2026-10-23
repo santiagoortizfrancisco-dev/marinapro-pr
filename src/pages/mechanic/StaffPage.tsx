@@ -167,6 +167,8 @@ export default function StaffPage() {
             <Button variant="ghost" onClick={() => setEdit(null)}>Cancelar</Button>
             {edit.id && (
               <Button variant="ghost" disabled={busy} className="text-red-700!" onClick={async () => {
+                const { data: worked } = await db().from('work_orders').select('id').eq('staff_id', edit.id!).limit(1)
+                if (worked && worked.length > 0) return setError(`${edit.name} ya tiene clientas atendidas. Para no perder sus comisiones no se borra: marca “Ya no trabaja aquí” y guarda.`)
                 if (!window.confirm(`¿Borrar a ${edit.name}? Sus citas se quedan, pero sin empleada. Si ya no trabaja aquí, mejor marca “Ya no trabaja aquí”.`)) return
                 setBusy(true)
                 const { error } = await db().from('staff').delete().eq('id', edit.id!)

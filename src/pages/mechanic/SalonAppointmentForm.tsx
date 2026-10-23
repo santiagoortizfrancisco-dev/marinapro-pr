@@ -61,6 +61,7 @@ export default function SalonAppointmentForm() {
   const [search, setSearch] = useState('')
   const [picked, setPicked] = useState<string[]>([])
   const [extras, setExtras] = useState<string[]>([])
+  const [billed, setBilled] = useState(false)
   // Servicios: una pestaña por tipo (Uñas, Pelo, Spa), los más pedidos primero; al terminar se cierra en una línea
   const [cat, setCat] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
@@ -101,6 +102,8 @@ export default function SalonAppointmentForm() {
           const names = (a.title ?? '').split(' + ')
           setPicked(m.filter((x) => names.includes(x.name)).map((x) => x.id))
           setExtras(names.filter((n) => n && !m.some((x) => x.name === n)))
+          const { data: wo } = await db().from('work_orders').select('status').eq('appointment_id', id).limit(1)
+          setBilled(['invoiced', 'paid'].includes(((wo ?? [])[0]?.status as string) ?? ''))
         }
       } else if (!params.get('empleada') && st.length === 1) {
         setStaffId(st[0].id)
@@ -163,7 +166,7 @@ export default function SalonAppointmentForm() {
       }
       const recordId = await clientRecordId(cid, name)
       const title = [...selected.map((s) => s.name), ...extras].join(' + ') || null
-      const row = { boat_id: recordId, staff_id: staffId, starts_at: prToISO(day, time), duration_min: Math.max(15, minutes), title, notes: blank(notes) }
+      const row = { boat_id: recordId, staff_id: staffId, starts_at: prToISO(day, time), duration_min: Math.max(15, minutes), notes: blank(notes), ...(billed ? {} : { title }) }
       let apptId = id
       if (id) {
         const u = await db().from('appointments').update(row).eq('id', id)
@@ -178,6 +181,8 @@ export default function SalonAppointmentForm() {
       const { data: wos } = await db().from('work_orders').select('id, status').eq('appointment_id', apptId!).limit(1)
       let woId = (wos ?? [])[0]?.id as string | undefined
       const locked = ['invoiced', 'paid'].includes(((wos ?? [])[0]?.status as string) ?? '')
+      // Ya tiene factura: la cuenta no se toca, pero si se cambió la clienta, la factura pasa a ella
+      if (locked && woId) await db().from('work_orders').update({ boat_id: recordId, staff_id: staffId }).eq('id', woId)
       if (!locked) {
         const now = new Date().toISOString()
         if (woId) {
@@ -260,7 +265,9 @@ export default function SalonAppointmentForm() {
 
         {/* 2. Los servicios: pestañas por tipo, botones en dos columnas; al escoger queda en una línea */}
         <Step n={2} title="¿Qué se va a hacer?" hint="opcional">
-          {!open && selected.length === 0 ? (
+          {billed ? (
+            <p className="rounded-2xl bg-amber-50 p-3 text-base text-amber-900">Esta cita ya tiene factura. Los servicios y precios se cambian en <b>La cuenta</b> de la cita.</p>
+          ) : !open && selected.length === 0 ? (
             <button type="button" onClick={() => setListOpen(true)} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-pink-50 text-lg font-bold text-pink-700 ring-1 ring-pink-200 active:bg-pink-100"><Plus size={22} /> Escoger servicios</button>
           ) : !open ? (
             <div className="rounded-2xl bg-pink-50 p-3 ring-1 ring-pink-200" aria-label="Resumen de la cita">
