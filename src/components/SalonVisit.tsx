@@ -62,6 +62,9 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const [edit, setEdit] = useState<Part | null>(null)
   const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState<SalonService[]>([])
+  // Depósito que se le pide al confirmar (null = el que esté puesto en Citas por internet)
+  const [askDep, setAskDep] = useState<string | null>(null)
+  const [otherDep, setOtherDep] = useState(false)
 
   const { data, loading, error, reload } = useLoad(async () => {
     const [wo, parts, invoice, mech, next, payments, photos] = await Promise.all([
@@ -108,12 +111,12 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const unpriced = parts.find((p) => !(Number(p.unit_cost) > 0)) ?? null
   const sign = profile?.full_name ?? ''
 
-  // Cita pedida por internet con depósito pendiente: se le recuerda cómo pagarlo
-  const depositDue = (mech as Mechanic & { booking_deposit?: number | null }).booking_deposit
-  const askDeposit = (a as unknown as { source?: string }).source === 'online' && depositDue && paid === 0
+  // Depósito: se le pide en el mismo WhatsApp que confirma la cita (si todavía no ha dado nada)
+  const depositDue = Number((mech as Mechanic & { booking_deposit?: number | null }).booking_deposit) || 0
+  const depAmount = paid > 0 || done ? 0 : num(askDep ?? String(depositDue)) ?? 0
   const confirmMsg = `Hola ${firstName}, te confirmo tu cita el ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)}` +
     (a.title ? ` para ${a.title}` : '') + (who ? ` con ${who.name}` : '') +
-    (askDeposit ? `. Para separarla, envía el depósito de ${formatMoney(Number(depositDue))}${mech.ath_movil_number ? ` por ATH Móvil al ${mech.ath_movil_number}` : ''}` : '') +
+    (depAmount > 0 ? `. Para separarla, envía el depósito de ${formatMoney(depAmount)}${mech.ath_movil_number ? ` por ATH Móvil al ${mech.ath_movil_number}` : ''} y mándame la foto del recibo. Sin el depósito no puedo guardarte el turno` : '') +
     `. Si no puedes llegar, avísame. ¡Te espero! 💅 ${sign}`.trimEnd()
   const receiptMsg = invoice
     ? `Hola ${firstName}, ¡gracias por venir! 💅 Aquí está tu recibo #${invoice.number} por ${formatMoney(Number(invoice.total))}: ${window.location.origin}/d/${invoice.public_token} . ${sign}`.trim()
@@ -241,8 +244,24 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
     reload()
   }
 
+  const changed = params.get('cambio') === '1'
+  const changeMsg = `Hola ${firstName}, te cambié la cita: ahora es el ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)}` +
+    (a.title ? ` para ${a.title}` : '') + (who ? ` con ${who.name}` : '') + `. Si no te funciona, avísame. 💅 ${sign}`.trimEnd()
+
   return (
     <>
+      {changed && (
+        <section className="mb-3 rounded-3xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
+          <p className="text-lg font-extrabold text-emerald-900">Cita cambiada ✓</p>
+          <p className="mt-1 text-base text-emerald-900">¿Le avisas a {firstName} del cambio?</p>
+          {c.phone && (
+            <a href={whatsappLink(c.phone, changeMsg)} target="_blank" rel="noreferrer" onClick={() => setParams({}, { replace: true })}
+              className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-lg font-bold text-white"><WhatsAppIcon size={24} /> Avisarle del cambio</a>
+          )}
+          <button type="button" onClick={() => setParams({}, { replace: true })} className="mt-2 min-h-11 w-full text-base font-bold text-emerald-800">No hace falta</button>
+        </section>
+      )}
+
       {/* La clienta y la cita */}
       <section className="rounded-3xl bg-white p-4 shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100">
         <div className="flex items-center gap-3">
@@ -264,7 +283,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         </div>
         <div className="mt-3 flex">
           {c.phone && <Action label="Llamar" href={telLink(c.phone)} icon={<Phone size={24} />} tone="bg-sky-100 text-sky-700" />}
-          <Action label="Mover" onClick={onEdit} icon={<CalendarClock size={24} />} tone="bg-pink-100 text-pink-700" />
+          <Action label="Cambiar" onClick={onEdit} icon={<CalendarClock size={24} />} tone="bg-pink-100 text-pink-700" />
           {a.status === 'cancelled'
             ? <Action label="Activar" onClick={onActivate} icon={<Check size={24} />} tone="bg-emerald-100 text-emerald-700" />
             : <Action label="Cancelar" onClick={onCancel} icon={<XCircle size={24} />} tone="bg-red-50 text-red-600" />}
@@ -272,13 +291,33 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       </section>
 
       {/* 1 · Confirmar */}
-      <Step n={1} title="Confirmar la cita" ok={confirmed}>
+      <Step n={1} title={depAmount > 0 ? 'Confirmar y pedir depósito' : 'Confirmar la cita'} ok={confirmed}>
+        {a.status !== 'cancelled' && !done && paid === 0 && (
+          <div className="mb-3">
+            <p className="mb-2 text-base font-bold text-slate-800">¿Le pides depósito?</p>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Depósito que le pides">
+              {['0', '10', '15', '20', '25'].map((v) => {
+                const on = !otherDep && depAmount === Number(v)
+                return (
+                  <button key={v} type="button" role="radio" aria-checked={on} onClick={() => { setOtherDep(false); setAskDep(v) }}
+                    className={`min-h-12 min-w-14 rounded-full px-4 text-base font-bold ${on ? 'bg-pink-600 text-white' : 'bg-pink-50 text-pink-800'}`}>{v === '0' ? 'No' : `$${v}`}</button>
+                )
+              })}
+              <button type="button" role="radio" aria-checked={otherDep || ![0, 10, 15, 20, 25].includes(depAmount)} onClick={() => { setOtherDep(true); setAskDep('') }}
+                className={`min-h-12 rounded-full px-4 text-base font-bold ${otherDep || ![0, 10, 15, 20, 25].includes(depAmount) ? 'bg-pink-600 text-white' : 'bg-pink-50 text-pink-800'}`}>Otro</button>
+            </div>
+            {otherDep && <Input aria-label="Depósito ($)" inputMode="decimal" autoFocus placeholder="$" value={askDep ?? ''} onChange={(e) => setAskDep(e.target.value)} className="mt-2" />}
+            {depAmount > 0 && !mech.ath_movil_number && (
+              <p className="mt-2 rounded-xl bg-amber-50 p-2 text-sm text-amber-900">Pon tu número de ATH Móvil en <Link to="/mas/negocio" className="font-bold underline">Mi negocio</Link> para que salga en el mensaje.</p>
+            )}
+          </div>
+        )}
         {a.status === 'requested' ? (
           <>
             <p className="flex items-center gap-2 text-base font-bold text-amber-900"><Globe size={20} /> {(a as unknown as { source?: string }).source === 'online' ? 'La pidió por internet. ' : ''}Todavía no está confirmada.</p>
             <button type="button" onClick={() => { onActivate(); if (c.phone) window.open(whatsappLink(c.phone, confirmMsg), '_blank') }}
               className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-lg font-extrabold text-white active:bg-emerald-700">
-              <Check /> Confirmar cita{c.phone ? ' por WhatsApp' : ''}
+              <Check /> Confirmar cita{depAmount > 0 ? ' y pedir depósito' : ''}{c.phone ? ' por WhatsApp' : ''}
             </button>
             {/* No hay espacio a esa hora: se deniega y se le ofrece otra */}
             <button type="button" onClick={() => {
@@ -295,14 +334,14 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         ) : (
           <button type="button" onClick={confirmWhatsApp}
             className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-lg font-bold text-white">
-            <WhatsAppIcon size={24} /> Confirmar por WhatsApp
+            <WhatsAppIcon size={24} /> {depAmount > 0 ? `Confirmar y pedir ${formatMoney(depAmount)}` : 'Confirmar por WhatsApp'}
           </button>
         )}
       </Step>
 
       {/* 2 · Depósito */}
       <Step n={2} title="Depósito" hint="opcional" ok={payments.length > 0}>
-        {payments.length === 0 && <p className="text-base text-slate-500">{done ? 'No dejó depósito.' : 'Si te deja algo para separar la cita, anótalo aquí.'}</p>}
+        {payments.length === 0 && <p className="text-base text-slate-500">{done ? 'No dejó depósito.' : depAmount > 0 ? `Cuando te envíe los ${formatMoney(depAmount)}, anótalo aquí.` : 'Si te deja algo para separar la cita, anótalo aquí.'}</p>}
         {payments.length > 0 && (
           <ul className="divide-y divide-slate-100">
             {payments.map((x) => (

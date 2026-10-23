@@ -58,6 +58,7 @@ export default function SalonAppointmentForm() {
   const [newClient, setNewClient] = useState<{ full_name: string; phone: string } | null>(null)
   const [search, setSearch] = useState('')
   const [picked, setPicked] = useState<string[]>([])
+  const [extras, setExtras] = useState<string[]>([])
   const [staffId, setStaffId] = useState<string | null>(params.get('empleada'))
   const [day, setDay] = useState(startDay)
   const [time, setTime] = useState(now ? prTime(new Date()) : defaultTime(startDay, params.get('hora')))
@@ -89,6 +90,7 @@ export default function SalonAppointmentForm() {
           setNotes(a.notes ?? '')
           const names = (a.title ?? '').split(' + ')
           setPicked(m.filter((x) => names.includes(x.name)).map((x) => x.id))
+          setExtras(names.filter((n) => n && !m.some((x) => x.name === n)))
         }
       } else if (!params.get('empleada') && st.length === 1) {
         setStaffId(st[0].id)
@@ -143,7 +145,7 @@ export default function SalonAppointmentForm() {
         cid = (c.data as { id: string }).id
       }
       const recordId = await clientRecordId(cid, name)
-      const title = selected.map((s) => s.name).join(' + ') || null
+      const title = [...selected.map((s) => s.name), ...extras].join(' + ') || null
       const row = { boat_id: recordId, staff_id: staffId, starts_at: prToISO(day, time), duration_min: Math.max(15, minutes), title, notes: blank(notes) }
       let apptId = id
       if (id) {
@@ -163,7 +165,6 @@ export default function SalonAppointmentForm() {
         const now = new Date().toISOString()
         if (woId) {
           await db().from('work_orders').update({ boat_id: recordId, staff_id: staffId, complaint: title }).eq('id', woId)
-          await db().from('work_order_parts').delete().eq('work_order_id', woId)
         } else {
           const w = await db().from('work_orders').insert({
             boat_id: recordId, appointment_id: apptId, staff_id: staffId, complaint: title, status: 'approved',
@@ -172,12 +173,17 @@ export default function SalonAppointmentForm() {
           if (w.error) throw w.error
           woId = (w.data as { id: string }).id
         }
-        const p = selected.length === 0 ? { error: null } : await db().from('work_order_parts').insert(selected.map((s) => ({
+        const had = woId ? (((await db().from('work_order_parts').select('id, description').eq('work_order_id', woId)).data ?? []) as { id: string; description: string }[]) : []
+        const keep = new Set(selected.map((s) => s.name))
+        const gone = had.filter((x) => !keep.has(x.description) && menu.some((m) => m.name === x.description)).map((x) => x.id)
+        if (gone.length) await db().from('work_order_parts').delete().in('id', gone)
+        const fresh = selected.filter((s) => !had.some((x) => x.description === s.name))
+        const p = fresh.length === 0 ? { error: null } : await db().from('work_order_parts').insert(fresh.map((s) => ({
           work_order_id: woId, kind: 'service', description: s.name, qty: 1, unit_cost: Number(s.last_price ?? 0), supplied_by: 'mechanic',
         })))
         if (p.error) throw p.error
       }
-      if (id) navigate(-1)
+      if (id) navigate(`/citas/${id}?cambio=1`, { replace: true })
       else navigate(`/citas/${apptId}${now ? '?cobrar=1' : ''}`, { replace: true })
     } catch (err) {
       console.error(err)
