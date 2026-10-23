@@ -306,7 +306,6 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const later = prDay(a.starts_at) > todayPR() && !done && paid === 0 && !sent && a.status !== 'cancelled'
   // Pedida por internet o depósito por verificar: eso va arriba de todo
   const top = a.status === 'requested' || reported > 0
-  const urgent = top || later
   const confirmSummary = [a.status === 'requested' ? 'Sin confirmar' : a.status === 'cancelled' ? 'Cancelada' : 'Confirmada ✓',
     payments.length && !done ? `Depósito ${formatMoney(paid)} ✓` : depAmount > 0 ? `Depósito ${formatMoney(depAmount)}` : null].filter(Boolean).join(' · ')
   const changed = params.get('cambio') === '1'
@@ -316,12 +315,11 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   function confirmBlock() {
     return (
       <>
-      {/* Confirmar y depósito: cerrado en una línea (abierto si hay algo que hacer) */}
-      <details className="group mt-4 overflow-hidden rounded-3xl bg-white ring-1 ring-pink-100" open={urgent}>
-        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 text-base font-bold text-slate-900">
+      {/* Confirmar y depósito: siempre a la vista, antes de Pagar */}
+      <section className="mt-4 overflow-hidden rounded-3xl bg-white ring-1 ring-pink-100" aria-label="Confirmar cita y depósito">
+        <div className="flex min-h-14 items-center gap-3 px-4 text-base font-bold text-slate-900">
           <WhatsAppIcon size={22} /> <span className="min-w-0 flex-1">Confirmar cita y depósito<span className="block truncate text-sm font-semibold text-slate-500">{confirmSummary}</span></span>
-          <ChevronDown size={20} className="shrink-0 text-slate-400 transition group-open:rotate-180" />
-        </summary>
+        </div>
         <div className="px-4 pb-4">
       <Step flat title={depAmount > 0 ? 'Confirmar y pedir depósito' : 'Confirmar la cita'} ok={confirmed}>
         {a.status !== 'cancelled' && !done && paid === 0 && (
@@ -423,7 +421,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       </Step>
 
         </div>
-      </details>
+      </section>
 
       </>
     )
@@ -530,7 +528,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       </Step>
 
       {/* Cita para otro día: después de los precios, el depósito y confirmar (le llega con el estimado) */}
-      {later && !top && confirmBlock()}
+      {!top && confirmBlock()}
 
       {/* 4 · Cobrar */}
       <Step title="Pagar" ok={done}>
@@ -614,7 +612,6 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         ) : <p className="text-base text-slate-500">Cuando cobres, aquí le envías el recibo.</p>}
       </Step>}
 
-      {!urgent && confirmBlock()}
 
       {/* 6 · Cuándo vuelve */}
       <details className="group mt-4 overflow-hidden rounded-3xl bg-white ring-1 ring-pink-100">

@@ -1703,7 +1703,12 @@ test('salón: la cuenta sale primero; al cobrar pregunta por la próxima cita y 
   await page.getByPlaceholder('Nombre *').fill('Próxima Prueba')
   await page.getByRole('button', { name: 'Guardar cita' }).click()
   await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Cobrar depósito' })).toBeHidden()
+  // El depósito siempre a la vista, en orden: la cuenta → confirmar y depósito → Pagar
+  const cuenta = (await page.getByRole('heading', { name: 'La cuenta' }).boundingBox())!.y
+  const dep = (await page.getByRole('button', { name: 'Cobrar depósito' }).boundingBox())!.y
+  const pagar = (await page.getByRole('heading', { name: 'Pagar', exact: true }).boundingBox())!.y
+  expect(cuenta).toBeLessThan(dep)
+  expect(dep).toBeLessThan(pagar)
   await page.getByRole('button', { name: 'Añadir servicio' }).click()
   await page.getByLabel('Nombre del servicio').fill('Uñas')
   await page.getByLabel('Precio', { exact: true }).fill('20')
@@ -1716,7 +1721,7 @@ test('salón: la cuenta sale primero; al cobrar pregunta por la próxima cita y 
   await expect(page.getByText(/¿Le hacemos la próxima cita/)).toHaveCount(0)
 })
 
-test('salón: cita para otro día — lo primero es confirmar y pedir el depósito; al enviarlo se cierra', async ({ page }) => {
+test('salón: cita para otro día — lo primero es confirmar y pedir el depósito; al enviarlo se queda a la vista', async ({ page }) => {
   await page.goto('/demo')
   await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
   await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
@@ -1735,7 +1740,8 @@ test('salón: cita para otro día — lo primero es confirmar y pedir el depósi
   const popup = page.waitForEvent('popup')
   await page.getByRole('button', { name: /Confirmar y pedir \$15\.00/ }).click()
   await (await popup).close()
-  await expect(page.getByRole('radio', { name: '$15' })).toBeHidden()
+  // Se queda a la vista con lo que se hizo
+  await expect(page.getByRole('region', { name: 'Confirmar cita y depósito' }).getByText(/Confirmada ✓ · Depósito \$15\.00/)).toBeVisible()
 })
 
 test('salón: si la tarjeta de regalo no alcanza, no deja pagar hasta escoger cómo paga el resto', async ({ page }) => {
