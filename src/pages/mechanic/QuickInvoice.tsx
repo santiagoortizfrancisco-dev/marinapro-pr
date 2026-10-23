@@ -5,6 +5,7 @@ import { CheckCircle2, ExternalLink, Gift, Plus, Search, Ship, Trash2, UserPlus,
 import { useAuth } from '../../auth/AuthProvider'
 import { db } from '../../lib/db'
 import { addPayment } from '../../lib/money'
+import { priceFor, type Rate } from '../../lib/storage'
 import { formatDate, formatMoney } from '../../lib/format'
 import { whatsappLink } from '../../lib/links'
 import { computeTotals, percent } from '../../lib/totals'
@@ -18,7 +19,7 @@ import { BackTitle, Button, ErrorBox, Input, LinkButton, Loading } from '../../c
 import { useDraft } from '../../lib/draft'
 import DraftBanner from '../../components/DraftBanner'
 
-interface ClientRow { id: string; full_name: string; phone: string | null; boats: { id: string; name: string }[] }
+interface ClientRow { id: string; full_name: string; phone: string | null; boats: { id: string; name: string; length_ft: number | null }[] }
 type Pick = { kind: 'boat'; boatId: string; clientId: string } | { kind: 'client'; clientId: string } | { kind: 'new' } | null
 interface Line { key: number; kind: 'service' | 'part'; desc: string; price: string }
 
@@ -40,6 +41,7 @@ export default function QuickInvoice() {
   const { data: mech, loading, error: mechError } = useMechanic()
   const [clients, setClients] = useState<ClientRow[] | null>(null)
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
+  const [rates, setRates] = useState<Rate[]>([])
   const [pick, setPick] = useState<Pick>(null)
   const [search, setSearch] = useState('')
   const [newClient, setNewClient] = useState({ full_name: '', phone: '' })
@@ -57,8 +59,10 @@ export default function QuickInvoice() {
   const [done, setDone] = useState<{ woId: string; invoice: Invoice; phone: string | null; first: string; boat: string; paid: number } | null>(null)
 
   useEffect(() => {
-    db().from('clients').select('id, full_name, phone, boats(id, name)').order('full_name').then(({ data }) => setClients((data ?? []) as unknown as ClientRow[]))
-    db().from('catalog_items').select('*').then(({ data }) => setCatalog(((data ?? []) as CatalogItem[]).filter((c) => c.mechanic_id || tw.marina)))
+    db().from('clients').select('id, full_name, phone, boats(id, name, length_ft)').order('full_name').then(({ data }) => setClients((data ?? []) as unknown as ClientRow[]))
+    // Guardería: una sola lista de precios (la de Guardería → Precios)
+    if (tw.storage) db().from('storage_rates').select('*').eq('active', true).order('kind', { ascending: false }).order('sort').then(({ data }) => setRates((data ?? []) as Rate[]))
+    else db().from('catalog_items').select('*').then(({ data }) => setCatalog(((data ?? []) as CatalogItem[]).filter((c) => c.mechanic_id || tw.marina)))
   }, [])
   useEffect(() => {
     if (mech) setIvu(mech.ivu_on_labor)
@@ -85,14 +89,27 @@ export default function QuickInvoice() {
   const chosenBoat = pick?.kind === 'boat' ? chosen?.boats.find((b) => b.id === pick.boatId) ?? null : null
 
   // Precio guardado del mecánico para lo que escribe (ej. "Cambio de impeller" → $150)
-  const myPrice = (_kind: Line['kind'], desc: string) =>
+  const rateFor = (desc: string) => rates.find((r) => plain(r.name) === plain(desc.trim()))
+  const ratePrice = (r: Rate) => priceFor(r, chosenBoat?.length_ft ?? null) || null
+  const myPrice = (_kind: Line['kind'], desc: string) => tw.storage ? (rateFor(desc) ? ratePrice(rateFor(desc)!) : null) :
     catalog.find((c) => c.mechanic_id && plain(c.name) === plain(desc.trim()))?.last_price ?? null
   /** Si ya lo tiene guardado como pieza, sigue siendo pieza; si no, cuenta como servicio (mano de obra). */
   const kindOf = (desc: string): Line['kind'] => catalog.find((c) => c.mechanic_id && plain(c.name) === plain(desc.trim()))?.kind ?? 'service'
   const suggestions = (kind: Line['kind']) => {
+    if (tw.storage) return kind === 'service' ? rates.map((r) => r.name) : []
     const mine = catalog.filter((c) => c.kind === kind && c.mechanic_id).sort((a, b) => b.use_count - a.use_count).map((c) => c.name)
     const common = catalog.filter((c) => c.kind === kind && !c.mechanic_id).map((c) => c.name)
     return [...new Set([...mine, ...common])]
+  }
+
+  /** Guardería: un toque añade el cobro con su precio (en la línea vacía si hay una). */
+  function addRate(r: Rate) {
+    const price = ratePrice(r)
+    setLines((ls) => {
+      const empty = ls.find((l) => !l.desc.trim() && !l.price)
+      const line = { ...(empty ?? newLine('service')), desc: r.name, price: price != null ? String(price) : '' }
+      return empty ? ls.map((l) => (l.key === empty.key ? line : l)) : [...ls, line]
+    })
   }
 
   /** Añade una línea nueva (si la única línea está vacía, la usa) y pone el cursor para escribir. */
@@ -182,7 +199,7 @@ export default function QuickInvoice() {
       })))
       if (p.error) throw p.error
       // Sus precios quedan guardados para la próxima vez
-      await Promise.all(filled.map((l) => db().rpc('remember_catalog_item', { p_kind: l.kind, p_name: l.desc.trim(), p_price: (num(l.price) ?? 0) > 0 ? num(l.price) : null })))
+      if (!tw.storage) await Promise.all(filled.map((l) => db().rpc('remember_catalog_item', { p_kind: l.kind, p_name: l.desc.trim(), p_price: (num(l.price) ?? 0) > 0 ? num(l.price) : null })))
       const inv = await db().rpc('create_invoice', { p_wo: woId })
       if (inv.error) throw inv.error
       // Lo que le dio (todo o una parte): si completa el total, la factura queda pagada sola
@@ -336,6 +353,18 @@ export default function QuickInvoice() {
           </div>
 
           {/* Líneas: descripción y precio */}
+          {tw.storage && rates.length > 0 && (
+            <div className="mb-3" role="group" aria-label="Toca para añadir">
+              <p className="mb-2 px-1 text-sm font-bold text-slate-600">Toca para añadir (de tus Precios):</p>
+              <div className="flex flex-wrap gap-2">
+                {rates.map((r) => (
+                  <button key={r.id} type="button" onClick={() => addRate(r)} className="min-h-11 rounded-full bg-white px-3 text-sm font-bold text-navy-800 ring-1 ring-navy-200 active:bg-navy-50">
+                    {r.name}{ratePrice(r) ? ` · ${formatMoney(ratePrice(r)!)}` : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div role="group" aria-label="Lo que cobras">
             <div className="grid grid-cols-[1fr_5.5rem_1.75rem] gap-1 rounded-t-lg bg-navy-50 px-2 py-2 text-xs font-bold uppercase tracking-wide text-navy-800">
               <span>Descripción</span><span className="pr-2 text-right">Precio</span><span />

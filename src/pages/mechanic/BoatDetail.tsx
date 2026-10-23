@@ -1,16 +1,19 @@
 import { useWords } from '../../lib/trade'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { Calendar, CalendarClock, Cog, Cpu, MapPin, Navigation, Pencil, Plus, User, X } from 'lucide-react'
+import { Anchor, Calendar, CalendarClock, Cog, Cpu, MapPin, Navigation, Pencil, Plus, User, X } from 'lucide-react'
 import { DRIVE_TYPES, ENGINE_POSITIONS, EQUIPMENT_CATEGORIES, FUELS, LOCATION_TYPES, WORK_ORDER_STATUS, labelOf } from '../../lib/catalog'
 import { db } from '../../lib/db'
-import { ago, daysUntil, formatDate, formatLongDate, formatTime, todayPR } from '../../lib/format'
+import { ago, daysUntil, formatDate, formatLongDate, formatMoney, formatTime, todayPR } from '../../lib/format'
 import { googleMapsLink, hasPlace, wazeLink } from '../../lib/links'
 import type { Appointment, Boat, Client, Engine, Equipment } from '../../lib/types'
 import { must, useLoad } from '../../lib/useLoad'
 import ConfirmDelete from '../../components/ConfirmDelete'
 import NextService from '../../components/NextService'
 import { BackTitle, ErrorBox, InfoList, LinkButton, Loading, RowLink, SectionHeader } from '../../components/ui'
+
+/** Contrato de guardería del bote (solo lo que se enseña aquí). */
+interface StorageContract { id: string; space_label: string | null; monthly_price: number; start_date: string; end_date: string | null; insurance_expires: string | null }
 
 export default function BoatDetail() {
   const w = useWords()
@@ -19,14 +22,15 @@ export default function BoatDetail() {
   const [addingNext, setAddingNext] = useState(false)
   const { data, loading, error, reload } = useLoad(async () => {
     const boat = must(await db().from('boats').select('*, clients(id, full_name, phone)').eq('id', id!).single()) as Boat & { clients: Pick<Client, 'id' | 'full_name' | 'phone'> }
-    const [engines, equipment, appts, jobs, next] = await Promise.all([
+    const [engines, contracts, equipment, appts, jobs, next] = await Promise.all([
       db().from('engines').select('*').eq('boat_id', id!).order('position'),
+      db().from('storage_contracts').select('*').eq('boat_id', id!).eq('status', 'active'),
       db().from('equipment').select('*').eq('boat_id', id!).order('category'),
       db().from('appointments').select('*, service_requests(description)').eq('boat_id', id!).neq('status', 'cancelled').gte('starts_at', new Date(Date.now() - 30 * 86400000).toISOString()).order('starts_at').limit(8),
       db().from('work_orders').select('id, status, complaint, diagnosis, work_done, created_at, completed_at, work_order_parts(description, kind)').eq('boat_id', id!).order('created_at', { ascending: false }).limit(30),
       db().from('maintenance_schedules').select('id, service_type, due_date, interval_months').eq('boat_id', id!).in('status', ['pending', 'notified']).order('due_date'),
     ])
-    return { boat, engines: must(engines) as Engine[], equipment: must(equipment) as Equipment[], appts: must(appts) as (Appointment & { service_requests: { description: string } | null })[], jobs: must(jobs) as { id: string; status: keyof typeof WORK_ORDER_STATUS; complaint: string | null; diagnosis: string | null; work_done: string | null; created_at: string; completed_at: string | null; work_order_parts: { description: string; kind: string }[] }[], next: must(next) as { id: string; service_type: string; due_date: string; interval_months: number | null }[] }
+    return { boat, contract: ((contracts.data ?? []) as StorageContract[])[0] ?? null, engines: must(engines) as Engine[], equipment: must(equipment) as Equipment[], appts: must(appts) as (Appointment & { service_requests: { description: string } | null })[], jobs: must(jobs) as { id: string; status: keyof typeof WORK_ORDER_STATUS; complaint: string | null; diagnosis: string | null; work_done: string | null; created_at: string; completed_at: string | null; work_order_parts: { description: string; kind: string }[] }[], next: must(next) as { id: string; service_type: string; due_date: string; interval_months: number | null }[] }
   }, [id])
 
   if (loading) return <Loading />
@@ -49,8 +53,31 @@ export default function BoatDetail() {
         <User size={20} /> {b.clients.full_name}
       </Link>
 
+      {/* Guardería: el bote está donde dice su contrato */}
+      {w.storage && (
+        <section className="rounded-2xl border-2 border-navy-200 bg-white p-4" aria-label="En la guardería">
+          <div className="flex items-start gap-3">
+            <Anchor size={26} className="mt-0.5 shrink-0 text-navy-700" />
+            <div className="min-w-0 flex-1">
+              {data.contract ? <>
+                <div className="text-lg font-bold text-slate-900">En la guardería{data.contract.space_label ? ` · ${data.contract.space_label}` : ''}</div>
+                <div className="text-base text-slate-700">{formatMoney(Number(data.contract.monthly_price))} al mes · desde {formatDate(data.contract.start_date)}</div>
+                {data.contract.end_date && <div className="text-sm text-slate-600">Contrato vence {formatDate(data.contract.end_date)}</div>}
+                {data.contract.insurance_expires && <div className="text-sm text-slate-600">Seguro vence {formatDate(data.contract.insurance_expires)}</div>}
+              </> : <>
+                <div className="text-lg font-bold text-slate-900">No está en la guardería</div>
+                <div className="text-base text-slate-700">Ponle su espacio y su precio del mes.</div>
+              </>}
+            </div>
+          </div>
+          <Link to={`/guarderia?bote=${b.id}`} className="mt-3 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-navy-800 text-base font-bold text-white active:bg-navy-900">
+            {data.contract ? 'Ver o cambiar el contrato' : 'Meterlo en la guardería'}
+          </Link>
+        </section>
+      )}
+
       {/* Ubicación */}
-      <section className="rounded-2xl border-2 border-slate-200 bg-white p-4">
+      {!w.storage && <section className="rounded-2xl border-2 border-slate-200 bg-white p-4">
         <div className="flex items-start gap-3">
           <MapPin size={26} className="mt-0.5 shrink-0 text-navy-700" />
           <div className="min-w-0 flex-1">
@@ -67,7 +94,7 @@ export default function BoatDetail() {
             <LinkButton href={googleMapsLink(b)} external><MapPin size={20} /> Google Maps</LinkButton>
           </div>
         )}
-      </section>
+      </section>}
 
       <div className="mt-4">
         <InfoList
@@ -82,7 +109,7 @@ export default function BoatDetail() {
         />
       </div>
       <Link to={`/botes/${b.id}/editar`} className="mt-3 flex min-h-12 items-center justify-center gap-2 text-base font-bold text-navy-700">
-        <Pencil size={18} /> {`Editar ${w.item} y ubicación`}
+        <Pencil size={18} /> {w.storage ? 'Editar bote' : `Editar ${w.item} y ubicación`}
       </Link>
 
       {w.engines && <>

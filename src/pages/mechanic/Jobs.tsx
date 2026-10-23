@@ -43,6 +43,14 @@ export default function Jobs() {
     <>
       <PageTitle>Cobros</PageTitle>
 
+      {w.storage && (
+        <Link to="/guarderia?tab=bill" className="mb-4 flex min-h-16 items-center gap-3 rounded-2xl bg-navy-800 px-4 py-2 text-white shadow-lg shadow-navy-900/20 active:bg-navy-900">
+          <FileText size={24} />
+          <span className="flex-1"><span className="block text-lg font-extrabold">Facturar el mes</span><span className="block text-sm text-navy-100">Renta + cobros sueltos de cada bote</span></span>
+          <span className="text-lg font-bold">›</span>
+        </Link>
+      )}
+
       <Link to="/facturas" className={`${CARD} mb-4 flex min-h-14 items-center gap-3 px-3 py-2 text-navy-900 active:bg-slate-50`}>
         <IconBadge icon={Receipt} tone="violet" size="sm" />
         <span className="flex-1 text-lg font-extrabold">Todas las facturas</span>

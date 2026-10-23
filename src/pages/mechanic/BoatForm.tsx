@@ -114,6 +114,9 @@ export default function BoatForm() {
         </div>}
         {w.marina && <Suggestions id="boat-makes" values={BOAT_MAKES} />}
 
+        {w.storage ? (
+          <p className="rounded-xl bg-navy-50 p-3 text-base text-navy-900">El espacio del bote (rack, muelle o patio) se pone en <b>Guardería → Botes</b>, con su precio del mes.</p>
+        ) : <>
         <h2 className="pt-3 text-xl font-extrabold text-navy-900">¿Dónde está?</h2>
         {w.marina && <Choice value={f.location_type} onChange={(v) => set('location_type', v)} options={LOCATION_TYPES} />}
         {atMarina && (
@@ -141,6 +144,7 @@ export default function BoatForm() {
         <Field label="Pin en el mapa">
           <MapPicker lat={f.lat} lng={f.lng} onChange={(lat, lng) => setF((p) => ({ ...p, lat, lng }))} />
         </Field>
+        </>}
 
         {w.marina && <>
         <h2 className="pt-3 text-xl font-extrabold text-navy-900">Documentos</h2>

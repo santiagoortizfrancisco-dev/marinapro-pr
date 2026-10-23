@@ -1856,6 +1856,9 @@ test('guardería: bote con su espacio (precio por pie), cobro de un toque, factu
   await expect(page.getByText('Próximos servicios')).toHaveCount(0)
   await expect(page.getByRole('link', { name: /Cita/ })).toHaveCount(0)
   await expect(page.getByText('Motores', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('No está en la guardería')).toBeVisible()
+  await page.goto('/botes/b1/editar')
+  await expect(page.getByText('¿Dónde está?')).toHaveCount(0)
   // Mi negocio y Más: sin tarifa por hora, garantía, estimados, directorio ni piezas
   await page.goto('/mas/negocio')
   await expect(page.getByText('Reglas de la guardería')).toBeVisible()
@@ -1882,7 +1885,27 @@ test('guardería: bote con su espacio (precio por pie), cobro de un toque, factu
   await page.getByRole('button', { name: 'Listo' }).click()
   await expect(card.getByText(/Cobros para la próxima factura: \$15\.00/)).toBeVisible()
 
-  await page.getByRole('tab', { name: 'Facturar el mes' }).click()
+  // La ficha del bote dice dónde está (su espacio) y abre el mismo contrato
+  await page.goto('/botes/b1')
+  await expect(page.getByText('En la guardería · Rack A-12')).toBeVisible()
+  await page.getByRole('link', { name: 'Ver o cambiar el contrato' }).click()
+  await expect(page.getByRole('dialog', { name: 'Contrato del bote' })).toBeVisible()
+  await page.getByRole('button', { name: 'Cancelar' }).click()
+
+  // Factura rápida usa la misma lista de Precios (un toque)
+  await page.goto('/cobrar')
+  await page.getByRole('button', { name: /Uso de rampa · \$15\.00/ }).click()
+  await expect(page.getByLabel('Descripción 1')).toHaveValue('Uso de rampa')
+  await expect(page.getByLabel('Precio 1')).toHaveValue('15')
+
+  // Accesos: Facturar el mes en Cobros, Precios en Más (la misma pantalla)
+  await page.goto('/mas')
+  await page.getByRole('link', { name: /^Precios/ }).click()
+  await expect(page.getByRole('tab', { name: 'Precios' })).toHaveAttribute('aria-selected', 'true')
+  await page.goto('/trabajos')
+  await page.getByRole('link', { name: /Facturar el mes/ }).click()
+
+  await expect(page.getByRole('tab', { name: 'Facturar el mes' })).toHaveAttribute('aria-selected', 'true')
   await page.getByRole('button', { name: /^Facturar / }).click()
   const bill = page.getByRole('article', { name: 'Factura de La Tranquila' })
   await expect(bill.getByText(/\$315\.00 · vence/)).toBeVisible()

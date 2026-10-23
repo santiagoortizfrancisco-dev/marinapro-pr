@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { AlertTriangle, ExternalLink, FileText, Pencil, Plus, Ship, Trash2, Warehouse } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import { WhatsAppIcon } from '../../components/BrandIcons'
@@ -8,11 +8,9 @@ import { BackTitle, Button, CARD, EmptyState, Field, Input, Loading, Select, Tex
 import { db } from '../../lib/db'
 import { addDays, daysUntil, formatDate, formatMoney, todayPR } from '../../lib/format'
 import { whatsappLink } from '../../lib/links'
+import { basisText, priceFor, type Basis, type Rate } from '../../lib/storage'
 import { must, num, useLoad } from '../../lib/useLoad'
 
-type Basis = 'per_foot' | 'flat' | 'bands'
-interface Band { max_ft: number; price: number; per_foot?: boolean }
-interface Rate { id: string; kind: 'space' | 'extra'; name: string; basis: Basis; price: number | null; bands: Band[] | null; unit: string; active: boolean; sort: number }
 interface Boat { id: string; name: string; length_ft: number | null; clients: { full_name: string; phone: string | null } | null }
 interface Contract {
   id: string; boat_id: string; rate_id: string | null; space_label: string | null; monthly_price: number
@@ -36,29 +34,15 @@ const firstOf = (day: string) => day.slice(0, 8) + '01'
 const nextMonth = (m: string) => firstOf(addDays(m, 32))
 const prevMonth = (m: string) => firstOf(addDays(m, -1))
 
-/** Precio de un espacio o cobro para un bote de ese largo. */
-export function priceFor(r: Pick<Rate, 'basis' | 'price' | 'bands'>, ft: number | null): number {
-  if (r.basis === 'per_foot') return Math.round(Number(r.price ?? 0) * Number(ft ?? 0) * 100) / 100
-  if (r.basis === 'bands') {
-    const bands = [...(r.bands ?? [])].sort((a, b) => a.max_ft - b.max_ft)
-    const b = bands.find((x) => Number(ft ?? 0) <= x.max_ft)
-    // Más grande que el último tamaño: no tiene precio (se cotiza aparte)
-    if (!b) return 0
-    return b.per_foot ? Math.round(Number(b.price) * Number(ft ?? 0) * 100) / 100 : Number(b.price)
-  }
-  return Number(r.price ?? 0)
-}
-const basisText = (r: Rate) => r.basis === 'per_foot' ? `${formatMoney(Number(r.price ?? 0))} por pie / ${r.unit}`
-  : r.basis === 'bands' ? `Por tamaño: ${(r.bands ?? []).map((b) => `hasta ${b.max_ft}' ${formatMoney(b.price)}${b.per_foot ? ' por pie' : ''}`).join(' · ')}`
-  : `${formatMoney(Number(r.price ?? 0))} / ${r.unit}`
-
 type Tab = 'boats' | 'bill' | 'rates'
 
 /** Guardería / Marina: los botes guardados (contrato y cobros sueltos), facturar el mes y la lista de precios. */
 export default function Storage() {
   const { session, profile } = useAuth()
   const me = session!.user.id
-  const [tab, setTab] = useState<Tab>('boats')
+  // ?tab=bill|rates abre esa parte; ?bote=ID abre el contrato de ese bote (desde su ficha)
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<Tab>(() => (['bill', 'rates'].includes(params.get('tab') ?? '') ? params.get('tab') as Tab : 'boats'))
   const [month, setMonth] = useState(firstOf(todayPR()))
   const [toast, setToast] = useState<string | null>(null)
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500) }
@@ -99,7 +83,7 @@ export default function Storage() {
             className={`min-h-12 flex-1 rounded-full px-2 text-sm font-bold ${tab === v ? 'bg-navy-800 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-300'}`}>{l}</button>
         ))}
       </div>
-      {tab === 'boats' && <BoatsTab data={data} me={me} reload={reload} flash={flash} />}
+      {tab === 'boats' && <BoatsTab data={data} me={me} reload={reload} flash={flash} openBoat={params.get('bote')} />}
       {tab === 'bill' && <BillTab data={data} me={me} month={month} setMonth={setMonth} reload={reload} flash={flash} signature={profile?.full_name ?? ''} />}
       {tab === 'rates' && <RatesTab rates={data.rates} me={me} reload={reload} />}
       <Toast message={toast} />
@@ -113,8 +97,15 @@ interface Data {
 }
 
 // ---------------------------------------------------------------------------------------------
-function BoatsTab({ data, me, reload, flash }: { data: Data; me: string; reload: () => void; flash: (m: string) => void }) {
-  const [edit, setEdit] = useState<Partial<Contract> | null>(null)
+function BoatsTab({ data, me, reload, flash, openBoat }: { data: Data; me: string; reload: () => void; flash: (m: string) => void; openBoat: string | null }) {
+  const [edit, setEdit] = useState<Partial<Contract> | null>(() => {
+    if (!openBoat) return null
+    const c = data.contracts.find((x) => x.boat_id === openBoat && x.status === 'active')
+    if (c) return c
+    const b = data.boats.find((x) => x.id === openBoat)
+    const space = data.rates.find((r) => r.kind === 'space' && r.active)
+    return { boat_id: openBoat, start_date: todayPR(), status: 'active', rate_id: space?.id ?? null, monthly_price: space && b ? priceFor(space, b.length_ft) || undefined : undefined }
+  })
   const [charging, setCharging] = useState<Contract | null>(null)
   const [showEnded, setShowEnded] = useState(false)
   const today = todayPR()

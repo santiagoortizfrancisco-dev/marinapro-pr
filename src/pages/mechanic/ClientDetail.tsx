@@ -149,7 +149,7 @@ export default function ClientDetail() {
             to={`/botes/${b.id}`}
             icon={Ship}
             title={b.name}
-            subtitle={[[b.make, b.model, b.year].filter(Boolean).join(' '), w.marina ? b.marina_name ?? labelOf(LOCATION_TYPES, b.location_type) : b.town].filter(Boolean).join(' · ')}
+            subtitle={[[b.make, b.model, b.year].filter(Boolean).join(' '), w.storage ? (b.length_ft ? `${Number(b.length_ft)} pies` : null) : w.marina ? b.marina_name ?? labelOf(LOCATION_TYPES, b.location_type) : b.town].filter(Boolean).join(' · ')}
           />
         ))}
       </div>

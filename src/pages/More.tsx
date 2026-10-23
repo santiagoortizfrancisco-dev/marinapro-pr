@@ -51,7 +51,17 @@ export default function More() {
           <IconBadge icon={Anchor} tone="teal" />
           <span className="flex-1">
             <span className="block text-lg font-bold">Guardería</span>
-            <span className="block text-sm text-slate-600">Precios, contratos y la factura del mes</span>
+            <span className="block text-sm text-slate-600">Botes guardados, contratos y la factura del mes</span>
+          </span>
+          <ChevronRight />
+        </Link>
+      )}
+      {profile?.role === 'mechanic' && words.storage && (
+        <Link to="/guarderia?tab=rates" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+          <IconBadge icon={ListChecks} tone="amber" />
+          <span className="flex-1">
+            <span className="block text-lg font-bold">Precios</span>
+            <span className="block text-sm text-slate-600">Espacios y cobros sueltos (una sola lista para todo)</span>
           </span>
           <ChevronRight />
         </Link>
