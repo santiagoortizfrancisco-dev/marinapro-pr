@@ -1,7 +1,7 @@
 import { JOB_IDEAS, useWords } from '../../lib/trade'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { CheckCircle2, ExternalLink, Plus, Search, Ship, Trash2, UserPlus, X, Zap } from 'lucide-react'
+import { CheckCircle2, ExternalLink, Plus, Search, Ship, Trash2, UserPlus, X, Zap, Banknote } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import { db } from '../../lib/db'
 import { addPayment } from '../../lib/money'
@@ -52,6 +52,8 @@ export default function QuickInvoice() {
   const [error, setError] = useState('')
   const draft = useDraft(tw.salon ? 'draft:factura-rapida' : null, { pick, newClient, boatName, workDone, lines, ivu },
     (d) => { setPick(d.pick); setNewClient(d.newClient); setBoatName(d.boatName); setWorkDone(d.workDone); setLines(d.lines); setIvu(d.ivu) })
+  const [cobrarOpen, setCobrarOpen] = useState(false)
+  const [phoneInput, setPhoneInput] = useState('')
   const [done, setDone] = useState<{ woId: string; invoice: Invoice; phone: string | null; first: string; boat: string; paid: number } | null>(null)
 
   useEffect(() => {
@@ -219,13 +221,36 @@ export default function QuickInvoice() {
           <p className="text-base font-semibold text-emerald-900">{done.paid > 0 && left <= 0.004 ? 'Pagada ✓' : done.paid > 0 ? `Pagó ${formatMoney(done.paid)} · Balance ${formatMoney(left)}` : 'Falta cobrar'}</p>
         </div>
         <div className="mt-4 space-y-3">
+          {tw.salon && left > 0.004 && (
+            <Button onClick={() => setCobrarOpen(true)} className="min-h-16 bg-emerald-600! text-xl! active:bg-emerald-700!"><Banknote size={24} /> Cobrar {formatMoney(left)} ahora</Button>
+          )}
+          {tw.salon && !done.phone && (
+            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-200">
+              <p className="text-base font-bold text-slate-800">Para enviarle {left > 0.004 ? 'la factura' : 'el recibo'} por WhatsApp, ¿cuál es su teléfono?</p>
+              <div className="mt-2 flex gap-2">
+                <Input aria-label="Teléfono de la clienta" type="tel" inputMode="tel" placeholder="787-555-0123" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} className="flex-1" />
+                <button type="button" disabled={phoneInput.replace(/\D/g, '').length < 7} onClick={async () => {
+                  const { data: w } = await db().from('work_orders').select('boats(client_id)').eq('id', done.woId).single()
+                  const cid = (w as unknown as { boats: { client_id: string } } | null)?.boats.client_id
+                  if (cid) await db().from('clients').update({ phone: phoneInput.trim() }).eq('id', cid)
+                  setDone({ ...done, phone: phoneInput.trim() })
+                }} className="min-h-12 shrink-0 rounded-xl bg-pink-600 px-4 text-base font-bold text-white disabled:bg-slate-300">Guardar</button>
+              </div>
+            </div>
+          )}
           {done.phone && (
-            <div className="flex"><LinkButton href={whatsappLink(done.phone, msg)} external variant="whatsapp"><WhatsAppIcon size={24} /> Enviar factura por WhatsApp</LinkButton></div>
+            <div className="flex"><LinkButton href={whatsappLink(done.phone, msg)} external variant="whatsapp"><WhatsAppIcon size={24} /> {tw.salon && left <= 0.004 ? 'Enviar recibo por WhatsApp' : 'Enviar factura por WhatsApp'}</LinkButton></div>
           )}
           <div className="flex"><LinkButton href={`/d/${done.invoice.public_token}?pago=${way}`}><ExternalLink size={20} /> Ver factura o PDF</LinkButton></div>
           <Button variant="secondary" onClick={() => navigate(`/trabajos/${done.woId}`)}>{tw.salon ? 'Abrir la cuenta (cambiar o borrar)' : 'Abrir el trabajo'}</Button>
-          <Button variant="ghost" onClick={() => navigate('/trabajos')}>Listo</Button>
+          <Button variant="ghost" onClick={() => navigate(tw.salon ? '/' : '/trabajos')}>Listo</Button>
         </div>
+        <PaySheet open={cobrarOpen} withTip withGift balance={left} title="Cobrar" onClose={() => setCobrarOpen(false)}
+          onPay={async (method, amount, tip, giftCardId) => {
+            await addPayment(done.woId, amount, method, tip, giftCardId)
+            setCobrarOpen(false)
+            setDone({ ...done, paid: done.paid + amount })
+          }} />
       </>
     )
   }
