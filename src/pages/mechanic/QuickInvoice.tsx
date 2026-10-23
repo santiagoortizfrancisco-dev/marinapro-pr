@@ -136,7 +136,7 @@ export default function QuickInvoice() {
 
   /** Crea cliente y bote (si hacen falta), el trabajo terminado, sus líneas y la factura. */
   /** paid: lo que le dio hoy (todo, una parte o nada). */
-  async function createAll(paid = 0, method: NonNullable<Invoice['payment_method']> = 'cash', giftCardId?: string) {
+  async function createAll(paid = 0, method: NonNullable<Invoice['payment_method']> = 'cash', giftCardId?: string, rest?: { method: NonNullable<Invoice['payment_method']>; amount: number }) {
     const problem = check()
     if (problem) return setError(problem)
     if (!mech) return
@@ -187,10 +187,11 @@ export default function QuickInvoice() {
       if (inv.error) throw inv.error
       // Lo que le dio (todo o una parte): si completa el total, la factura queda pagada sola
       if (paid > 0) await addPayment(woId, paid, method, 0, giftCardId)
+      if (rest) await addPayment(woId, rest.amount, rest.method, 0)
       const { data: invoice } = await db().from('invoices').select('*').eq('id', inv.data as string).single()
       setPayOpen(false)
       draft.clear()
-      setDone({ woId, invoice: invoice as Invoice, phone, first, boat: boatName.trim() || chosenBoat?.name || tw.itemOf(first), paid })
+      setDone({ woId, invoice: invoice as Invoice, phone, first, boat: boatName.trim() || chosenBoat?.name || tw.itemOf(first), paid: paid + (rest?.amount ?? 0) })
     } catch (e) {
       console.error(e)
       setError('No se pudo hacer la factura. Revisa la señal e intenta otra vez.')
@@ -256,10 +257,11 @@ export default function QuickInvoice() {
           <Button variant="ghost" onClick={() => navigate(tw.salon ? '/' : '/trabajos')}>Listo</Button>
         </div>
         <PaySheet open={cobrarOpen} withTip withGift balance={left} title="Pagar" onClose={() => setCobrarOpen(false)}
-          onPay={async (method, amount, tip, giftCardId) => {
+          onPay={async (method, amount, tip, giftCardId, rest) => {
             await addPayment(done.woId, amount, method, tip, giftCardId)
+            if (rest) await addPayment(done.woId, rest.amount, rest.method, 0)
             setCobrarOpen(false)
-            setDone({ ...done, paid: done.paid + amount })
+            setDone({ ...done, paid: done.paid + amount + (rest?.amount ?? 0) })
           }} />
       </>
     )
@@ -401,7 +403,7 @@ export default function QuickInvoice() {
         </>
       )}
 
-      <PaySheet open={payOpen} withGift={tw.salon} balance={totals.total} title={tw.salon ? 'Pagar' : '¿Cuánto te pagó?'} onClose={() => setPayOpen(false)} onPay={(method, amount, _tip, giftCardId) => createAll(amount, method, giftCardId)} />
+      <PaySheet open={payOpen} withGift={tw.salon} balance={totals.total} title={tw.salon ? 'Pagar' : '¿Cuánto te pagó?'} onClose={() => setPayOpen(false)} onPay={(method, amount, _tip, giftCardId, rest) => createAll(amount, method, giftCardId, rest)} />
     </>
   )
 }

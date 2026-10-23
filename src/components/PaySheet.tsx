@@ -29,8 +29,10 @@ export default function PaySheet({ open, balance, title = 'Recibir pago', onClos
   balance: number
   title?: string
   onClose: () => void
-  onPay: (method: NonNullable<Invoice['payment_method']>, amount: number, tip: number, giftCardId?: string) => Promise<void>
+  /** rest: si la tarjeta de regalo no alcanza, lo que falta y cómo lo paga */
+  onPay: (method: NonNullable<Invoice['payment_method']>, amount: number, tip: number, giftCardId?: string, rest?: { method: NonNullable<Invoice['payment_method']>; amount: number }) => Promise<void>
 }) {
+  const [restMethod, setRestMethod] = useState<NonNullable<Invoice['payment_method']> | null>(null)
   const [gift, setGift] = useState(false)
   const [cards, setCards] = useState<{ id: string; code: string; balance: number; recipient_name: string | null }[] | null>(null)
   const [cardId, setCardId] = useState<string | null>(null)
@@ -53,6 +55,7 @@ export default function PaySheet({ open, balance, title = 'Recibir pago', onClos
     setGift(false)
     setCards(null)
     setCardId(null)
+    setRestMethod(null)
   }, [open, balance])
 
   const value = num(amount) ?? 0
@@ -62,11 +65,13 @@ export default function PaySheet({ open, balance, title = 'Recibir pago', onClos
     if (!(value > 0)) return setError('Escribe cuánto te dio.')
     const card = gift ? cards?.find((c) => c.id === cardId) : null
     if (gift && !card) return setError('Escoge la tarjeta de regalo.')
+    const short = card ? Math.max(0, Math.round((value - Number(card.balance)) * 100) / 100) : 0
+    if (short > 0 && !restMethod) return setError(`La tarjeta no alcanza: escoge cómo paga los ${formatMoney(short)} que faltan.`)
     setBusy(true)
     setError('')
     try {
       // Con tarjeta de regalo: se usa lo que le quede (si no alcanza, el resto queda de balance)
-      if (card) await onPay('other', Math.min(value, Number(card.balance)), 0, card.id)
+      if (card) await onPay('other', Math.min(value, Number(card.balance)), 0, card.id, short > 0 && restMethod ? { method: restMethod, amount: short } : undefined)
       else await onPay(method, value, num(tip) ?? 0)
     } catch {
       setError('No se pudo guardar el pago. Revisa la señal e intenta otra vez.')
@@ -117,6 +122,19 @@ export default function PaySheet({ open, balance, title = 'Recibir pago', onClos
                 <span className="shrink-0 text-lg font-extrabold">{formatMoney(Number(c.balance))}</span>
               </button>
             ))}
+            {(() => {
+              const card = cards?.find((c) => c.id === cardId)
+              const short = card ? Math.max(0, Math.round(((num(amount) ?? 0) - Number(card.balance)) * 100) / 100) : 0
+              return short > 0 && (
+                <div className="rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
+                  <p className="text-base font-bold text-amber-900">La tarjeta tiene {formatMoney(Number(card!.balance))}. Faltan {formatMoney(short)}.</p>
+                  <p className="mb-2 text-sm text-amber-900">¿Cómo paga el resto?</p>
+                  <div role="radiogroup" aria-label="¿Cómo paga el resto?">
+                    <Choice value={restMethod ?? ''} onChange={(v) => setRestMethod(v as NonNullable<Invoice['payment_method']>)} options={PAYMENT_METHODS.map((m) => ({ ...m, ...PAY_ICONS[m.value] }))} />
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         )}
         {error && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}

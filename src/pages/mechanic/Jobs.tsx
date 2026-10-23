@@ -146,9 +146,10 @@ export default function Jobs() {
         balance={paying ? balanceOf(paying) : 0}
         onClose={() => setPaying(null)}
         withGift={w.salon}
-        onPay={async (method, amount, _tip, giftCardId) => {
+        onPay={async (method, amount, _tip, giftCardId, rest) => {
           if (!paying) return
           await addPayment(paying.id, amount, method, 0, giftCardId)
+          if (rest) await addPayment(paying.id, rest.amount, rest.method, 0)
           setPaying(null)
           reload()
         }}

@@ -187,14 +187,16 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
   }
 
   /** Recibir un pago (completo, depósito o abono). Si paga todo y no hay factura, la factura se hace sola para que quede el récord. */
-  async function receive(method: NonNullable<Invoice['payment_method']>, amount: number, tip = 0, giftCardId?: string) {
-    if (!invoice && due > 0 && amount >= due - paid - 0.004) {
+  async function receive(method: NonNullable<Invoice['payment_method']>, amount: number, tip = 0, giftCardId?: string, rest?: { method: NonNullable<Invoice['payment_method']>; amount: number }) {
+    const extra = rest?.amount ?? 0
+    if (!invoice && due > 0 && amount + extra >= due - paid - 0.004) {
       const { error } = await db().rpc('create_invoice', { p_wo: wo.id })
       if (error) throw error
     }
     await addPayment(wo.id, amount, method, tip, giftCardId)
+    if (rest) await addPayment(wo.id, rest.amount, rest.method, 0)
     // Salón: cobrada la cuenta, la cita queda hecha
-    if (w.salon && wo.appointment_id && amount >= due - paid - 0.004) {
+    if (w.salon && wo.appointment_id && amount + extra >= due - paid - 0.004) {
       await db().from('appointments').update({ status: 'done' }).eq('id', wo.appointment_id)
     }
     setPayOpen(false)

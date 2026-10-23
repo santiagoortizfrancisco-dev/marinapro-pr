@@ -199,7 +199,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   }
 
   /** Cobrar: si con esto queda pagada, se hace el recibo (factura) para que quede el récord, y la cita queda hecha. */
-  async function receive(method: Method, amount: number, tip: number, giftCode?: string) {
+  async function receive(method: Method, amount: number, tip: number, giftCode?: string, rest?: { method: Method; amount: number }) {
     let giftId: string | undefined
     if (giftCode) {
       const { data: cards } = await db().from('gift_cards').select('id, balance').ilike('code', giftCode.trim())
@@ -210,13 +210,14 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       amount = Math.min(amount, Number(card.balance))
       tip = 0
     }
-    const full = amount >= totals.total - paid - 0.004
+    const full = amount + (rest?.amount ?? 0) >= totals.total - paid - 0.004
     const outdated = invoice && Math.abs(Number(invoice.total) - totals.total) > 0.004
     if (full && totals.total > 0 && (!invoice || outdated)) {
       const { error } = await db().rpc('create_invoice', { p_wo: woId })
       if (error) throw error
     }
     await addPayment(woId, amount, method, tip, giftId)
+    if (rest) await addPayment(woId, rest.amount, rest.method, 0)
     if (full) await db().from('appointments').update({ status: 'done' }).eq('id', a.id)
     setPayOpen(false)
     reload()
@@ -683,8 +684,9 @@ function Step({ title, hint, ok, flat, children }: { title: string; hint?: strin
 
 /** Cobrar: el total grande, la propina con un toque, cómo pagó y un solo botón. */
 function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
-  open: boolean; balance: number; hasAth: boolean; onClose: () => void; onPay: (m: Method, amount: number, tip: number, giftCode?: string) => Promise<void>
+  open: boolean; balance: number; hasAth: boolean; onClose: () => void; onPay: (m: Method, amount: number, tip: number, giftCode?: string, rest?: { method: Method; amount: number }) => Promise<void>
 }) {
+  const [restMethod, setRestMethod] = useState<Method | null>(null)
   const [method, setMethod] = useState<Method>('ath_movil')
   const [gift, setGift] = useState(false)
   const [code, setCode] = useState('')
@@ -707,6 +709,7 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
     setMethod(hasAth ? 'ath_movil' : 'cash')
     setGift(false)
     setCode('')
+    setRestMethod(null)
     setCards(null)
     setFind('')
     setTip(0)
@@ -719,13 +722,18 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
   const amount = part !== null ? num(part) ?? 0 : balance
   const total = Math.round((amount + tipValue) * 100) / 100
 
+  // La tarjeta de regalo no alcanza: lo que falta se paga con otro método (no se deja pasar sin eso)
+  const giftCard = gift ? cards?.find((c) => c.code === code) ?? null : null
+  const short = giftCard ? Math.max(0, Math.round((Math.min(amount, balance) - Number(giftCard.balance)) * 100) / 100) : 0
+
   async function save() {
     if (!(amount > 0)) return setError('Escribe cuánto te dio.')
     if (gift && code.trim().length < 4) return setError('Escoge la tarjeta de regalo.')
+    if (short > 0 && !restMethod) return setError(`La tarjeta no alcanza: escoge cómo paga los ${formatMoney(short)} que faltan.`)
     setBusy(true)
     setError('')
     try {
-      await onPay(gift ? 'other' : method, Math.min(amount, balance), tipValue, gift ? code : undefined)
+      await onPay(gift ? 'other' : method, gift && giftCard ? Math.min(amount, balance, Number(giftCard.balance)) : Math.min(amount, balance), tipValue, gift ? code : undefined, short > 0 && restMethod ? { method: restMethod, amount: short } : undefined)
     } catch (e) {
       setError(e instanceof Error && /tarjeta/i.test(e.message) ? e.message : 'No se pudo guardar el pago. Revisa la señal e intenta otra vez.')
     } finally {
@@ -809,6 +817,18 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
                       </button>
                     )
                   })}
+                </div>
+              )}
+              {short > 0 && (
+                <div className="mt-3 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
+                  <p className="text-base font-bold text-amber-900">La tarjeta tiene {formatMoney(Number(giftCard!.balance))}. Faltan {formatMoney(short)}.</p>
+                  <p className="mb-2 text-sm text-amber-900">¿Cómo paga el resto?</p>
+                  <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="¿Cómo paga el resto?">
+                    {METHODS.map((m) => (
+                      <button key={m.value} type="button" role="radio" aria-checked={restMethod === m.value} onClick={() => setRestMethod(m.value)}
+                        className={`min-h-12 rounded-xl text-base font-bold ${restMethod === m.value ? 'text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`} style={restMethod === m.value ? { backgroundColor: m.color } : undefined}>{m.label}</button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
