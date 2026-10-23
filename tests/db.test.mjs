@@ -649,3 +649,16 @@ test('piscinas: es un oficio más; la prueba y los ejemplos traen piscinas', asy
   const admin = (await sys(`select id from profiles where email = 'santiagoortizfrancisco@gmail.com'`))[0].id
   assert.ok((await one(admin, `select admin_new_signups() d`)).d.some((s) => s.business_type === 'pool' && s.email === 'aqua@piscinas.test'))
 })
+
+test('link de la cita: la clienta ve su cita y estimado sin cuenta, acepta, y dice que envió el depósito', async () => {
+  const ap = (await sys(`select a.id from appointments a where a.mechanic_id = '${A}' and a.status <> 'cancelled' limit 1`))[0].id
+  await sys(`update appointments set deposit_asked = 20 where id = '${ap}'`)
+  const page = (await one(null, `select cita_public('${ap}') d`, 'anon')).d
+  assert.equal(Number(page.deposit), 20)
+  assert.ok(page.business && page.client, 'enseña el salón y el nombre')
+  assert.equal(page.client_ok_at, null)
+  await as(null, `select cita_reply('${ap}')`, 'anon')
+  const after = (await sys(`select client_ok_at, deposit_reported_at from appointments where id = '${ap}'`))[0]
+  assert.ok(after.client_ok_at && after.deposit_reported_at, 'quedó aceptada y con depósito reportado')
+  assert.equal((await one(null, `select cita_public('00000000-0000-4000-8000-000000000000') d`, 'anon')).d, null, 'otra cita no existe')
+})

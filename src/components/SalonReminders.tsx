@@ -4,12 +4,13 @@ import { BellRing, Check, ChevronRight, Globe } from 'lucide-react'
 import { WhatsAppIcon } from './BrandIcons'
 import { useAuth } from '../auth/AuthProvider'
 import { db } from '../lib/db'
-import { addDays, formatDate, formatLongDate, formatTime, prRange, todayPR } from '../lib/format'
+import { addDays, formatDate, formatLongDate, formatMoney, formatTime, prRange, todayPR } from '../lib/format'
 import { whatsappLink } from '../lib/links'
 import { useLoad } from '../lib/useLoad'
 import { CARD } from './ui'
 
 interface Appt {
+  deposit_asked?: number | null
   id: string; starts_at: string; status: string; title: string | null; reminded_at: string | null; source: string
   staff: { name: string } | null
   boats: { clients: { full_name: string; phone: string | null } }
@@ -26,14 +27,16 @@ export default function SalonReminders() {
   const [sent, setSent] = useState<string[]>([])
   const { data } = useLoad(async () => {
     const [start, end] = prRange(tomorrow, 1)
-    const [asked, next, mech] = await Promise.all([
+    const [asked, next, mech, paid] = await Promise.all([
       db().from('appointments').select(SELECT).eq('status', 'requested').gte('starts_at', new Date().toISOString()).order('starts_at').limit(20),
       db().from('appointments').select(SELECT).gte('starts_at', start).lt('starts_at', end).in('status', ['requested', 'confirmed']).order('starts_at'),
       db().from('mechanics').select('business_name').eq('profile_id', session!.user.id).single(),
+      db().from('appointments').select(SELECT + ', deposit_asked').not('deposit_reported_at', 'is', null).is('deposit_ok_at', null).neq('status', 'cancelled').order('starts_at').limit(20),
     ])
     return {
       asked: (asked.data ?? []) as unknown as Appt[],
       next: (next.data ?? []) as unknown as Appt[],
+      paid: (paid.data ?? []) as unknown as Appt[],
       business: ((mech.data as { business_name: string | null } | null)?.business_name) ?? '',
     }
   }, [tomorrow])
@@ -53,6 +56,24 @@ export default function SalonReminders() {
 
   return (
     <>
+      {data.paid.length > 0 && (
+        <section className="mt-6">
+          <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><Check size={22} /> Depósitos por verificar</h2>
+          <div className={`${CARD} divide-y divide-slate-100`}>
+            {data.paid.map((a) => (
+              <Link key={a.id} to={`/citas/${a.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-slate-50">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-base font-bold text-slate-900">{a.boats.clients.full_name}</span>
+                  <span className="block truncate text-sm text-slate-600">Dice que envió {formatMoney(Number(a.deposit_asked) || 0)} · cita {formatDate(a.starts_at).slice(0, 5)} {formatTime(a.starts_at)}</span>
+                </span>
+                <span className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-800">Verificar</span>
+                <ChevronRight size={18} className="shrink-0 text-slate-400" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {data.asked.length > 0 && (
         <section className="mt-6">
           <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><Globe size={22} /> Pedidas por internet</h2>

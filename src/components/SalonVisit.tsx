@@ -67,7 +67,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const [otherDep, setOtherDep] = useState(false)
 
   const { data, loading, error, reload } = useLoad(async () => {
-    const [wo, parts, invoice, mech, next, payments, photos] = await Promise.all([
+    const [wo, parts, invoice, mech, next, payments, photos, link] = await Promise.all([
       db().from('work_orders').select('*').eq('id', woId).single(),
       db().from('work_order_parts').select('*').eq('work_order_id', woId).order('created_at'),
       db().from('invoices').select('*').eq('work_order_id', woId).maybeSingle(),
@@ -75,10 +75,12 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       db().from('maintenance_schedules').select('service_type, due_date').eq('work_order_id', woId).limit(1),
       db().from('payments').select('*').eq('work_order_id', woId).order('paid_at'),
       db().from('photos').select('*').eq('work_order_id', woId).order('taken_at'),
+      db().from('appointments').select('deposit_asked, client_ok_at, deposit_reported_at, deposit_ok_at').eq('id', a.id).single(),
     ])
     return {
       wo: must(wo) as WorkOrder, parts: must(parts) as Part[], invoice: (invoice.data as Invoice | null) ?? null, mech: must(mech) as Mechanic,
       next: ((next.data ?? [])[0] as { service_type: string; due_date: string } | undefined) ?? null, payments: (payments.data ?? []) as Payment[], photos: (photos.data ?? []) as Photo[],
+      link: (link.data ?? {}) as { deposit_asked?: number | null; client_ok_at?: string | null; deposit_reported_at?: string | null; deposit_ok_at?: string | null },
     }
   }, [woId])
 
@@ -96,7 +98,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   if (loading && !data) return <Loading />
   if (error || !data) return <ErrorBox message={error || 'No se encontró la cuenta.'} onRetry={reload} />
 
-  const { wo, parts, invoice, mech, payments, photos } = data
+  const { wo, parts, invoice, mech, payments, photos, link } = data
   const c = a.boats.clients
   const who = (a as unknown as { staff: { name: string; color: string } | null }).staff
   const st = APPOINTMENT_STATUS[a.status]
@@ -113,10 +115,12 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
 
   // Depósito: se le pide en el mismo WhatsApp que confirma la cita (si todavía no ha dado nada)
   const depositDue = Number((mech as Mechanic & { booking_deposit?: number | null }).booking_deposit) || 0
-  const depAmount = paid > 0 || done ? 0 : num(askDep ?? String(depositDue)) ?? 0
+  const depAmount = paid > 0 || done ? 0 : num(askDep ?? String(Number(link.deposit_asked) || depositDue)) ?? 0
+  const citaLink = `${window.location.origin}/cita/${a.id}`
   const confirmMsg = `Hola ${firstName}, te confirmo tu cita el ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)}` +
     (a.title ? ` para ${a.title}` : '') + (who ? ` con ${who.name}` : '') +
-    (depAmount > 0 ? `. Para separarla, envía el depósito de ${formatMoney(depAmount)}${mech.ath_movil_number ? ` por ATH Móvil al ${mech.ath_movil_number}` : ''} y mándame la foto del recibo. Sin el depósito no puedo guardarte el turno` : '') +
+    (depAmount > 0 ? `. Para separarla, envía el depósito de ${formatMoney(depAmount)}${mech.ath_movil_number ? ` por ATH Móvil al ${mech.ath_movil_number}` : ''}. Sin el depósito no puedo guardarte el turno` : '') +
+    `. Aquí ves tu cita y el estimado${depAmount > 0 ? ', y cuando envíes el depósito le das a Aceptar' : ''}: ${citaLink} ` +
     `. Si no puedes llegar, avísame. ¡Te espero! 💅 ${sign}`.trimEnd()
   const receiptMsg = invoice
     ? `Hola ${firstName}, ¡gracias por venir! 💅 Aquí está tu recibo #${invoice.number} por ${formatMoney(Number(invoice.total))}: ${window.location.origin}/d/${invoice.public_token} . ${sign}`.trim()
@@ -211,7 +215,12 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const methodLabel = (x: Payment) => ((x as Payment & { gift_card_id?: string | null }).gift_card_id ? 'Tarjeta de regalo' : METHODS.find((m) => m.value === x.method)?.label ?? 'Cheque')
 
   /** Confirmar por WhatsApp: si no tiene teléfono, se lo pide y lo guarda. */
+  function saveAsked() {
+    db().from('appointments').update({ deposit_asked: depAmount > 0 ? depAmount : null }).eq('id', a.id).then(() => reload())
+  }
+
   async function confirmWhatsApp() {
+    saveAsked()
     if (c.phone) { window.open(whatsappLink(c.phone, confirmMsg), '_blank'); return }
     const phone = window.prompt(`¿Cuál es el teléfono (WhatsApp) de ${firstName}?`)?.trim()
     if (!phone || phone.replace(/\D/g, '').length < 7) return
@@ -219,6 +228,21 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
     await db().from('clients').update({ phone }).eq('id', c.id)
     if (win) win.location.href = whatsappLink(phone, confirmMsg)
     else window.location.href = whatsappLink(phone, confirmMsg)
+  }
+
+  const reported = link.deposit_reported_at && !link.deposit_ok_at && paid === 0 ? Number(link.deposit_asked) || 0 : 0
+
+  async function depositArrived() {
+    setBusy(true)
+    await addPayment(woId, reported, 'ath_movil', 0)
+    await db().from('appointments').update({ deposit_ok_at: new Date().toISOString() }).eq('id', a.id)
+    setBusy(false)
+    reload()
+  }
+
+  function depositMissing() {
+    if (c.phone) window.open(whatsappLink(c.phone, `Hola ${firstName}, todavía no me ha llegado el depósito de ${formatMoney(reported)} por ATH Móvil. ¿Me envías la foto del recibo? 💅 ${sign}`.trim()), '_blank')
+    db().from('appointments').update({ deposit_reported_at: null }).eq('id', a.id).then(() => reload())
   }
 
   async function removePayment(x: Payment) {
@@ -315,7 +339,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         {a.status === 'requested' ? (
           <>
             <p className="flex items-center gap-2 text-base font-bold text-amber-900"><Globe size={20} /> {(a as unknown as { source?: string }).source === 'online' ? 'La pidió por internet. ' : ''}Todavía no está confirmada.</p>
-            <button type="button" onClick={() => { onActivate(); if (c.phone) window.open(whatsappLink(c.phone, confirmMsg), '_blank') }}
+            <button type="button" onClick={() => { saveAsked(); onActivate(); if (c.phone) window.open(whatsappLink(c.phone, confirmMsg), '_blank') }}
               className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-lg font-extrabold text-white active:bg-emerald-700">
               <Check /> Confirmar cita{depAmount > 0 ? ' y pedir depósito' : ''}{c.phone ? ' por WhatsApp' : ''}
             </button>
@@ -329,6 +353,11 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
               <XCircle size={20} /> No puedo esa hora (denegar)
             </button>
           </>
+        ) : link.client_ok_at ? (
+          <>
+            <p className="mb-3 flex items-center gap-2 rounded-2xl bg-emerald-50 p-3 text-base font-bold text-emerald-800"><CheckCircle2 size={22} /> {firstName} aceptó la cita el {formatDate(link.client_ok_at).slice(0, 5)} a las {formatTime(link.client_ok_at)}</p>
+            <a href={citaLink} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 text-base font-bold text-pink-700"><ExternalLink size={18} /> Ver lo que ella ve</a>
+          </>
         ) : a.status === 'cancelled' ? (
           <p className="text-base font-bold text-red-700">Esta cita está cancelada. Si fue un error, toca “Activar” arriba.</p>
         ) : (
@@ -341,6 +370,16 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
 
       {/* 2 · Depósito */}
       <Step n={2} title="Depósito" hint="opcional" ok={payments.length > 0}>
+        {reported > 0 && (
+          <div className="mb-3 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
+            <p className="text-base font-bold text-amber-900">{firstName} dice que envió {formatMoney(reported)} por ATH Móvil.</p>
+            <p className="text-sm text-amber-900">Mira tu ATH Móvil y confírmalo.</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button type="button" disabled={busy} onClick={depositArrived} className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-emerald-600 text-base font-bold text-white active:bg-emerald-700"><Check size={20} /> Sí, me llegó</button>
+              <button type="button" disabled={busy} onClick={depositMissing} className="min-h-12 rounded-xl bg-white text-base font-bold text-red-700 ring-1 ring-red-200 active:bg-red-50">No me ha llegado</button>
+            </div>
+          </div>
+        )}
         {payments.length === 0 && <p className="text-base text-slate-500">{done ? 'No dejó depósito.' : depAmount > 0 ? `Cuando te envíe los ${formatMoney(depAmount)}, anótalo aquí.` : 'Si te deja algo para separar la cita, anótalo aquí.'}</p>}
         {payments.length > 0 && (
           <ul className="divide-y divide-slate-100">

@@ -84,7 +84,7 @@ reset()
 const DEFAULTS = {
   clients: () => ({ profile_id: null, email: null, town: null, address: null, preferred_contact: 'whatsapp', notes: null, is_example: false }),
   boats: () => ({ make: null, model: null, year: null, length_ft: null, hull_id: null, registration_number: null, marbete_expires: null, hull_color: null, location_type: 'water_slip', marina_name: null, slip_number: null, town: null, lat: null, lng: null, location_notes: null, notes: null }),
-  appointments: () => ({ duration_min: 60, status: 'requested', title: null, systems: [], notes: null, service_request_id: null, staff_id: null, reminded_at: null, source: 'app' }),
+  appointments: () => ({ duration_min: 60, status: 'requested', title: null, systems: [], notes: null, service_request_id: null, staff_id: null, reminded_at: null, source: 'app', deposit_asked: null, client_ok_at: null, deposit_reported_at: null, deposit_ok_at: null }),
   staff: () => ({ phone: null, color: '#2563eb', commission_rate: 0, active: true }),
   service_requests: () => ({ urgency: 'normal', status: 'new', media_paths: [], source: 'app', spam: false, contact_name: null, contact_phone: null, preferred_when: null, boat_location: null }),
   ads: () => ({ link_url: null, active: true, clicks: 0, views: 0 }),
@@ -344,6 +344,29 @@ const RPC = {
     const m = db.mechanics.find((x) => x.profile_id === g.mechanic_id) ?? db.mechanics[0]
     const p = db.profiles.find((x) => x.id === m.profile_id)
     return { business: m.business_name, phone: p?.phone ?? null, town: p?.town ?? null, logo_path: m.logo_path, brand_color: m.brand_color, code: g.code, amount: g.amount, balance: g.balance, recipient_name: g.recipient_name, buyer_name: g.buyer_name }
+  },
+  cita_public: ({ p_id }) => {
+    const a = db.appointments.find((x) => x.id === p_id)
+    if (!a) return null
+    const b = db.boats.find((x) => x.id === a.boat_id)
+    const c = db.clients.find((x) => x.id === b?.client_id)
+    const m = db.mechanics.find((x) => x.profile_id === a.mechanic_id) ?? db.mechanics[0]
+    const p = db.profiles.find((x) => x.id === m.profile_id)
+    const w = db.work_orders.find((x) => x.appointment_id === a.id)
+    const s = db.staff.find((x) => x.id === a.staff_id)
+    return {
+      business: m.business_name, phone: p?.phone ?? null, town: p?.town ?? null, logo_path: m.logo_path ?? null, ath: m.ath_movil_number ?? null, policies: m.policies_text ?? null, ivu_rate: m.ivu_rate,
+      client: (c?.full_name ?? '').split(' ')[0], starts_at: a.starts_at, duration_min: a.duration_min, status: a.status, staff: s?.name ?? null, deposit: a.deposit_asked ?? null,
+      client_ok_at: a.client_ok_at ?? null, reported_at: a.deposit_reported_at ?? null, deposit_ok_at: a.deposit_ok_at ?? null, charge_ivu: Boolean(w?.charge_ivu_labor),
+      services: w ? db.work_order_parts.filter((x) => x.work_order_id === w.id).map((x) => ({ name: x.description, price: Number(x.qty) * Number(x.unit_cost) })) : [],
+    }
+  },
+  cita_reply: ({ p_id }) => {
+    const a = db.appointments.find((x) => x.id === p_id)
+    if (!a || a.status === 'cancelled') return null
+    a.client_ok_at ??= new Date().toISOString()
+    if (Number(a.deposit_asked) > 0 && !a.deposit_ok_at) a.deposit_reported_at = new Date().toISOString()
+    return null
   },
   request_info: ({ p_name, p_email, p_type, p_message }) => {
     if (String(p_name ?? '').trim().length < 2) throw Object.assign(new Error('Escribe tu nombre.'), { status: 400 })

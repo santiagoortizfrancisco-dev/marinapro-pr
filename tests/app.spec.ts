@@ -1529,3 +1529,38 @@ test('salón: cambiar la cita no borra los precios y ofrece avisarle del cambio'
   await expect(page.getByRole('link', { name: /Avisarle del cambio/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Uñas francesas/ })).toContainText('$35.00')
 })
+
+test('salón: la clienta abre el link de su cita, acepta y dice que pagó; la dueña lo verifica con un toque', async ({ page, browser }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/citas/nueva')
+  await page.getByRole('button', { name: /Clienta nueva/ }).click()
+  await page.getByPlaceholder('Nombre *').fill('Link Prueba')
+  await page.getByPlaceholder(/Teléfono/).first().fill('787-555-0666')
+  await page.getByRole('button', { name: 'Guardar cita' }).click()
+  await page.getByRole('radio', { name: '$20' }).click()
+  const popup = page.waitForEvent('popup')
+  await page.getByRole('button', { name: /Confirmar y pedir \$20\.00/ }).click()
+  const wa = await popup
+  const text = decodeURIComponent(wa.url().replace(/\+/g, ' '))
+  await wa.close()
+  const url = text.match(/https?:\/\/\S+\/cita\/[0-9a-f-]+/)![0]
+  await expect.poll(async () => (await state()).appointments.find((a) => url.endsWith(a.id))?.deposit_asked).toBe(20)
+
+  const c = await browser.newPage()
+  await c.goto(url.replace(/^https?:\/\/[^/]+/, 'http://localhost:4321'))
+  await expect(c.getByRole('heading', { name: /Hola Link/ })).toBeVisible()
+  await expect(c.getByText('$20.00').first()).toBeVisible()
+  await c.getByRole('button', { name: /Acepto y ya envié el depósito/ }).click()
+  await expect(c.getByText(/Aceptaste tu cita/)).toBeVisible()
+  await c.close()
+
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: /Depósitos por verificar/ })).toBeVisible()
+  await page.getByRole('link', { name: /Link Prueba/ }).first().click()
+  await expect(page.getByText(/aceptó la cita/)).toBeVisible()
+  await page.getByRole('button', { name: /Sí, me llegó/ }).click()
+  await expect(page.getByRole('button', { name: /Borrar depósito de \$20\.00/ })).toBeVisible()
+  expect((await state()).payments.at(-1)).toMatchObject({ amount: 20, method: 'ath_movil' })
+})
