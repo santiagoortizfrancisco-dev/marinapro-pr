@@ -69,6 +69,8 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const [otherDep, setOtherDep] = useState(false)
   const [athInput, setAthInput] = useState('')
   const [prices, setPrices] = useState<Record<string, string>>({})
+  const [skipNext, setSkipNext] = useState(false)
+  const [remindOpen, setRemindOpen] = useState(false)
 
   const { data, loading, error, reload } = useLoad(async () => {
     const [wo, parts, invoice, mech, next, payments, photos, link] = await Promise.all([
@@ -293,54 +295,25 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
     reload()
   }
 
+  // Pedida por internet o con depósito que verificar: eso va primero; si no, cerrado abajo
+  const urgent = a.status === 'requested' || reported > 0
+  const confirmSummary = [a.status === 'requested' ? 'Sin confirmar' : a.status === 'cancelled' ? 'Cancelada' : 'Confirmada ✓',
+    payments.length && !done ? `Depósito ${formatMoney(paid)} ✓` : depAmount > 0 ? `Depósito ${formatMoney(depAmount)}` : null].filter(Boolean).join(' · ')
   const changed = params.get('cambio') === '1'
   const changeMsg = `Hola ${firstName}, te cambié la cita: ahora es el ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)}` +
     (a.title ? ` para ${a.title}` : '') + (who ? ` con ${who.name}` : '') + `. Si no te funciona, avísame. 💅 ${sign}`.trimEnd()
 
-  return (
-    <>
-      {changed && (
-        <section className="mb-3 rounded-3xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
-          <p className="text-lg font-extrabold text-emerald-900">Cita cambiada ✓</p>
-          <p className="mt-1 text-base text-emerald-900">¿Le avisas a {firstName} del cambio?</p>
-          {c.phone && (
-            <a href={whatsappLink(c.phone, changeMsg)} target="_blank" rel="noreferrer" onClick={() => setParams({}, { replace: true })}
-              className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-lg font-bold text-white"><WhatsAppIcon size={24} /> Avisarle del cambio</a>
-          )}
-          <button type="button" onClick={() => setParams({}, { replace: true })} className="mt-2 min-h-11 w-full text-base font-bold text-emerald-800">No hace falta</button>
-        </section>
-      )}
-
-      {/* La clienta y la cita */}
-      <section className="rounded-3xl bg-white p-4 shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100">
-        <div className="flex items-center gap-3">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-pink-600 text-2xl font-extrabold text-white">{initial(c.full_name)}</span>
-          <Link to={`/clientes/${c.id}`} className="min-w-0 flex-1">
-            <span className="block text-xl font-extrabold leading-tight text-slate-900">{c.full_name}</span>
-            <span className="mt-1 flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-0.5 text-sm font-bold ${st.style}`}>{st.label}</span><span className="text-sm font-semibold text-pink-700">Ver su ficha</span></span>
-          </Link>
-        </div>
-        <div className="mt-4 rounded-2xl bg-pink-50 p-3">
-          <div className="text-lg font-extrabold text-slate-900">{formatLongDate(a.starts_at)}</div>
-          <div className="text-base text-slate-700">{formatTime(a.starts_at)} · {minutesLabel(a.duration_min)}</div>
-          {who && (
-            <div className="mt-1 flex items-center gap-2 text-base font-bold" style={{ color: who.color }}>
-              <span className="h-3 w-3 rounded-full" style={{ backgroundColor: who.color }} /> Con {who.name}
-            </div>
-          )}
-          {a.notes && <p className="mt-2 whitespace-pre-line text-base text-slate-700">{a.notes}</p>}
-        </div>
-        <div className="mt-3 flex">
-          {c.phone && <Action label="Llamar" href={telLink(c.phone)} icon={<Phone size={24} />} tone="bg-sky-100 text-sky-700" />}
-          <Action label="Cambiar" onClick={onEdit} icon={<CalendarClock size={24} />} tone="bg-pink-100 text-pink-700" />
-          {a.status === 'cancelled'
-            ? <Action label="Activar" onClick={onActivate} icon={<Check size={24} />} tone="bg-emerald-100 text-emerald-700" />
-            : <Action label="Cancelar" onClick={onCancel} icon={<XCircle size={24} />} tone="bg-red-50 text-red-600" />}
-        </div>
-      </section>
-
-      {/* 1 · Confirmar */}
-      <Step n={1} title={depAmount > 0 ? 'Confirmar y pedir depósito' : 'Confirmar la cita'} ok={confirmed}>
+  function confirmBlock() {
+    return (
+      <>
+      {/* Confirmar y depósito: cerrado en una línea (abierto si hay algo que hacer) */}
+      <details className="group mt-4 overflow-hidden rounded-3xl bg-white ring-1 ring-pink-100" open={urgent}>
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 text-base font-bold text-slate-900">
+          <WhatsAppIcon size={22} /> <span className="min-w-0 flex-1">Confirmar cita y depósito<span className="block truncate text-sm font-semibold text-slate-500">{confirmSummary}</span></span>
+          <ChevronDown size={20} className="shrink-0 text-slate-400 transition group-open:rotate-180" />
+        </summary>
+        <div className="px-4 pb-4">
+      <Step flat title={depAmount > 0 ? 'Confirmar y pedir depósito' : 'Confirmar la cita'} ok={confirmed}>
         {a.status !== 'cancelled' && !done && paid === 0 && (
           <div className="mb-3">
             <p className="mb-2 text-base font-bold text-slate-800">¿Le pides depósito?</p>
@@ -404,8 +377,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         )}
       </Step>
 
-      {/* 2 · Depósito */}
-      <Step n={2} title="Depósito" hint="opcional" ok={payments.length > 0}>
+      <Step flat title="Depósito" hint="opcional" ok={payments.length > 0}>
         {reported > 0 && (
           <div className="mb-3 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
             <p className="text-base font-bold text-amber-900">{firstName} dice que envió {formatMoney(reported)} por ATH Móvil.</p>
@@ -434,13 +406,64 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         {!done && (
           <button type="button" disabled={busy} onClick={() => setDepositOpen(true)}
             className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-pink-700 ring-2 ring-pink-300 active:bg-pink-50">
-            <Banknote size={22} /> Cobrar depósito
+            <Banknote size={22} /> Cobrar depósito{(Number(link.deposit_asked) || depAmount) > 0 ? ` de ${formatMoney(Number(link.deposit_asked) || depAmount)}` : ''}
           </button>
         )}
       </Step>
 
-      {/* 3 · La cuenta, como un recibo */}
-      <Step n={3} title="La cuenta" ok={parts.length > 0 && !unpriced}>
+        </div>
+      </details>
+
+      </>
+    )
+  }
+
+  return (
+    <>
+      {changed && (
+        <section className="mb-3 rounded-3xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
+          <p className="text-lg font-extrabold text-emerald-900">Cita cambiada ✓</p>
+          <p className="mt-1 text-base text-emerald-900">¿Le avisas a {firstName} del cambio?</p>
+          {c.phone && (
+            <a href={whatsappLink(c.phone, changeMsg)} target="_blank" rel="noreferrer" onClick={() => setParams({}, { replace: true })}
+              className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-lg font-bold text-white"><WhatsAppIcon size={24} /> Avisarle del cambio</a>
+          )}
+          <button type="button" onClick={() => setParams({}, { replace: true })} className="mt-2 min-h-11 w-full text-base font-bold text-emerald-800">No hace falta</button>
+        </section>
+      )}
+
+      {/* La clienta y la cita */}
+      <section className="rounded-3xl bg-white p-4 shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100">
+        <div className="flex items-center gap-3">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-pink-600 text-2xl font-extrabold text-white">{initial(c.full_name)}</span>
+          <Link to={`/clientes/${c.id}`} className="min-w-0 flex-1">
+            <span className="block text-xl font-extrabold leading-tight text-slate-900">{c.full_name}</span>
+            <span className="mt-1 flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-0.5 text-sm font-bold ${st.style}`}>{st.label}</span><span className="text-sm font-semibold text-pink-700">Ver su ficha</span></span>
+          </Link>
+        </div>
+        <div className="mt-4 rounded-2xl bg-pink-50 p-3">
+          <div className="text-lg font-extrabold text-slate-900">{formatLongDate(a.starts_at)}</div>
+          <div className="text-base text-slate-700">{formatTime(a.starts_at)} · {minutesLabel(a.duration_min)}</div>
+          {who && (
+            <div className="mt-1 flex items-center gap-2 text-base font-bold" style={{ color: who.color }}>
+              <span className="h-3 w-3 rounded-full" style={{ backgroundColor: who.color }} /> Con {who.name}
+            </div>
+          )}
+          {a.notes && <p className="mt-2 whitespace-pre-line text-base text-slate-700">{a.notes}</p>}
+        </div>
+        <div className="mt-3 flex">
+          {c.phone && <Action label="Llamar" href={telLink(c.phone)} icon={<Phone size={24} />} tone="bg-sky-100 text-sky-700" />}
+          <Action label="Cambiar" onClick={onEdit} icon={<CalendarClock size={24} />} tone="bg-pink-100 text-pink-700" />
+          {a.status === 'cancelled'
+            ? <Action label="Activar" onClick={onActivate} icon={<Check size={24} />} tone="bg-emerald-100 text-emerald-700" />
+            : <Action label="Cancelar" onClick={onCancel} icon={<XCircle size={24} />} tone="bg-red-50 text-red-600" />}
+        </div>
+      </section>
+
+      {urgent && confirmBlock()}
+
+      {/* Lo primero: la cuenta (los precios) y cobrar */}
+      <Step title="La cuenta" ok={parts.length > 0 && !unpriced}>
         <div className="-mx-4 overflow-hidden border-y border-pink-100">
           <div className="divide-y divide-dashed divide-slate-200 px-4">
             {parts.length === 0 && <p className="py-4 text-base text-slate-500">Todavía no hay servicios. Toca “Añadir servicio”.</p>}
@@ -505,7 +528,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       </Step>
 
       {/* 4 · Cobrar */}
-      <Step n={4} title="Cobrar" ok={done}>
+      <Step title="Cobrar" ok={done}>
         {!done ? (
           <>
             <button type="button" disabled={busy || (balance <= 0 && !unpriced)} onClick={async () => {
@@ -553,8 +576,24 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         )}
       </Step>
 
+      {/* Recién cobrada: ¿la próxima cita? (no es obligatorio) */}
+      {done && !data.next && !skipNext && (
+        <section className="mt-4 rounded-3xl bg-pink-50 p-4 ring-1 ring-pink-200">
+          <p className="text-lg font-extrabold text-slate-900">¿Le hacemos la próxima cita a {firstName}?</p>
+          <Link to={`/citas/nueva?clienta=${c.id}`} className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-pink-600 text-lg font-bold text-white active:bg-pink-700">
+            <Plus size={22} /> Hacer la próxima cita
+          </Link>
+          {remindOpen ? (
+            <div className="mt-3 rounded-2xl bg-white p-3"><NextService boatId={a.boats.id} workOrderId={woId} defaultService={parts[0]?.description ?? 'Su próxima cita'} onSaved={reload} title="" /></div>
+          ) : (
+            <button type="button" onClick={() => setRemindOpen(true)} className="mt-2 min-h-12 w-full rounded-2xl bg-white text-base font-bold text-pink-700 ring-1 ring-pink-200">Recordarle en unas semanas</button>
+          )}
+          <button type="button" onClick={() => setSkipNext(true)} className="mt-2 min-h-11 w-full text-base font-bold text-slate-500">Ahora no</button>
+        </section>
+      )}
+
       {/* 5 · Recibo */}
-      <Step n={5} title="Enviarle el recibo" ok={done && Boolean(invoice)}>
+      {done && invoice && <Step title="Enviarle el recibo" ok>
         {done && invoice ? (
           <div className="space-y-2">
             {c.phone && (
@@ -567,10 +606,17 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
             </Link>
           </div>
         ) : <p className="text-base text-slate-500">Cuando cobres, aquí le envías el recibo.</p>}
-      </Step>
+      </Step>}
+
+      {!urgent && confirmBlock()}
 
       {/* 6 · Cuándo vuelve */}
-      <Step n={6} title="¿Cuándo vuelve?" ok={Boolean(data.next)}>
+      <details className="group mt-4 overflow-hidden rounded-3xl bg-white ring-1 ring-pink-100">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 text-base font-bold text-slate-900">
+          <CalendarClock size={22} className="text-pink-700" /> <span className="flex-1">¿Cuándo vuelve?{data.next ? ` · ${formatDate(data.next.due_date).slice(0, 5)}` : ''}</span>
+          <span className="text-sm font-semibold text-slate-400">opcional</span> <ChevronDown size={20} className="text-slate-400 transition group-open:rotate-180" />
+        </summary>
+        <div className="px-4 pb-4">
         {data.next ? (
           <>
             <div className="flex min-h-12 items-center gap-2">
@@ -585,7 +631,8 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         ) : (
           <NextService boatId={a.boats.id} workOrderId={woId} defaultService={parts[0]?.description ?? 'Su próxima cita'} onSaved={reload} title="" />
         )}
-      </Step>
+        </div>
+      </details>
 
       {/* Fotos: opcional */}
       <details className="group mt-4 overflow-hidden rounded-3xl bg-white ring-1 ring-pink-100">
@@ -596,7 +643,7 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         <div className="px-4 pb-4"><PhotoSection workOrderId={woId} photos={photos} onChange={reload} only={['before', 'after']} /></div>
       </details>
 
-      <DepositSheet open={depositOpen} hasAth={Boolean(mech.ath_movil_number)} onClose={() => setDepositOpen(false)}
+      <DepositSheet open={depositOpen} hasAth={Boolean(mech.ath_movil_number)} suggested={Number(link.deposit_asked) || depAmount} onClose={() => setDepositOpen(false)}
         onSave={async (method, amount) => { await addPayment(woId, amount, method, 0); setDepositOpen(false); reload() }} />
       <CheckoutSheet open={payOpen} balance={balance} hasAth={Boolean(mech.ath_movil_number)} onClose={() => setPayOpen(false)} onPay={receive} />
       <AddServiceSheet open={addOpen} menu={menu} busy={busy} onClose={() => setAddOpen(false)} onAdd={addLine} />
@@ -617,11 +664,11 @@ async function lastPrices(parts: Part[], woId: string): Promise<Record<string, n
 }
 
 /** Un paso de la visita: número (o ✓ si ya se hizo), título y lo que se hace ahí. */
-function Step({ n, title, hint, ok, children }: { n: number; title: string; hint?: string; ok: boolean; children: React.ReactNode }) {
+function Step({ title, hint, ok, flat, children }: { title: string; hint?: string; ok: boolean; flat?: boolean; children: React.ReactNode }) {
   return (
-    <section className="mt-4 rounded-3xl bg-white p-4 shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100">
-      <h2 className="mb-3 flex items-center gap-3 text-xl font-extrabold text-slate-900">
-        <span aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base font-extrabold text-white ${ok ? 'bg-emerald-600' : 'bg-pink-600'}`}>{ok ? <Check size={20} /> : n}</span>
+    <section className={flat ? 'mt-3' : 'mt-4 rounded-3xl bg-white p-4 shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100'}>
+      <h2 className={`mb-3 flex items-center gap-3 ${flat ? 'text-lg' : 'text-xl'} font-extrabold text-slate-900`}>
+        {ok && <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white"><Check size={18} /></span>}
         <span className="flex-1">{title}</span>
         {hint && <span className="text-sm font-semibold text-slate-400">{hint}</span>}
       </h2>
@@ -777,17 +824,18 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
 }
 
 /** Depósito: la cantidad que ella quiera (antes de la cita o al llegar) y cómo pagó. Se resta al cobrar. */
-function DepositSheet({ open, hasAth, onClose, onSave }: { open: boolean; hasAth: boolean; onClose: () => void; onSave: (m: Method, amount: number) => Promise<void> }) {
+function DepositSheet({ open, hasAth, suggested = 0, onClose, onSave }: { open: boolean; hasAth: boolean; suggested?: number; onClose: () => void; onSave: (m: Method, amount: number) => Promise<void> }) {
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<Method>('ath_movil')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   useEffect(() => {
     if (!open) return
-    setAmount('')
+    // El depósito que se le pidió ya viene puesto (para que no se olvide cuánto era)
+    setAmount(suggested > 0 ? String(suggested) : '')
     setMethod(hasAth ? 'ath_movil' : 'cash')
     setError('')
-  }, [open, hasAth])
+  }, [open, hasAth, suggested])
   const value = num(amount) ?? 0
 
   async function save() {
