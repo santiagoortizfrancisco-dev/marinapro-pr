@@ -88,7 +88,8 @@ export default function BusinessSettings() {
     if (trade === 'beauty') await db().rpc('seed_beauty_services', { p_mech: session!.user.id })
     await refreshProfile()
     notifyBrandChanged()
-    navigate('/mas')
+    if (window.history.state?.idx > 0) navigate(-1)
+    else navigate('/mas')
   }
 
   async function uploadLogo(file: File | undefined) {

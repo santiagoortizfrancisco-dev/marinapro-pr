@@ -10,6 +10,8 @@ import { PR_TOWNS } from '../../lib/towns'
 import type { Client } from '../../lib/types'
 import { blank } from '../../lib/useLoad'
 import { BackTitle, Choice, Field, FormActions, Input, Loading, Select, Textarea } from '../../components/ui'
+import { useDraft } from '../../lib/draft'
+import DraftBanner from '../../components/DraftBanner'
 
 type Form = { full_name: string; phone: string; email: string; town: string; address: string; preferred_contact: Client['preferred_contact']; notes: string }
 const CONTACT_ICONS = {
@@ -27,6 +29,7 @@ export default function ClientForm() {
   const { session } = useAuth()
   const [f, setF] = useState<Form>(EMPTY)
   const [loading, setLoading] = useState(Boolean(id))
+  const draft = useDraft(!id && w.salon ? 'draft:clienta-nueva' : null, f, setF)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((p) => ({ ...p, [k]: v }))
@@ -62,6 +65,7 @@ export default function ClientForm() {
       return
     }
     const newId = (res.data as { id: string }).id
+    draft.clear()
     // Cliente nuevo: seguir directo a añadir su bote
     navigate(id || w.salon ? `/clientes/${id ?? newId}` : `/botes/nuevo?cliente=${newId}`, { replace: true })
   }
@@ -71,6 +75,7 @@ export default function ClientForm() {
   return (
     <>
       <BackTitle subtitle={id || w.salon ? undefined : `Después de guardar añades su ${w.item}`}>{w.salon ? (id ? 'Editar clienta' : 'Clienta nueva') : id ? 'Editar cliente' : 'Cliente nuevo'}</BackTitle>
+      {draft.restored && <DraftBanner onReset={() => { draft.clear(); window.location.reload() }} />}
       <form onSubmit={save} className="space-y-4">
         <Field label="Nombre completo *" icon={User}>
           <Input required autoComplete="off" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} placeholder="Ana Martínez" />

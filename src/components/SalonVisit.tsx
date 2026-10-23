@@ -63,8 +63,11 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
   const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState<SalonService[]>([])
   // Depósito que se le pide al confirmar (null = el que esté puesto en Citas por internet)
-  const [askDep, setAskDep] = useState<string | null>(null)
+  const depKey = `draft:dep:${a.id}`
+  const [askDep, setAskDepState] = useState<string | null>(() => { try { return localStorage.getItem(depKey) } catch { return null } })
+  const setAskDep = (v: string) => { setAskDepState(v); try { localStorage.setItem(depKey, v) } catch { /* nada */ } }
   const [otherDep, setOtherDep] = useState(false)
+  const [athInput, setAthInput] = useState('')
 
   const { data, loading, error, reload } = useLoad(async () => {
     const [wo, parts, invoice, mech, next, payments, photos, link] = await Promise.all([
@@ -332,7 +335,18 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
             </div>
             {otherDep && <Input aria-label="Depósito ($)" inputMode="decimal" autoFocus placeholder="$" value={askDep ?? ''} onChange={(e) => setAskDep(e.target.value)} className="mt-2" />}
             {depAmount > 0 && !mech.ath_movil_number && (
-              <p className="mt-2 rounded-xl bg-amber-50 p-2 text-sm text-amber-900">Pon tu número de ATH Móvil en <Link to="/mas/negocio" className="font-bold underline">Mi negocio</Link> para que salga en el mensaje.</p>
+              <div className="mt-2 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200">
+                <p className="text-sm font-bold text-amber-900">¿A qué número de ATH Móvil te lo envía? (se guarda para siempre)</p>
+                <div className="mt-2 flex gap-2">
+                  <Input aria-label="Tu número de ATH Móvil" type="tel" inputMode="tel" placeholder="787-555-0100" value={athInput} onChange={(e) => setAthInput(e.target.value)} className="flex-1" />
+                  <button type="button" disabled={busy || athInput.replace(/\D/g, '').length < 7} onClick={async () => {
+                    setBusy(true)
+                    await db().from('mechanics').update({ ath_movil_number: athInput.trim() }).eq('profile_id', session!.user.id)
+                    setBusy(false)
+                    reload()
+                  }} className="min-h-12 shrink-0 rounded-xl bg-pink-600 px-4 text-base font-bold text-white disabled:bg-slate-300">Guardar</button>
+                </div>
+              </div>
             )}
           </div>
         )}

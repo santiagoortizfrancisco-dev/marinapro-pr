@@ -8,6 +8,8 @@ import { clientRecordId, loadSalonMenu, loadStaff, minutesLabel, type SalonServi
 import { blank } from '../../lib/useLoad'
 import { BackTitle, Field, FormActions, Input, Loading } from '../../components/ui'
 import TimeSelect from '../../components/TimeSelect'
+import { useDraft } from '../../lib/draft'
+import DraftBanner from '../../components/DraftBanner'
 
 /** Tarjeta blanca con su número de paso: así la cita se llena de arriba a abajo. */
 function Step({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) {
@@ -67,6 +69,10 @@ export default function SalonAppointmentForm() {
   const [length, setLength] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // Borrador: si sale a mitad y vuelve, sigue donde lo dejó (solo cita nueva, sin venir de un hueco de la agenda)
+  const draft = useDraft(!id && [...params.keys()].length === 0 ? 'draft:cita-nueva' : null,
+    { clientId, newClient, picked, day, time, notes, length },
+    (d) => { setClientId(d.clientId); setNewClient(d.newClient); setPicked(d.picked); setDay(d.day); setTime(d.time); setNotes(d.notes); setLength(d.length) })
   const [sameDay, setSameDay] = useState<{ id: string; starts_at: string; duration_min: number; staff_id: string | null; boats: { name: string } | null }[]>([])
 
   useEffect(() => {
@@ -183,6 +189,7 @@ export default function SalonAppointmentForm() {
         })))
         if (p.error) throw p.error
       }
+      draft.clear()
       if (id) navigate(`/citas/${id}?cambio=1`, { replace: true })
       else navigate(`/citas/${apptId}${now ? '?cobrar=1' : ''}`, { replace: true })
     } catch (err) {
@@ -197,6 +204,7 @@ export default function SalonAppointmentForm() {
   return (
     <>
       <BackTitle>{id ? 'Cambiar cita' : now ? 'Cobrar ahora' : 'Cita nueva'}</BackTitle>
+      {draft.restored && <DraftBanner onReset={() => { draft.clear(); window.location.reload() }} />}
       <form onSubmit={save} className="space-y-4">
         {/* 1. La clienta */}
         <Step n={1} title={now ? '¿A quién le cobras?' : '¿Quién viene?'}>

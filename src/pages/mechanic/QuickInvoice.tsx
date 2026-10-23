@@ -15,6 +15,8 @@ import { WhatsAppIcon } from '../../components/BrandIcons'
 import type { CatalogItem } from '../../components/PartSheet'
 import PaySheet from '../../components/PaySheet'
 import { BackTitle, Button, ErrorBox, Input, LinkButton, Loading } from '../../components/ui'
+import { useDraft } from '../../lib/draft'
+import DraftBanner from '../../components/DraftBanner'
 
 interface ClientRow { id: string; full_name: string; phone: string | null; boats: { id: string; name: string }[] }
 type Pick = { kind: 'boat'; boatId: string; clientId: string } | { kind: 'client'; clientId: string } | { kind: 'new' } | null
@@ -48,6 +50,8 @@ export default function QuickInvoice() {
   const [payOpen, setPayOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const draft = useDraft(tw.salon ? 'draft:factura-rapida' : null, { pick, newClient, boatName, workDone, lines, ivu },
+    (d) => { setPick(d.pick); setNewClient(d.newClient); setBoatName(d.boatName); setWorkDone(d.workDone); setLines(d.lines); setIvu(d.ivu) })
   const [done, setDone] = useState<{ woId: string; invoice: Invoice; phone: string | null; first: string; boat: string; paid: number } | null>(null)
 
   useEffect(() => {
@@ -183,6 +187,7 @@ export default function QuickInvoice() {
       if (paid > 0) await addPayment(woId, paid, method, 0, giftCardId)
       const { data: invoice } = await db().from('invoices').select('*').eq('id', inv.data as string).single()
       setPayOpen(false)
+      draft.clear()
       setDone({ woId, invoice: invoice as Invoice, phone, first, boat: boatName.trim() || chosenBoat?.name || tw.itemOf(first), paid })
     } catch (e) {
       console.error(e)
@@ -228,6 +233,7 @@ export default function QuickInvoice() {
   return (
     <>
       <BackTitle>Factura rápida</BackTitle>
+      {draft.restored && <DraftBanner onReset={() => { draft.clear(); window.location.reload() }} />}
 
       {/* Como una factura de papel: cliente, líneas con su precio y el total */}
       <div className="overflow-hidden rounded-2xl bg-white shadow-[0_6px_24px_-14px_rgba(8,47,73,0.35)] ring-1 ring-slate-200">

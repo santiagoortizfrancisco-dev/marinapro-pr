@@ -9,6 +9,8 @@ import { formatDate, formatMoney } from '../../lib/format'
 import { whatsappLink } from '../../lib/links'
 import { shareAsImage } from '../../lib/shareImage'
 import { must, num, useLoad } from '../../lib/useLoad'
+import { useDraft } from '../../lib/draft'
+import DraftBanner from '../../components/DraftBanner'
 
 export interface GiftCard {
   id: string; code: string; amount: number; balance: number; recipient_name: string | null; buyer_name: string | null
@@ -48,7 +50,7 @@ export function GiftCardView({ card, business }: { card: GiftCard; business: str
  */
 export default function GiftCards() {
   const { session } = useAuth()
-  const [sellOpen, setSellOpen] = useState(false)
+  const [sellOpen, setSellOpen] = useState(() => { try { return Boolean(localStorage.getItem('draft:regalo')) } catch { return false } })
   const [show, setShow] = useState<GiftCard | null>(null)
   const [search, setSearch] = useState('')
   const { data, loading, error, reload } = useLoad(async () => {
@@ -132,6 +134,8 @@ function SellSheet({ open, business, onClose, onSold }: { open: boolean; busines
   const [method, setMethod] = useState<Method>('ath_movil')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const draft = useDraft('draft:regalo', { amount, recipient, buyer, phone, method },
+    (d) => { setAmount(d.amount); setRecipient(d.recipient); setBuyer(d.buyer); setPhone(d.phone); setMethod(d.method) })
   const value = num(amount) ?? 0
 
   async function sell() {
@@ -147,6 +151,7 @@ function SellSheet({ open, business, onClose, onSold }: { open: boolean; busines
       if (!error) {
         setBusy(false)
         setAmount(''); setRecipient(''); setBuyer(''); setPhone('')
+        draft.clear()
         return onSold(data as GiftCard)
       }
       if (!/duplicate|unique/i.test(error.message)) break
@@ -157,6 +162,7 @@ function SellSheet({ open, business, onClose, onSold }: { open: boolean; busines
 
   return (
     <Sheet open={open} title="Vender tarjeta de regalo" onClose={onClose}>
+      {draft.restored && <DraftBanner onReset={() => { draft.clear(); setAmount(''); setRecipient(''); setBuyer(''); setPhone('') }} />}
       <div className="space-y-4">
         <div>
           <div className="mb-2 text-base font-extrabold text-slate-800">¿Cuánto vale?</div>
