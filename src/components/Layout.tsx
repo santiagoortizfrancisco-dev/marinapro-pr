@@ -107,7 +107,7 @@ export default function Layout() {
   return (
     <div className="min-h-full">
       {/* Cabecera y pestañas fijas; la página baja con el dedo normal (más confiable en iPhone) */}
-      <header className={`safe-top sticky top-0 z-10 text-white ${headerColor ? '' : style.bg}`} style={headerColor ? { backgroundColor: headerColor } : undefined}>
+      <header id="app-header" className={`safe-top sticky top-0 z-10 text-white ${headerColor ? '' : style.bg}`} style={headerColor ? { backgroundColor: headerColor } : undefined}>
         <div className="mx-auto flex max-w-xl items-center gap-3 px-4 pb-3 pt-3">
           {brand.logo ? (
             <img src={brand.logo} alt="" className="h-12 w-12 shrink-0 rounded-xl bg-black object-contain" />

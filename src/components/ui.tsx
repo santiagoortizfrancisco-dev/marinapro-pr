@@ -1,4 +1,4 @@
-import { Children, isValidElement, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { Children, isValidElement, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ChevronLeft, ChevronRight, Loader2, Plus, type LucideIcon } from 'lucide-react'
 import { useWords } from '../lib/trade'
@@ -192,15 +192,38 @@ export function BackButton({ to }: { to?: string }) {
   const navigate = useNavigate()
   const { salon } = useWords()
   const canGoBack = (window.history.state?.idx ?? 0) > 0
+  // Al bajar, el botón se va de la pantalla: sale uno pequeño fijo debajo del encabezado
+  const ref = useRef<HTMLButtonElement>(null)
+  const [floatTop, setFloatTop] = useState<number | null>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([e]) => {
+      const header = document.getElementById('app-header')?.getBoundingClientRect().bottom ?? 0
+      setFloatTop(e.isIntersecting ? null : header + 8)
+    }, { rootMargin: `-${(document.getElementById('app-header')?.offsetHeight ?? 0)}px 0px 0px 0px` })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  const goBack = () => (salon ? (canGoBack ? navigate(-1) : navigate(to ?? '/inicio')) : to ? navigate(to) : canGoBack ? navigate(-1) : navigate('/inicio'))
   return (
-    <button
-      type="button"
-      // Salón: regresa a la pantalla de donde vino (ej. Inicio). Los demás oficios: como siempre
-      onClick={() => (salon ? (canGoBack ? navigate(-1) : navigate(to ?? '/inicio')) : to ? navigate(to) : canGoBack ? navigate(-1) : navigate('/inicio'))}
-      className={`${CARD} -ml-1 mb-3 inline-flex min-h-12 items-center gap-1 px-4 text-lg font-bold text-navy-800 active:bg-navy-50`}
-    >
-      <ChevronLeft size={26} strokeWidth={2.5} /> Volver atrás
-    </button>
+    <>
+      <button
+        ref={ref}
+        type="button"
+        // Salón: regresa a la pantalla de donde vino (ej. Inicio). Los demás oficios: como siempre
+        onClick={goBack}
+        className={`${CARD} -ml-1 mb-3 inline-flex min-h-12 items-center gap-1 px-4 text-lg font-bold text-navy-800 active:bg-navy-50`}
+      >
+        <ChevronLeft size={26} strokeWidth={2.5} /> Volver atrás
+      </button>
+      {floatTop !== null && (
+        <button type="button" onClick={goBack} aria-label="Volver atrás" style={{ top: floatTop }}
+          className="fixed left-3 z-20 inline-flex min-h-11 items-center gap-1 rounded-full bg-white/95 px-3 text-base font-bold text-navy-800 shadow-lg ring-1 ring-slate-200 backdrop-blur active:bg-navy-50">
+          <ChevronLeft size={22} strokeWidth={2.5} /> Atrás
+        </button>
+      )}
+    </>
   )
 }
 

@@ -150,7 +150,7 @@ export default function Home() {
       {words.salon && <SalonReminders />}
 
       {/* Hoy */}
-      <section className="mt-6">
+      {!words.salon && <section className="mt-6">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-xl font-extrabold text-navy-900">Hoy{data ? ` · ${data.appts.length} ${data.appts.length === 1 ? 'cita' : 'citas'}` : ''}</h2>
           <Link to="/agenda" className="flex items-center text-base font-bold text-navy-700">Ver agenda <ChevronRight size={18} /></Link>
@@ -165,31 +165,9 @@ export default function Home() {
             </Link>
           ))}
         </div>
-      </section>
+      </section>}
 
       {/* Trabajos en proceso */}
-      {/* Salón: lo que ya pasó y falta cobrar (las citas de más tarde salen en Hoy) */}
-      {data && words.salon && (() => {
-        const now = Date.now()
-        const due = data.working.filter((x) => !x.appointments || new Date(x.appointments.starts_at).getTime() <= now)
-          .sort((x, y) => (y.appointments?.starts_at ?? '').localeCompare(x.appointments?.starts_at ?? ''))
-        return due.length > 0 && (
-          <section className="mt-6">
-            <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><Wallet size={22} /> Sin cobrar</h2>
-            <div className={`${CARD} divide-y divide-slate-100`}>
-              {due.map((x) => (
-                <Link key={x.id} to={x.appointment_id ? `/citas/${x.appointment_id}` : `/trabajos/${x.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-slate-50">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-base font-bold text-slate-900">{x.boats.clients.full_name}</span>
-                    <span className="block truncate text-sm text-slate-600">{[x.appointments ? `${formatDate(x.appointments.starts_at).slice(0, 5)} ${formatTime(x.appointments.starts_at)}` : null, x.appointments?.title].filter(Boolean).join(' · ')}</span>
-                  </span>
-                  <span className="shrink-0 rounded-full bg-pink-100 px-3 py-1 text-sm font-bold text-pink-800">Por cobrar</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )
-      })()}
       {data && !words.salon && data.working.length > 0 && (
         <section className="mt-6">
           <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><Wrench size={22} /> Trabajando</h2>
@@ -204,9 +182,11 @@ export default function Home() {
         </section>
       )}
 
-      <div className="mt-6">
-        <DueServices />
-      </div>
+      {!words.salon && (
+        <div className="mt-6">
+          <DueServices />
+        </div>
+      )}
     </>
   )
 }

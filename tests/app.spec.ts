@@ -1059,11 +1059,13 @@ test('salón de uñas: cita con servicios y empleada (suma tiempo y precio), sin
   await page.getByRole('button', { name: 'Seguir a cobrar' }).click()
   await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
   await page.goto('/')
+  await page.getByRole('button', { name: /^Sin cobrar:/ }).click()
   await expect(page.getByRole('heading', { name: 'Sin cobrar' })).toBeVisible()
   await expect(page.getByText('Trabajando')).toHaveCount(0)
   await page.getByRole('link', { name: /Ruth Prueba/ }).first().click()
   await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
   await page.getByRole('button', { name: 'Volver atrás' }).click()
+  await page.getByRole('button', { name: /^Sin cobrar:/ }).click()
   await expect(page.getByRole('heading', { name: 'Sin cobrar' })).toBeVisible()
 
   // Fotos del salón: solo Antes y Después (sin piezas)
@@ -1183,6 +1185,7 @@ test('salón: citas por internet — prende su link, la clienta pide cita sola y
 
   // Al salón le sale en Inicio y la confirma
   await page.goto('/')
+  await page.getByRole('button', { name: /^Pedidas por internet:/ }).click()
   await expect(page.getByRole('heading', { name: /Pedidas por internet/ })).toBeVisible()
   await page.getByRole('link', { name: /Lola Web/ }).first().click()
   await expect(page.getByText('La pidió por internet')).toBeVisible()
@@ -1213,7 +1216,8 @@ test('salón: recordatorio de mañana — Recordarle abre WhatsApp con el mensaj
   await expect(page.getByRole('heading', { name: /La cuenta|Servicios y precios/ })).toBeVisible()
 
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /Mañana · recordarles/ })).toBeVisible()
+  await page.getByRole('button', { name: /^Recordar mañana:/ }).click()
+  await expect(page.getByRole('heading', { name: /Recordar mañana/ })).toBeVisible()
   const link = page.getByRole('link', { name: /Recordarle a Ana Martínez/ }).first()
   await expect(link).toHaveAttribute('href', /wa\.me\/17875550111\?text=.*te%20recordamos/)
   const popup = page.waitForEvent('popup')
@@ -1561,6 +1565,7 @@ test('salón: la clienta abre el link de su cita, acepta y dice que pagó; la du
   await c.close()
 
   await page.goto('/')
+  await page.getByRole('button', { name: /^Depósitos por verificar:/ }).click()
   await expect(page.getByRole('heading', { name: /Depósitos por verificar/ })).toBeVisible()
   await expect(page.getByText(/Dice que envió \$20\.00 el \d\d\/\d\d/)).toBeVisible()
   await page.getByRole('link', { name: /Link Prueba/ }).first().click()
