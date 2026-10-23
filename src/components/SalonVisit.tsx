@@ -223,6 +223,15 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
     reload()
   }
 
+  /** Lo que dio de depósito ya cubre la cuenta: recibo (queda pagada sola) y la cita hecha. */
+  async function finishPaid() {
+    setBusy(true)
+    await db().rpc('create_invoice', { p_wo: woId })
+    await db().from('appointments').update({ status: 'done' }).eq('id', a.id)
+    setBusy(false)
+    reload()
+  }
+
   /** Factura hecha, sin cobrar todavía: queda pendiente en Me deben. */
   async function invoiceLater() {
     setBusy(true)
@@ -533,16 +542,22 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       {later && !top && confirmBlock()}
 
       {/* 4 · Cobrar */}
-      <Step title="Cobrar" ok={done}>
+      <Step title="Pagar" ok={done}>
         {!done ? (
           <>
-            <button type="button" disabled={busy || (balance <= 0 && !unpriced)} onClick={async () => {
+            {paid > 0 && totals.total > 0 && !unpriced && (
+              <p className="mb-3 rounded-2xl bg-emerald-50 p-3 text-center text-base text-emerald-900">
+                Cuenta {formatMoney(totals.total)} − depósito {formatMoney(paid)} = <b>{balance > 0 ? `falta ${formatMoney(balance)}` : "ya pagó todo"}</b>
+              </p>
+            )}
+            <button type="button" disabled={busy || (balance <= 0 && !unpriced && !(totals.total > 0))} onClick={async () => {
               if (unpriced) { document.getElementById(`precio-${unpriced.id}`)?.focus(); return }
               await flushPrices()
-              setPayOpen(true)
+              if (balance <= 0) await finishPaid()
+              else setPayOpen(true)
             }}
               className="flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-xl font-extrabold text-white shadow-lg shadow-emerald-900/20 active:bg-emerald-700 disabled:bg-slate-300 disabled:shadow-none">
-              {unpriced ? <>Falta el precio de “{unpriced.description}”</> : balance > 0 ? <>Cobrar {formatMoney(balance)}</> : 'Añade lo que vas a cobrar'}
+              {unpriced ? <>Falta el precio de “{unpriced.description}”</> : balance > 0 ? <>Pagar {formatMoney(balance)}</> : totals.total > 0 ? 'Ya pagó todo con el depósito · Terminar' : 'Añade lo que vas a cobrar'}
             </button>
             {invoice ? (
               <div className="mt-3 space-y-2 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
@@ -742,7 +757,7 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
   }
 
   return (
-    <Sheet open={open} title="Cobrar" onClose={onClose}>
+    <Sheet open={open} title="Pagar" onClose={onClose}>
       <div className="space-y-5">
         <div className="rounded-3xl bg-pink-50 py-4 text-center">
           <div className="text-sm font-bold uppercase tracking-wider text-pink-700">{part !== null ? 'Te dio' : 'La cuenta'}</div>
@@ -838,10 +853,10 @@ function CheckoutSheet({ open, balance, hasAth, onClose, onPay }: {
         {error && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}
         <button type="button" disabled={busy} onClick={save}
           className="flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-xl font-extrabold text-white active:bg-emerald-700 disabled:opacity-60">
-          <CheckCircle2 /> {busy ? 'Guardando…' : `Cobrar ${formatMoney(total)}`}
+          <CheckCircle2 /> {busy ? 'Guardando…' : `Pagar ${formatMoney(total)}`}
         </button>
         {tipValue > 0 && <p className="-mt-3 text-center text-sm text-slate-500">Incluye {formatMoney(tipValue)} de propina para la empleada</p>}
-        <Button variant="ghost" onClick={onClose}>No cobrar ahora</Button>
+        <Button variant="ghost" onClick={onClose}>No pagar ahora</Button>
       </div>
     </Sheet>
   )
