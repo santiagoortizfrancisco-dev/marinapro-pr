@@ -1841,6 +1841,12 @@ test('salón: en Factura rápida, arriba se puede vender una tarjeta de regalo',
 test('guardería: bote con su espacio (precio por pie), cobro de un toque, facturar el mes y borrar la factura hecha por error', async ({ page }) => {
   await fetch(`${MOCK}/rest/v1/mechanics?profile_id=eq.11111111-1111-4111-8111-111111111111`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ business_type: 'storage' }) })
   await login(page)
+  // Inicio de la guardería: Guardería grande, Factura rápida; sin citas ni Agenda
+  await expect(page.getByRole('link', { name: /Factura rápida/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Agenda' })).toHaveCount(0)
+  await expect(page.getByText(/No tienes citas hoy/)).toHaveCount(0)
+  await page.screenshot({ path: 'test-results/guarderia-inicio.png' })
   await page.getByRole('link', { name: /Guardería/ }).first().click()
   await expect(page.getByText('Todavía no hay botes en la guardería')).toBeVisible()
 

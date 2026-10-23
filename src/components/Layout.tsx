@@ -1,6 +1,6 @@
 import { useWords } from '../lib/trade'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { Bell, Calendar, Home, LogOut, Menu, MessageSquareWarning, Receipt, Repeat, Ship, Wrench, type LucideIcon } from 'lucide-react'
+import { Anchor, Bell, Calendar, Home, LogOut, Menu, MessageSquareWarning, Receipt, Repeat, Ship, Wrench, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import type { Role } from '../lib/types'
@@ -34,6 +34,14 @@ const MECHANIC_TABS: Tab[] = [
   { to: '/mas', label: 'Más', icon: Menu },
 ]
 
+// Guardería: no trabaja con citas; su sección va abajo en lugar de la Agenda
+const STORAGE_TABS: Tab[] = [
+  { to: '/inicio', label: 'Inicio', icon: Home },
+  { to: '/guarderia', label: 'Guardería', icon: Anchor },
+  { to: '/trabajos', label: 'Cobros', icon: Receipt },
+  { to: '/mas', label: 'Más', icon: Menu },
+]
+
 const CLIENT_TABS: Tab[] = [
   { to: '/botes', label: 'Mis botes', icon: Ship },
   { to: '/reportar', label: 'Reportar', icon: MessageSquareWarning },
@@ -45,7 +53,7 @@ export default function Layout() {
   const { profile, session, demo, enterDemo, signOut } = useAuth()
   const words = useWords()
   const isMechanic = profile?.role === 'mechanic'
-  const tabs = isMechanic ? MECHANIC_TABS : CLIENT_TABS
+  const tabs = isMechanic ? (words.storage ? STORAGE_TABS : MECHANIC_TABS) : CLIENT_TABS
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [sheet, setSheet] = useState<'switch' | 'signout' | null>(null)

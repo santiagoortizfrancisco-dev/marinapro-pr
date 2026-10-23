@@ -8,7 +8,7 @@ import DueServices from '../../components/DueServices'
 import SalonReminders from '../../components/SalonReminders'
 import ExamplesBanner from '../../components/ExamplesBanner'
 import { db } from '../../lib/db'
-import { formatDate, formatLongDate, formatMoney, formatTime, prRange, prTime, todayPR } from '../../lib/format'
+import { daysUntil, formatDate, formatLongDate, formatMoney, formatTime, prRange, prTime, todayPR } from '../../lib/format'
 import { WORK_ORDER_STATUS } from '../../lib/catalog'
 import { loadMoney, owed, sumOwed } from '../../lib/money'
 import type { WorkOrder } from '../../lib/types'
@@ -100,18 +100,23 @@ export default function Home() {
   const today = todayPR()
   const { data } = useLoad(async () => {
     const [start, end] = prRange(today, 1)
-    const [appts, working, money] = await Promise.all([
+    const [appts, working, money, storage] = await Promise.all([
       db().from('appointments').select('id, starts_at, status, boats(name, clients(full_name))').gte('starts_at', start).lt('starts_at', end).neq('status', 'cancelled').order('starts_at'),
       db().from('work_orders').select('id, status, appointment_id, boats(name, clients(full_name)), appointments(starts_at, title)').in('status', ['approved', 'waiting_parts', 'in_progress', 'sea_trial']).order('created_at', { ascending: false }).limit(10),
       loadMoney(),
+      words.storage ? db().from('storage_contracts').select('monthly_price, end_date, insurance_expires').eq('status', 'active') : Promise.resolve({ data: [] }),
     ])
-    return { appts: must(appts) as unknown as TodayAppt[], working: must(working) as unknown as Working[], debt: sumOwed(owed(money)) }
+    // Guardería: cuántos botes, la renta del mes y cuántos contratos o seguros están por vencer
+    const k = (storage.data ?? []) as { monthly_price: number; end_date: string | null; insurance_expires: string | null }[]
+    const soon = (d: string | null, days: number) => Boolean(d) && daysUntil(d!) <= days
+    const yard = { boats: k.length, monthly: k.reduce((t, c) => t + Number(c.monthly_price), 0), alerts: k.filter((c) => soon(c.end_date, 30) || soon(c.insurance_expires, 15)).length }
+    return { appts: must(appts) as unknown as TodayAppt[], working: must(working) as unknown as Working[], debt: sumOwed(owed(money)), yard }
   }, [today])
 
   const first = (profile?.full_name ?? '').split(' ')[0]
   const debt = data ? formatMoney(data.debt) : '…'
   // Cada negocio con su estilo: baterías para los mecánicos (botes y autos), belleza para el salón, sencillo para los demás
-  const look = words.salon ? 'beauty' : ['marine', 'auto', 'storage'].includes(words.trade) ? 'battery' : 'plain'
+  const look = words.salon ? 'beauty' : words.storage ? 'storage' : ['marine', 'auto'].includes(words.trade) ? 'battery' : 'plain'
 
   return (
     <>
@@ -147,21 +152,31 @@ export default function Home() {
         </div>
       )}
 
-      {words.storage && (
-        <Link to="/guarderia" className="mt-4 flex min-h-20 items-center gap-3 rounded-2xl bg-navy-800 px-4 py-3 text-white shadow-lg shadow-navy-900/20 transition active:scale-[0.99]">
-          <Anchor size={30} />
-          <span className="flex-1">
-            <span className="block text-xl font-extrabold">Guardería</span>
-            <span className="block text-sm text-navy-100">Botes guardados, cobros de un toque y la factura del mes</span>
-          </span>
-          <ChevronRight />
-        </Link>
+      {look === 'storage' && (
+        <>
+          <Link to="/guarderia" className="flex min-h-36 flex-col justify-between rounded-3xl bg-navy-800 p-5 text-white shadow-xl shadow-navy-900/25 transition active:scale-[0.99]">
+            <span className="flex items-center gap-3">
+              <Anchor size={40} />
+              <span className="flex-1 text-3xl font-extrabold">Guardería</span>
+              <ChevronRight size={28} />
+            </span>
+            <span className="mt-3 block text-lg font-semibold text-navy-100">
+              {data ? `${data.yard.boats} ${data.yard.boats === 1 ? 'bote' : 'botes'} · ${formatMoney(data.yard.monthly)} al mes` : '…'}
+            </span>
+            {data && data.yard.alerts > 0 && <span className="mt-2 inline-flex w-fit items-center gap-2 rounded-full bg-amber-400 px-3 py-1 text-base font-extrabold text-navy-900">⚠️ {data.yard.alerts} {data.yard.alerts === 1 ? 'contrato o seguro' : 'contratos o seguros'} por vencer</span>}
+          </Link>
+          <div className="mt-3 grid grid-cols-3 gap-3">
+            <PlainTile to="/cobrar" icon={Receipt} label="Factura rápida" color="#0369a1" />
+            <PlainTile to="/clientes" icon={Users} label={words.Clients} color="#334155" />
+            <PlainTile to="/trabajos" icon={Wallet} label="Me deben" sub={debt} color="#dc2626" />
+          </div>
+        </>
       )}
 
       {words.salon && <SalonReminders />}
 
       {/* Hoy */}
-      {!words.salon && <section className="mt-6">
+      {!words.salon && !words.storage && <section className="mt-6">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-xl font-extrabold text-navy-900">Hoy{data ? ` · ${data.appts.length} ${data.appts.length === 1 ? 'cita' : 'citas'}` : ''}</h2>
           <Link to="/agenda" className="flex items-center text-base font-bold text-navy-700">Ver agenda <ChevronRight size={18} /></Link>
@@ -179,7 +194,7 @@ export default function Home() {
       </section>}
 
       {/* Trabajos en proceso */}
-      {data && !words.salon && data.working.length > 0 && (
+      {data && !words.salon && !words.storage && data.working.length > 0 && (
         <section className="mt-6">
           <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><Wrench size={22} /> Trabajando</h2>
           <div className={`${CARD} divide-y divide-slate-100`}>
@@ -193,7 +208,7 @@ export default function Home() {
         </section>
       )}
 
-      {!words.salon && (
+      {!words.salon && !words.storage && (
         <div className="mt-6">
           <DueServices />
         </div>
