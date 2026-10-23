@@ -173,6 +173,7 @@ export default function Layout() {
         <div className="mx-auto max-w-xl px-4 py-5">
           {['/agenda', '/clientes', '/trabajos', '/mas'].includes(pathname) && <BackButton />}
           <Outlet />
+          <div id="back-bottom" />
         </div>
       </main>
 

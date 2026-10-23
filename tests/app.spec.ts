@@ -785,24 +785,24 @@ test('Factura rápida: la flecha de volver regresa a donde estabas (Inicio o Age
   await login(page)
   await page.getByRole('link', { name: /Factura rápida/ }).first().click()
   await expect(page.getByRole('heading', { name: 'Factura rápida' })).toBeVisible()
-  await page.getByRole('button', { name: 'Volver' }).click()
+  await page.getByRole('button', { name: 'Volver' }).first().click()
   await expect(page.getByRole('heading', { name: /¡Buen(os|as)/ })).toBeVisible()
 
   await page.getByRole('link', { name: 'Agenda', exact: true }).click()
   await page.getByRole('link', { name: /Factura rápida/ }).click()
-  await page.getByRole('button', { name: 'Volver' }).click()
+  await page.getByRole('button', { name: 'Volver' }).first().click()
   await expect(page).toHaveURL(/\/agenda/)
 })
 
 test('botón grande "Volver atrás": en Cobros regresa a Inicio, y en una pantalla de adentro regresa a la anterior', async ({ page }) => {
   await login(page)
   await page.getByRole('link', { name: 'Cobros' }).click()
-  await page.getByRole('button', { name: 'Volver atrás' }).click()
+  await page.getByRole('button', { name: 'Volver atrás' }).first().click()
   await expect(page.getByRole('heading', { name: /¡Buen(os|as)/ })).toBeVisible()
 
   await goToClients(page)
   await page.getByRole('link', { name: /Ana Ejemplo/ }).click()
-  await page.getByRole('button', { name: 'Volver atrás' }).click()
+  await page.getByRole('button', { name: 'Volver atrás' }).first().click()
   await expect(page.getByRole('heading', { name: 'Clientes' })).toBeVisible()
 })
 
@@ -1064,7 +1064,7 @@ test('salón de uñas: cita con servicios y empleada (suma tiempo y precio), sin
   await expect(page.getByText('Trabajando')).toHaveCount(0)
   await page.getByRole('link', { name: /Ruth Prueba/ }).first().click()
   await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
-  await page.getByRole('button', { name: 'Volver atrás' }).click()
+  await page.getByRole('button', { name: 'Volver atrás' }).first().click()
   await page.getByRole('button', { name: /^Sin cobrar:/ }).click()
   await expect(page.getByRole('heading', { name: 'Sin cobrar' })).toBeVisible()
 
@@ -1813,4 +1813,21 @@ test('salón: si el depósito cubre toda la cuenta, se termina con un toque (que
   await page.getByRole('button', { name: /Guardar depósito/ }).click()
   await page.getByRole('button', { name: 'Ya pagó todo con el depósito · Terminar' }).click()
   await expect(page.getByText(/Pagada el/)).toBeVisible()
+})
+
+test('"Volver atrás" también está al final de la pantalla', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/citas/nueva')
+  await expect(page.getByRole('button', { name: 'Volver atrás (abajo)' })).toBeAttached()
+})
+
+test('salón: en Factura rápida, arriba se puede vender una tarjeta de regalo', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/cobrar')
+  await page.getByRole('link', { name: /Vender tarjeta de regalo/ }).click()
+  await expect(page.getByRole('dialog', { name: 'Vender tarjeta de regalo' })).toBeVisible()
 })

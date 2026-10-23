@@ -1,4 +1,5 @@
 import { Children, isValidElement, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router'
 import { ChevronLeft, ChevronRight, Loader2, Plus, type LucideIcon } from 'lucide-react'
 import { useWords } from '../lib/trade'
@@ -206,6 +207,9 @@ export function BackButton({ to }: { to?: string }) {
     return () => io.disconnect()
   }, [])
   const goBack = () => (salon ? (canGoBack ? navigate(-1) : navigate(to ?? '/inicio')) : to ? navigate(to) : canGoBack ? navigate(-1) : navigate('/inicio'))
+  // Y otro al final de la pantalla, por si no lo ven arriba
+  const [bottom, setBottom] = useState<HTMLElement | null>(null)
+  useEffect(() => { setBottom(document.getElementById('back-bottom')) }, [])
   return (
     <>
       <button
@@ -222,6 +226,13 @@ export function BackButton({ to }: { to?: string }) {
           className="fixed left-3 z-20 inline-flex min-h-11 items-center gap-1 rounded-full bg-white/95 px-3 text-base font-bold text-navy-800 shadow-lg ring-1 ring-slate-200 backdrop-blur active:bg-navy-50">
           <ChevronLeft size={22} strokeWidth={2.5} /> Atrás
         </button>
+      )}
+      {bottom && createPortal(
+        <button type="button" onClick={goBack} aria-label="Volver atrás (abajo)"
+          className={`${CARD} mt-8 flex min-h-14 w-full items-center justify-center gap-1 text-lg font-bold text-navy-800 active:bg-navy-50`}>
+          <ChevronLeft size={24} strokeWidth={2.5} /> Volver atrás
+        </button>,
+        bottom,
       )}
     </>
   )

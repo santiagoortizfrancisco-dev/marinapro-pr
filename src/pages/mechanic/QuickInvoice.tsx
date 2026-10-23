@@ -1,7 +1,7 @@
 import { JOB_IDEAS, useWords } from '../../lib/trade'
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
-import { CheckCircle2, ExternalLink, Plus, Search, Ship, Trash2, UserPlus, X, Zap, Banknote } from 'lucide-react'
+import { Link, useNavigate } from 'react-router'
+import { CheckCircle2, ExternalLink, Gift, Plus, Search, Ship, Trash2, UserPlus, X, Zap, Banknote } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import { db } from '../../lib/db'
 import { addPayment } from '../../lib/money'
@@ -271,6 +271,11 @@ export default function QuickInvoice() {
     <>
       <BackTitle>Factura rápida</BackTitle>
       {draft.restored && <DraftBanner onReset={() => { draft.clear(); window.location.reload() }} />}
+      {tw.salon && (
+        <Link to="/mas/regalos?vender=1" className="mb-4 flex min-h-12 items-center justify-center gap-2 rounded-full bg-pink-50 text-base font-bold text-pink-700 ring-1 ring-pink-200 active:bg-pink-100">
+          <Gift size={20} /> Vender tarjeta de regalo
+        </Link>
+      )}
 
       {/* Como una factura de papel: cliente, líneas con su precio y el total */}
       <div className="overflow-hidden rounded-2xl bg-white shadow-[0_6px_24px_-14px_rgba(8,47,73,0.35)] ring-1 ring-slate-200">

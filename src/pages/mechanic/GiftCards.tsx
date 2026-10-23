@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { Banknote, CreditCard, Gift, Plus, Search, Smartphone, type LucideIcon } from 'lucide-react'
 import { WhatsAppIcon } from '../../components/BrandIcons'
 import { Sheet } from '../../components/Sheet'
@@ -50,7 +51,8 @@ export function GiftCardView({ card, business }: { card: GiftCard; business: str
  */
 export default function GiftCards() {
   const { session } = useAuth()
-  const [sellOpen, setSellOpen] = useState(() => { try { return Boolean(localStorage.getItem('draft:regalo')) } catch { return false } })
+  const [params] = useSearchParams()
+  const [sellOpen, setSellOpen] = useState(() => { if (params.get('vender') === '1') return true; try { return Boolean(localStorage.getItem('draft:regalo')) } catch { return false } })
   const [show, setShow] = useState<GiftCard | null>(null)
   const [search, setSearch] = useState('')
   const { data, loading, error, reload } = useLoad(async () => {
