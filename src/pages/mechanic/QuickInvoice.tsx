@@ -232,7 +232,7 @@ export default function QuickInvoice() {
         </div>
         <div className="mt-4 space-y-3">
           {tw.salon && left > 0.004 && (
-            <Button onClick={() => setCobrarOpen(true)} className="min-h-16 bg-emerald-600! text-xl! active:bg-emerald-700!"><Banknote size={24} /> Cobrar {formatMoney(left)} ahora</Button>
+            <Button onClick={() => setCobrarOpen(true)} className="min-h-16 bg-emerald-600! text-xl! active:bg-emerald-700!"><Banknote size={24} /> Pagar {formatMoney(left)} ahora</Button>
           )}
           {tw.salon && !done.phone && (
             <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-200">
@@ -255,7 +255,7 @@ export default function QuickInvoice() {
           <Button variant="secondary" onClick={() => navigate(`/trabajos/${done.woId}`)}>{tw.salon ? 'Abrir la cuenta (cambiar o borrar)' : 'Abrir el trabajo'}</Button>
           <Button variant="ghost" onClick={() => navigate(tw.salon ? '/' : '/trabajos')}>Listo</Button>
         </div>
-        <PaySheet open={cobrarOpen} withTip withGift balance={left} title="Cobrar" onClose={() => setCobrarOpen(false)}
+        <PaySheet open={cobrarOpen} withTip withGift balance={left} title="Pagar" onClose={() => setCobrarOpen(false)}
           onPay={async (method, amount, tip, giftCardId) => {
             await addPayment(done.woId, amount, method, tip, giftCardId)
             setCobrarOpen(false)
@@ -381,15 +381,27 @@ export default function QuickInvoice() {
 
       {error && <p role="alert" className="mt-4 rounded-xl bg-red-100 p-3 text-base font-semibold text-red-800">{error}</p>}
 
-      <div className="mt-4 space-y-3 pb-2">
-        <Button disabled={busy} onClick={() => createAll()}><Zap /> {busy ? 'Haciendo…' : 'Hacer factura'}</Button>
-        <Button disabled={busy} onClick={() => { const p = check(); if (p) setError(p); else setPayOpen(true) }} className="bg-emerald-700! active:bg-emerald-800!">
-          <CheckCircle2 /> Ya me pagó
-        </Button>
-      </div>
-      <p className="pb-4 text-center text-sm text-slate-500">¿Te dio una parte? Toca “Ya me pagó” y cambia la cantidad.</p>
+      {tw.salon ? (
+        <div className="mt-4 space-y-3 pb-2">
+          <Button disabled={busy} onClick={() => { const p = check(); if (p) setError(p); else setPayOpen(true) }} className="min-h-16 bg-emerald-600! text-xl! active:bg-emerald-700!">
+            <CheckCircle2 /> Pagar{totals.total > 0 ? ` ${formatMoney(totals.total)}` : ''}
+          </Button>
+          <Button variant="secondary" disabled={busy} onClick={() => createAll()}><Zap /> {busy ? 'Haciendo…' : 'Hacer factura (cobrar después)'}</Button>
+          <p className="pb-2 text-center text-sm text-slate-500">¿Te dio una parte? Toca “Pagar” y cambia la cantidad.</p>
+        </div>
+      ) : (
+        <>
+          <div className="mt-4 space-y-3 pb-2">
+            <Button disabled={busy} onClick={() => createAll()}><Zap /> {busy ? 'Haciendo…' : 'Hacer factura'}</Button>
+            <Button disabled={busy} onClick={() => { const p = check(); if (p) setError(p); else setPayOpen(true) }} className="bg-emerald-700! active:bg-emerald-800!">
+              <CheckCircle2 /> Ya me pagó
+            </Button>
+          </div>
+          <p className="pb-4 text-center text-sm text-slate-500">¿Te dio una parte? Toca “Ya me pagó” y cambia la cantidad.</p>
+        </>
+      )}
 
-      <PaySheet open={payOpen} withGift={tw.salon} balance={totals.total} title="¿Cuánto te pagó?" onClose={() => setPayOpen(false)} onPay={(method, amount, _tip, giftCardId) => createAll(amount, method, giftCardId)} />
+      <PaySheet open={payOpen} withGift={tw.salon} balance={totals.total} title={tw.salon ? 'Pagar' : '¿Cuánto te pagó?'} onClose={() => setPayOpen(false)} onPay={(method, amount, _tip, giftCardId) => createAll(amount, method, giftCardId)} />
     </>
   )
 }

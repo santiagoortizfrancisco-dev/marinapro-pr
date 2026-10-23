@@ -121,7 +121,7 @@ export default function PaySheet({ open, balance, title = 'Recibir pago', onClos
         )}
         {error && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}
         <Button disabled={busy} className="bg-emerald-700! active:bg-emerald-800!" onClick={save}>
-          <CheckCircle2 /> {busy ? 'Guardando…' : 'Guardar pago'}
+          <CheckCircle2 /> {busy ? 'Guardando…' : withGift ? 'Pagar' : 'Guardar pago'}
         </Button>
         <Button variant="ghost" onClick={onClose}>Cancelar</Button>
       </div>

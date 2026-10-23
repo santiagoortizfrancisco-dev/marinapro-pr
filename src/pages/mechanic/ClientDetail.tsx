@@ -82,7 +82,7 @@ export default function ClientDetail() {
                     </a>
                   ) : <span />}
                   <button onClick={() => setPaying(r)} className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-emerald-700 text-base font-bold text-white">
-                    <CheckCircle2 size={20} /> Ya me pagó
+                    <CheckCircle2 size={20} /> {w.salon ? 'Pagar' : 'Ya me pagó'}
                   </button>
                 </div>
               </div>
