@@ -103,6 +103,7 @@ export default function GiftCards() {
             <p className="text-center text-base text-slate-700">Le queda <b>{formatMoney(Number(show.balance))}</b> · vendida el {formatDate(show.sold_at)}</p>
             <a href={whatsappLink(show.phone ?? '', `🎁 ¡Tienes una tarjeta de regalo de ${formatMoney(Number(show.amount))} en ${data.business}!${show.recipient_name ? ` Para: ${show.recipient_name}.` : ''}${show.buyer_name ? ` De parte de: ${show.buyer_name}.` : ''} Tu código es ${show.code}. Enséñalo cuando vengas. 💅`)}
               target="_blank" rel="noreferrer" className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-lg font-bold text-white"><WhatsAppIcon size={24} /> Enviar por WhatsApp</a>
+            <FixCard key={show.id} card={show} onDone={(c) => { setShow(c); reload() }} />
             <Button variant="ghost" onClick={() => setShow(null)}>Listo</Button>
           </div>
         )}
@@ -187,5 +188,56 @@ function SellSheet({ open, business, onClose, onSold }: { open: boolean; busines
         </button>
       </div>
     </Sheet>
+  )
+}
+
+/** Por si hubo un error: cambiar para quién / de parte de / teléfono, o borrarla si todavía no se ha usado. */
+function FixCard({ card, onDone }: { card: GiftCard; onDone: (c: GiftCard | null) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [recipient, setRecipient] = useState(card.recipient_name ?? '')
+  const [buyer, setBuyer] = useState(card.buyer_name ?? '')
+  const [phone, setPhone] = useState(card.phone ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const used = Number(card.balance) < Number(card.amount)
+
+  async function save() {
+    setBusy(true)
+    const fields = { recipient_name: recipient.trim() || null, buyer_name: buyer.trim() || null, phone: phone.trim() || null }
+    const { error } = await db().from('gift_cards').update(fields).eq('id', card.id)
+    setBusy(false)
+    if (error) return setError('No se pudo guardar.')
+    setEditing(false)
+    onDone({ ...card, ...fields })
+  }
+
+  async function remove() {
+    if (used) return
+    if (!window.confirm(`¿Borrar la tarjeta ${card.code} de ${formatMoney(Number(card.amount))}? Esto no se puede deshacer.`)) return
+    setBusy(true)
+    const { error } = await db().from('gift_cards').delete().eq('id', card.id)
+    setBusy(false)
+    if (error) return setError('No se pudo borrar.')
+    onDone(null)
+  }
+
+  if (editing) {
+    return (
+      <div className="space-y-2 rounded-2xl bg-slate-50 p-3">
+        <Input aria-label="Para quién" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Para quién" />
+        <Input aria-label="De parte de" value={buyer} onChange={(e) => setBuyer(e.target.value)} placeholder="De parte de" />
+        <Input aria-label="Teléfono para enviarla" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp para enviarla" />
+        {error && <p role="alert" className="rounded-xl bg-red-100 p-2 font-semibold text-red-800">{error}</p>}
+        <Button disabled={busy} onClick={save} className="bg-pink-600! active:bg-pink-700!">Guardar cambios</Button>
+      </div>
+    )
+  }
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <button type="button" onClick={() => setEditing(true)} className="min-h-12 rounded-2xl bg-slate-100 text-base font-bold text-slate-700">Cambiar</button>
+      <button type="button" disabled={busy || used} onClick={remove} className="min-h-12 rounded-2xl bg-red-50 text-base font-bold text-red-700 disabled:opacity-50">Borrar tarjeta</button>
+      {used && <p className="col-span-2 text-center text-sm text-slate-500">Ya se usó para pagar, así que no se puede borrar.</p>}
+      {error && <p role="alert" className="col-span-2 rounded-xl bg-red-100 p-2 font-semibold text-red-800">{error}</p>}
+    </div>
   )
 }
