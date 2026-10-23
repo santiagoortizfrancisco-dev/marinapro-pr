@@ -462,7 +462,7 @@ test('directorio: el mecánico pide salir, el admin lo aprueba y abre; un dueño
   await page.getByLabel('Añadir pueblo').selectOption('Ceiba')
   await page.getByRole('button', { name: 'Motores' }).click()
   await page.getByRole('button', { name: 'Yamaha' }).click()
-  await page.getByRole('button', { name: 'Guardar' }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Más' })).toBeVisible()
   const m = (await state()).mechanics[0]
   expect(m).toMatchObject({ listed: true, approved: false, slug: 'jqr-boat-repair', public_services: ['engine'], public_brands: ['Yamaha'] })
@@ -527,7 +527,7 @@ test('directorio cerrado: el admin lo ve desde el app en la misma ventana y pued
   await page.getByRole('link', { name: /Mi perfil público/ }).click()
   await page.getByRole('switch', { name: /Quiero salir en el directorio/ }).click()
   await page.getByRole('button', { name: 'Motores' }).click()
-  await page.getByRole('button', { name: 'Guardar' }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await page.getByRole('link', { name: /Admin/ }).click()
   await page.getByRole('button', { name: 'Aprobar' }).click()
   await expect(page.getByText('Sale', { exact: true })).toBeVisible()
@@ -564,7 +564,7 @@ test('Admin: Quitar saca al mecánico del directorio', async ({ page }) => {
   await page.getByRole('link', { name: 'Más' }).click()
   await page.getByRole('link', { name: /Mi perfil público/ }).click()
   await page.getByRole('switch', { name: /Quiero salir en el directorio/ }).click()
-  await page.getByRole('button', { name: 'Guardar' }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await page.getByRole('link', { name: /Admin/ }).click()
   await page.getByRole('button', { name: 'Aprobar' }).click()
   await expect(page.getByText('Sale', { exact: true })).toBeVisible()
@@ -1140,7 +1140,7 @@ test('salón: el inicio tiene su estilo de belleza (sin baterías) y Factura rá
   await page.getByRole('button', { name: /Diseño especial/ }).click()
   await expect(page.getByLabel('Precio ($)')).toHaveValue('25')
   await page.getByLabel('Precio ($)').fill('30')
-  await page.getByRole('button', { name: 'Guardar' }).click()
+  await page.getByRole('button', { name: 'Guardar precio' }).click()
   await expect(page.getByRole('button', { name: /Diseño especial/ })).toContainText('$30.00')
   await expect(page.getByRole('button', { name: /^Cobrar \$/ })).toHaveText('Cobrar $23.45') // 30 + IVU − 10 de depósito
 
@@ -1162,7 +1162,7 @@ test('salón: citas por internet — prende su link, la clienta pide cita sola y
   await page.getByRole('textbox', { name: 'Link del salón' }).fill('glow-prueba')
   await page.getByRole('switch', { name: /Pedir depósito/ }).click()
   await page.getByLabel('Depósito ($)').fill('15')
-  await page.getByRole('button', { name: 'Guardar' }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await expect(page.getByText('Tu link está prendido:')).toBeVisible()
 
   // La clienta, sin cuenta, abre el link
@@ -1439,4 +1439,33 @@ test('salón: la factura rápida y "Recibir pago" también se pagan con tarjeta 
   await sheet.getByRole('button', { name: 'Guardar pago' }).click()
   await expect(page.getByText('Pagada ✓')).toBeVisible()
   await expect.poll(async () => (await state()).gift_cards.find((c) => c.id === card.id)!.balance).toBeLessThan(50)
+})
+
+test('salón: la cita va por pasos y cada cosa se puede borrar (depósito, factura)', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/citas/nueva')
+  await page.getByRole('button', { name: /Clienta nueva/ }).click()
+  await page.getByPlaceholder('Nombre *').fill('Pasos Prueba')
+  await page.getByRole('button', { name: 'Guardar cita' }).click()
+  for (const t of ['Confirmar la cita', 'Depósito', 'La cuenta', 'Cobrar', 'Enviarle el recibo', '¿Cuándo vuelve?']) {
+    await expect(page.getByRole('heading', { name: t, exact: false }).first()).toBeVisible()
+  }
+  // Depósito y borrarlo
+  await page.getByRole('button', { name: 'Cobrar depósito' }).click()
+  await page.getByRole('button', { name: '$10', exact: true }).click()
+  await page.getByRole('radio', { name: /Efectivo/ }).click()
+  await page.getByRole('button', { name: 'Guardar depósito $10.00' }).click()
+  page.on('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: /Borrar depósito de \$10.00/ }).click()
+  await expect(page.getByRole('button', { name: /Borrar depósito/ })).toHaveCount(0)
+  // Factura para después y borrarla
+  await page.getByRole('button', { name: 'Añadir servicio' }).click()
+  await page.getByLabel('Nombre del servicio').fill('Pedicura')
+  await page.getByLabel('Precio', { exact: true }).fill('20')
+  await page.getByRole('button', { name: 'Añadir', exact: true }).click()
+  await page.getByRole('button', { name: 'Hacer factura y cobrar después' }).click()
+  await page.getByRole('button', { name: 'Borrar factura' }).click()
+  await expect(page.getByRole('button', { name: 'Hacer factura y cobrar después' })).toBeVisible()
 })

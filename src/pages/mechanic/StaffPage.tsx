@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Pencil, Plus, Users } from 'lucide-react'
+import { Pencil, Plus, Trash2, Users } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import { Sheet } from '../../components/Sheet'
 import { BackTitle, Button, CARD, EmptyState, Field, Input, Loading } from '../../components/ui'
@@ -165,6 +165,17 @@ export default function StaffPage() {
             {error && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}
             <Button disabled={busy} onClick={save}>{busy ? 'Guardando…' : 'Guardar'}</Button>
             <Button variant="ghost" onClick={() => setEdit(null)}>Cancelar</Button>
+            {edit.id && (
+              <Button variant="ghost" disabled={busy} className="text-red-700!" onClick={async () => {
+                if (!window.confirm(`¿Borrar a ${edit.name}? Sus citas se quedan, pero sin empleada. Si ya no trabaja aquí, mejor marca “Ya no trabaja aquí”.`)) return
+                setBusy(true)
+                const { error } = await db().from('staff').delete().eq('id', edit.id!)
+                setBusy(false)
+                if (error) return setError('No se pudo borrar. Intenta otra vez.')
+                setEdit(null)
+                reload()
+              }}><Trash2 size={20} /> Borrar empleada</Button>
+            )}
           </div>
         )}
       </Sheet>

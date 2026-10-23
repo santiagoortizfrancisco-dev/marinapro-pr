@@ -34,12 +34,24 @@ export default function More() {
     <>
       <PageTitle>Más</PageTitle>
 
+      {profile?.role === 'mechanic' && words.salon && <h2 className="mb-2 mt-5 px-1 text-sm font-extrabold uppercase tracking-wider text-pink-700">Tu salón, en este orden</h2>}
       {profile?.role === 'mechanic' && (
         <Link to="/mas/negocio" className="mb-3 flex min-h-16 items-center gap-3 rounded-2xl bg-navy-800 px-3 py-2 text-white shadow-lg shadow-navy-900/20 transition active:scale-[0.99]">
           <IconBadge icon={Briefcase} tone="teal" />
           <span className="flex-1">
             <span className="block text-lg font-bold">Mi negocio</span>
             <span className="block text-sm text-navy-100">{words.salon ? "ATH Móvil, IVU, facturas y políticas" : "ATH Móvil, tarifa, IVU, facturas y garantía"}</span>
+          </span>
+          <ChevronRight />
+        </Link>
+      )}
+
+      {profile?.role === 'mechanic' && words.salon && (
+        <Link to="/mas/empleadas" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+          <IconBadge icon={Users} tone="violet" />
+          <span className="flex-1">
+            <span className="block text-lg font-bold">Empleadas y comisiones</span>
+            <span className="block text-sm text-slate-600">Su agenda, su comisión y sus propinas</span>
           </span>
           <ChevronRight />
         </Link>
@@ -57,17 +69,6 @@ export default function More() {
       )}
 
       {profile?.role === 'mechanic' && words.salon && (
-        <Link to="/mas/empleadas" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
-          <IconBadge icon={Users} tone="violet" />
-          <span className="flex-1">
-            <span className="block text-lg font-bold">Empleadas y comisiones</span>
-            <span className="block text-sm text-slate-600">Su agenda, su comisión y sus propinas</span>
-          </span>
-          <ChevronRight />
-        </Link>
-      )}
-
-      {profile?.role === 'mechanic' && words.salon && (
         <>
           <Link to="/mas/reservas" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
             <IconBadge icon={CalendarHeart} tone="blue" />
@@ -77,6 +78,7 @@ export default function More() {
             </span>
             <ChevronRight />
           </Link>
+          {profile?.role === 'mechanic' && words.salon && <h2 className="mb-2 mt-5 px-1 text-sm font-extrabold uppercase tracking-wider text-pink-700">Para vender</h2>}
           <Link to="/mas/regalos" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
             <IconBadge icon={Gift} tone="blue" />
             <span className="flex-1">
@@ -88,6 +90,7 @@ export default function More() {
         </>
       )}
 
+      {profile?.role === 'mechanic' && words.salon && <h2 className="mb-2 mt-5 px-1 text-sm font-extrabold uppercase tracking-wider text-pink-700">Tu cuenta</h2>}
       {profile?.role === 'mechanic' && !session?.user.is_anonymous && !words.salon && (
         <Link to="/mas/perfil-publico" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
           <IconBadge icon={Globe} tone="blue" />

@@ -57,8 +57,8 @@ export default function NextService({ boatId, workOrderId, defaultService, onSav
   }
 
   return (
-    <section className="rounded-2xl border-2 border-sun-500 bg-sun-400/10 p-4">
-      <h3 className="mb-3 flex items-center gap-2 text-lg font-extrabold text-navy-900"><CalendarClock size={22} /> {w.salon && title === '¿Cuándo le toca el próximo servicio?' ? '¿Cuándo vuelve?' : title}</h3>
+    <section className={title ? 'rounded-2xl border-2 border-sun-500 bg-sun-400/10 p-4' : ''}>
+      {title && <h3 className="mb-3 flex items-center gap-2 text-lg font-extrabold text-navy-900"><CalendarClock size={22} /> {w.salon && title === '¿Cuándo le toca el próximo servicio?' ? '¿Cuándo vuelve?' : title}</h3>}
       <div className="space-y-3">
         <Field label="¿Qué le toca?">
           <Input value={service} onChange={(e) => setService(e.target.value)} placeholder={JOB_IDEAS[w.trade][0]} />

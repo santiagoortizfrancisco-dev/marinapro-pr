@@ -204,29 +204,46 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
     reload()
   }
 
+  const confirmed = a.status === 'confirmed' || a.status === 'done'
+  const methodLabel = (x: Payment) => ((x as Payment & { gift_card_id?: string | null }).gift_card_id ? 'Tarjeta de regalo' : METHODS.find((m) => m.value === x.method)?.label ?? 'Cheque')
+
+  /** Confirmar por WhatsApp: si no tiene teléfono, se lo pide y lo guarda. */
+  async function confirmWhatsApp() {
+    if (c.phone) { window.open(whatsappLink(c.phone, confirmMsg), '_blank'); return }
+    const phone = window.prompt(`¿Cuál es el teléfono (WhatsApp) de ${firstName}?`)?.trim()
+    if (!phone || phone.replace(/\D/g, '').length < 7) return
+    const win = window.open('', '_blank')
+    await db().from('clients').update({ phone }).eq('id', c.id)
+    if (win) win.location.href = whatsappLink(phone, confirmMsg)
+    else window.location.href = whatsappLink(phone, confirmMsg)
+  }
+
+  async function removePayment(x: Payment) {
+    if (!window.confirm(`¿Borrar el depósito de ${formatMoney(Number(x.amount))}?`)) return
+    setBusy(true)
+    await db().from('payments').delete().eq('id', x.id)
+    setBusy(false)
+    reload()
+  }
+
+  async function removeInvoice() {
+    if (!invoice || !window.confirm(`¿Borrar la factura #${invoice.number}? Los servicios se quedan; solo se quita la factura.`)) return
+    setBusy(true)
+    await db().from('invoices').delete().eq('id', invoice.id)
+    await db().from('work_orders').update({ status: 'in_progress' }).eq('id', woId)
+    setBusy(false)
+    reload()
+  }
+
+  async function removeNext() {
+    if (!window.confirm('¿Borrar el recordatorio de cuándo vuelve?')) return
+    await db().from('maintenance_schedules').delete().eq('work_order_id', woId)
+    reload()
+  }
+
   return (
     <>
-      {a.status === 'requested' && (
-        <section className="mb-3 rounded-3xl bg-amber-50 p-4 ring-1 ring-amber-200">
-          <p className="flex items-center gap-2 text-lg font-extrabold text-amber-900"><Globe size={22} /> {(a as unknown as { source?: string }).source === 'online' ? 'La pidió por internet' : 'Cita pedida'}</p>
-          <p className="mt-1 text-base text-amber-900">Todavía no está confirmada. Confírmale para que sepa que la esperas.</p>
-          <button type="button" onClick={() => { onActivate(); if (c.phone) window.open(whatsappLink(c.phone, confirmMsg), '_blank') }}
-            className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-lg font-extrabold text-white active:bg-emerald-700">
-            <Check /> Confirmar cita{c.phone ? ' por WhatsApp' : ''}
-          </button>
-          {/* No hay espacio a esa hora: se deniega y se le ofrece otra */}
-          <button type="button" onClick={() => {
-            if (!window.confirm('¿Denegar esta cita? Queda cancelada.')) return
-            onDeny()
-            if (c.phone) window.open(whatsappLink(c.phone, `Hola ${firstName}, lo siento, no tengo espacio el ${formatLongDate(a.starts_at).toLowerCase()} a las ${formatTime(a.starts_at)}. ¿Te funciona otro día u hora? 💅 ${sign}`.trim()), '_blank')
-          }}
-            className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white text-base font-bold text-red-700 ring-2 ring-red-200 active:bg-red-50">
-            <XCircle size={20} /> No puedo esa hora (denegar)
-          </button>
-        </section>
-      )}
-
-      {/* La cita */}
+      {/* La clienta y la cita */}
       <section className="rounded-3xl bg-white p-4 shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100">
         <div className="flex items-center gap-3">
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-pink-600 text-2xl font-extrabold text-white">{initial(c.full_name)}</span>
@@ -246,17 +263,6 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
           {a.notes && <p className="mt-2 whitespace-pre-line text-base text-slate-700">{a.notes}</p>}
         </div>
         <div className="mt-3 flex">
-          {c.phone ? <Action label="Confirmar" href={whatsappLink(c.phone, confirmMsg)} external icon={<WhatsAppIcon size={26} />} tone="bg-[#25D366] text-white" /> : (
-            // Sin teléfono: se lo pide, lo guarda en la clienta y abre WhatsApp
-            <Action label="Confirmar" icon={<WhatsAppIcon size={26} />} tone="bg-[#25D366] text-white" onClick={async () => {
-              const phone = window.prompt(`¿Cuál es el teléfono (WhatsApp) de ${firstName}?`)?.trim()
-              if (!phone || phone.replace(/\D/g, '').length < 7) return
-              const win = window.open('', '_blank')
-              await db().from('clients').update({ phone }).eq('id', c.id)
-              if (win) win.location.href = whatsappLink(phone, confirmMsg)
-              else window.location.href = whatsappLink(phone, confirmMsg)
-            }} />
-          )}
           {c.phone && <Action label="Llamar" href={telLink(c.phone)} icon={<Phone size={24} />} tone="bg-sky-100 text-sky-700" />}
           <Action label="Mover" onClick={onEdit} icon={<CalendarClock size={24} />} tone="bg-pink-100 text-pink-700" />
           {a.status === 'cancelled'
@@ -265,17 +271,70 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
         </div>
       </section>
 
-      {/* La cuenta, como un recibo */}
-      <section className="mt-5">
-        <h2 className="mb-2 px-1 text-2xl font-extrabold text-slate-900">La cuenta</h2>
-        <div className="overflow-hidden rounded-3xl bg-white shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100">
+      {/* 1 · Confirmar */}
+      <Step n={1} title="Confirmar la cita" ok={confirmed}>
+        {a.status === 'requested' ? (
+          <>
+            <p className="flex items-center gap-2 text-base font-bold text-amber-900"><Globe size={20} /> {(a as unknown as { source?: string }).source === 'online' ? 'La pidió por internet. ' : ''}Todavía no está confirmada.</p>
+            <button type="button" onClick={() => { onActivate(); if (c.phone) window.open(whatsappLink(c.phone, confirmMsg), '_blank') }}
+              className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-lg font-extrabold text-white active:bg-emerald-700">
+              <Check /> Confirmar cita{c.phone ? ' por WhatsApp' : ''}
+            </button>
+            {/* No hay espacio a esa hora: se deniega y se le ofrece otra */}
+            <button type="button" onClick={() => {
+              if (!window.confirm('¿Denegar esta cita? Queda cancelada.')) return
+              onDeny()
+              if (c.phone) window.open(whatsappLink(c.phone, `Hola ${firstName}, lo siento, no tengo espacio el ${formatLongDate(a.starts_at).toLowerCase()} a las ${formatTime(a.starts_at)}. ¿Te funciona otro día u hora? 💅 ${sign}`.trim()), '_blank')
+            }}
+              className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white text-base font-bold text-red-700 ring-2 ring-red-200 active:bg-red-50">
+              <XCircle size={20} /> No puedo esa hora (denegar)
+            </button>
+          </>
+        ) : a.status === 'cancelled' ? (
+          <p className="text-base font-bold text-red-700">Esta cita está cancelada. Si fue un error, toca “Activar” arriba.</p>
+        ) : (
+          <button type="button" onClick={confirmWhatsApp}
+            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-lg font-bold text-white">
+            <WhatsAppIcon size={24} /> Confirmar por WhatsApp
+          </button>
+        )}
+      </Step>
+
+      {/* 2 · Depósito */}
+      <Step n={2} title="Depósito" hint="opcional" ok={payments.length > 0}>
+        {payments.length === 0 && <p className="text-base text-slate-500">{done ? 'No dejó depósito.' : 'Si te deja algo para separar la cita, anótalo aquí.'}</p>}
+        {payments.length > 0 && (
+          <ul className="divide-y divide-slate-100">
+            {payments.map((x) => (
+              <li key={x.id} className="flex min-h-12 items-center gap-2">
+                <span className="min-w-0 flex-1 text-base text-slate-800">{formatDate(x.paid_at).slice(0, 5)} · {methodLabel(x)}</span>
+                <span className="text-base font-bold text-emerald-700">{formatMoney(Number(x.amount))}</span>
+                {!done && (
+                  <button type="button" disabled={busy} onClick={() => removePayment(x)} aria-label={`Borrar depósito de ${formatMoney(Number(x.amount))}`}
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-red-600 active:bg-red-50"><Trash2 size={20} /></button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {!done && (
+          <button type="button" disabled={busy} onClick={() => setDepositOpen(true)}
+            className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-pink-700 ring-2 ring-pink-300 active:bg-pink-50">
+            <Banknote size={22} /> Cobrar depósito
+          </button>
+        )}
+      </Step>
+
+      {/* 3 · La cuenta, como un recibo */}
+      <Step n={3} title="La cuenta" ok={parts.length > 0 && !unpriced}>
+        <div className="-mx-4 overflow-hidden border-y border-pink-100">
           <div className="divide-y divide-dashed divide-slate-200 px-4">
             {parts.length === 0 && <p className="py-4 text-base text-slate-500">Todavía no hay servicios. Toca “Añadir servicio”.</p>}
-            {parts.map((p) => (
-              <button key={p.id} type="button" disabled={done} onClick={() => setEdit(p)} className="flex min-h-14 w-full items-center gap-3 py-2 text-left">
-                <span className="min-w-0 flex-1 text-base font-bold text-slate-900">{p.description}</span>
-                {Number(p.unit_cost) > 0
-                  ? <span className="shrink-0 text-lg font-bold text-slate-900">{formatMoney(Number(p.qty) * Number(p.unit_cost))}</span>
+            {parts.map((x) => (
+              <button key={x.id} type="button" disabled={done} onClick={() => setEdit(x)} className="flex min-h-14 w-full items-center gap-3 py-2 text-left">
+                <span className="min-w-0 flex-1 text-base font-bold text-slate-900">{x.description}</span>
+                {Number(x.unit_cost) > 0
+                  ? <span className="shrink-0 text-lg font-bold text-slate-900">{formatMoney(Number(x.qty) * Number(x.unit_cost))}</span>
                   : <span className="shrink-0 rounded-full bg-pink-50 px-3 py-1 text-sm font-bold text-pink-700">Poner precio</span>}
               </button>
             ))}
@@ -300,9 +359,9 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
               )}
               <span>{formatMoney(totals.ivu)}</span>
             </div>
-            {payments.length > 0 && !done && payments.map((p) => (
-              <div key={p.id} className="flex justify-between py-1 text-base text-emerald-700">
-                <span>Depósito {formatDate(p.paid_at).slice(0, 5)}</span><span>−{formatMoney(Number(p.amount))}</span>
+            {payments.length > 0 && !done && payments.map((x) => (
+              <div key={x.id} className="flex justify-between py-1 text-base text-emerald-700">
+                <span>Depósito {formatDate(x.paid_at).slice(0, 5)}</span><span>−{formatMoney(Number(x.amount))}</span>
               </div>
             ))}
             <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-2">
@@ -311,85 +370,96 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
             </div>
           </div>
         </div>
+        {!done && parts.length > 0 && <p className="mt-2 text-sm text-slate-500">Toca un servicio para cambiarle el precio o quitarlo.</p>}
+      </Step>
 
+      {/* 4 · Cobrar */}
+      <Step n={4} title="Cobrar" ok={done}>
         {!done ? (
-          <button type="button" disabled={busy || (balance <= 0 && !unpriced)} onClick={() => (unpriced ? setEdit(unpriced) : setPayOpen(true))}
-            className="mt-4 flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-xl font-extrabold text-white shadow-lg shadow-emerald-900/20 active:bg-emerald-700 disabled:bg-slate-300 disabled:shadow-none">
-            {unpriced ? <>Ponle precio a “{unpriced.description}”</> : balance > 0 ? <>Cobrar {formatMoney(balance)}</> : 'Añade lo que vas a cobrar'}
-          </button>
-        ) : null}
-        {!done && invoice && (
-          <div className="mt-3 space-y-2 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
-            <p className="text-base font-bold text-amber-900">Factura #{invoice.number} hecha · pendiente de cobrar</p>
-            {c.phone && (
-              <a href={whatsappLink(c.phone, `Hola ${firstName}, aquí está tu factura #${invoice.number} por ${formatMoney(Number(invoice.total))}: ${window.location.origin}/d/${invoice.public_token} . ${sign}`.trim())} target="_blank" rel="noreferrer"
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] text-base font-bold text-white"><WhatsAppIcon size={22} /> Enviar factura por WhatsApp</a>
+          <>
+            <button type="button" disabled={busy || (balance <= 0 && !unpriced)} onClick={() => (unpriced ? setEdit(unpriced) : setPayOpen(true))}
+              className="flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-xl font-extrabold text-white shadow-lg shadow-emerald-900/20 active:bg-emerald-700 disabled:bg-slate-300 disabled:shadow-none">
+              {unpriced ? <>Ponle precio a “{unpriced.description}”</> : balance > 0 ? <>Cobrar {formatMoney(balance)}</> : 'Añade lo que vas a cobrar'}
+            </button>
+            {invoice ? (
+              <div className="mt-3 space-y-2 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
+                <p className="text-base font-bold text-amber-900">Factura #{invoice.number} hecha · pendiente de cobrar</p>
+                {c.phone && (
+                  <a href={whatsappLink(c.phone, `Hola ${firstName}, aquí está tu factura #${invoice.number} por ${formatMoney(Number(invoice.total))}: ${window.location.origin}/d/${invoice.public_token} . ${sign}`.trim())} target="_blank" rel="noreferrer"
+                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] text-base font-bold text-white"><WhatsAppIcon size={22} /> Enviar factura por WhatsApp</a>
+                )}
+                <Link to={`/d/${invoice.public_token}`} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-base font-bold text-slate-800 ring-1 ring-slate-200"><ExternalLink size={18} /> Ver factura o PDF</Link>
+                {payments.length === 0 && (
+                  <button type="button" disabled={busy} onClick={removeInvoice} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-bold text-red-700 active:bg-red-50">
+                    <Trash2 size={18} /> Borrar factura
+                  </button>
+                )}
+              </div>
+            ) : !unpriced && totals.total > 0 && (
+              <button type="button" disabled={busy} onClick={invoiceLater}
+                className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-slate-700 ring-2 ring-slate-200 active:bg-slate-50">
+                <Receipt size={22} /> Hacer factura y cobrar después
+              </button>
             )}
-            <Link to={`/d/${invoice.public_token}`} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-base font-bold text-slate-800 ring-1 ring-slate-200"><ExternalLink size={18} /> Ver factura o PDF</Link>
-          </div>
-        )}
-        {!done && !invoice && !unpriced && totals.total > 0 && (
-          <button type="button" disabled={busy} onClick={invoiceLater}
-            className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-slate-700 ring-2 ring-slate-200 active:bg-slate-50">
-            <Receipt size={22} /> Hacer factura y cobrar después
-          </button>
-        )}
-        {!done && (
-          <button type="button" disabled={busy} onClick={() => setDepositOpen(true)}
-            className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-pink-700 ring-2 ring-pink-300 active:bg-pink-50">
-            <Banknote size={22} /> Cobrar depósito
-          </button>
-        )}
-        {done && (
-          <div className="mt-4 space-y-3">
-            <div className="rounded-3xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
+          </>
+        ) : (
+          <>
+            <div className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
               <p className="flex items-center gap-2 text-xl font-extrabold text-emerald-800"><CheckCircle2 /> Pagada el {formatDate(invoice?.paid_at ?? payments.at(-1)?.paid_at ?? wo.created_at)}</p>
               <p className="mt-1 text-base text-emerald-900">
-                {formatMoney(paid)}{payments.length ? ` · ${payments.map((p) => ((p as Payment & { gift_card_id?: string | null }).gift_card_id ? 'Tarjeta de regalo' : METHODS.find((m) => m.value === p.method)?.label ?? 'Cheque')).filter((v, i, arr) => arr.indexOf(v) === i).join(' y ')}` : ''}
+                {formatMoney(paid)}{payments.length ? ` · ${payments.map(methodLabel).filter((v, i, arr) => arr.indexOf(v) === i).join(' y ')}` : ''}
                 {tips > 0 && <> · propina {formatMoney(tips)}</>}
               </p>
             </div>
-            {invoice && c.phone && (
+            <button type="button" disabled={busy} onClick={unmarkPaid} className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-bold text-red-700 active:bg-red-50">
+              <Trash2 size={18} /> Deshacer el pago
+            </button>
+          </>
+        )}
+      </Step>
+
+      {/* 5 · Recibo */}
+      <Step n={5} title="Enviarle el recibo" ok={done && Boolean(invoice)}>
+        {done && invoice ? (
+          <div className="space-y-2">
+            {c.phone && (
               <a href={whatsappLink(c.phone, receiptMsg)} target="_blank" rel="noreferrer" className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-lg font-bold text-white">
                 <WhatsAppIcon size={24} /> Enviar recibo por WhatsApp
               </a>
             )}
-            {invoice && (
-              <Link to={`/d/${invoice.public_token}`} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-slate-800 ring-2 ring-slate-200">
-                <ExternalLink size={20} /> Ver recibo o PDF
-              </Link>
-            )}
+            <Link to={`/d/${invoice.public_token}`} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-slate-800 ring-2 ring-slate-200">
+              <ExternalLink size={20} /> Ver recibo o PDF
+            </Link>
           </div>
-        )}
-      </section>
+        ) : <p className="text-base text-slate-500">Cuando cobres, aquí le envías el recibo.</p>}
+      </Step>
 
-      {/* Lo opcional: cuándo vuelve y fotos */}
-      <section className="mt-5 divide-y divide-slate-100 overflow-hidden rounded-3xl bg-white ring-1 ring-pink-100">
-        {done && (data.next ? (
-          <div className="flex min-h-14 items-center gap-3 px-4 py-2">
-            <CalendarClock size={22} className="shrink-0 text-pink-700" />
-            <span className="min-w-0 flex-1"><span className="block text-base font-bold text-slate-900">Vuelve</span><span className="block text-sm text-slate-600">{data.next.service_type} · {formatDate(data.next.due_date)}</span></span>
-          </div>
-        ) : (
-          <details className="group" open>
-            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 text-base font-bold text-slate-900">
-              <CalendarClock size={22} className="text-pink-700" /> <span className="flex-1">¿Cuándo vuelve?</span> <ChevronDown size={20} className="text-slate-400 transition group-open:rotate-180" />
-            </summary>
-            <div className="px-4 pb-4">
-              <NextService boatId={a.boats.id} workOrderId={woId} defaultService={parts[0]?.description ?? 'Su próxima cita'} onSaved={reload} />
+      {/* 6 · Cuándo vuelve */}
+      <Step n={6} title="¿Cuándo vuelve?" ok={Boolean(data.next)}>
+        {data.next ? (
+          <>
+            <div className="flex min-h-12 items-center gap-2">
+              <CalendarClock size={22} className="shrink-0 text-pink-700" />
+              <span className="min-w-0 flex-1 text-base text-slate-800"><b>{data.next.service_type}</b> · {formatDate(data.next.due_date)}</span>
+              <button type="button" onClick={removeNext} aria-label="Borrar cuándo vuelve" className="flex h-11 w-11 items-center justify-center rounded-full text-red-600 active:bg-red-50"><Trash2 size={20} /></button>
             </div>
-          </details>
-        ))}
-        <details className="group">
-          <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 text-base font-bold text-slate-900">
-            <Camera size={22} className="text-pink-700" /> <span className="flex-1">Fotos {photos.length ? `(${photos.length})` : ''}</span>
-            <span className="text-sm font-semibold text-slate-400">opcional</span> <ChevronDown size={20} className="text-slate-400 transition group-open:rotate-180" />
-          </summary>
-          <div className="px-4 pb-4"><PhotoSection workOrderId={woId} photos={photos} onChange={reload} only={['before', 'after']} /></div>
-        </details>
-      </section>
+            <Link to={`/citas/nueva?clienta=${c.id}`} className="mt-2 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-pink-600 text-lg font-bold text-white active:bg-pink-700">
+              <Plus size={22} /> Hacerle la próxima cita
+            </Link>
+          </>
+        ) : (
+          <NextService boatId={a.boats.id} workOrderId={woId} defaultService={parts[0]?.description ?? 'Su próxima cita'} onSaved={reload} title="" />
+        )}
+      </Step>
 
-      {done && <Button variant="ghost" disabled={busy} onClick={unmarkPaid} className="mt-3">Desmarcar pagada</Button>}
+      {/* Fotos: opcional */}
+      <details className="group mt-4 overflow-hidden rounded-3xl bg-white ring-1 ring-pink-100">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 text-base font-bold text-slate-900">
+          <Camera size={22} className="text-pink-700" /> <span className="flex-1">Fotos antes y después {photos.length ? `(${photos.length})` : ''}</span>
+          <span className="text-sm font-semibold text-slate-400">opcional</span> <ChevronDown size={20} className="text-slate-400 transition group-open:rotate-180" />
+        </summary>
+        <div className="px-4 pb-4"><PhotoSection workOrderId={woId} photos={photos} onChange={reload} only={['before', 'after']} /></div>
+      </details>
 
       <DepositSheet open={depositOpen} hasAth={Boolean(mech.ath_movil_number)} onClose={() => setDepositOpen(false)}
         onSave={async (method, amount) => { await addPayment(woId, amount, method, 0); setDepositOpen(false); reload() }} />
@@ -397,6 +467,20 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
       <AddServiceSheet open={addOpen} menu={menu} busy={busy} onClose={() => setAddOpen(false)} onAdd={addLine} />
       <LineSheet part={edit} busy={busy} onClose={() => setEdit(null)} onSave={saveLine} onRemove={removeLine} />
     </>
+  )
+}
+
+/** Un paso de la visita: número (o ✓ si ya se hizo), título y lo que se hace ahí. */
+function Step({ n, title, hint, ok, children }: { n: number; title: string; hint?: string; ok: boolean; children: React.ReactNode }) {
+  return (
+    <section className="mt-4 rounded-3xl bg-white p-4 shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100">
+      <h2 className="mb-3 flex items-center gap-3 text-xl font-extrabold text-slate-900">
+        <span aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base font-extrabold text-white ${ok ? 'bg-emerald-600' : 'bg-pink-600'}`}>{ok ? <Check size={20} /> : n}</span>
+        <span className="flex-1">{title}</span>
+        {hint && <span className="text-sm font-semibold text-slate-400">{hint}</span>}
+      </h2>
+      {children}
+    </section>
   )
 }
 
