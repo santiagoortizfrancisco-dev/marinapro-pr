@@ -1361,3 +1361,57 @@ test('tarjetas de regalo: si hubo un error, se cambia el nombre o se borra (si n
   await expect(sheet).toHaveCount(0)
   expect((await state()).gift_cards.some((c) => c.recipient_name === 'María Correcta')).toBe(false)
 })
+
+test('salón: una cita pedida se puede denegar (le avisa por WhatsApp) y una confirmada se cancela avisándole', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/citas/nueva')
+  await page.getByLabel('Buscar clienta').fill('Ana')
+  await page.getByRole('button', { name: /Ana Martínez/ }).first().click()
+  await page.getByRole('button', { name: 'Guardar cita' }).click()
+  await expect(page.getByRole('heading', { name: 'La cuenta' })).toBeVisible()
+  const id = new URL(page.url()).pathname.split('/').pop()!
+
+  // Confirmada por error: Cancelar y avisarle por WhatsApp
+  await page.getByRole('button', { name: 'Cancelar' }).click()
+  let popup = page.waitForEvent('popup')
+  await page.getByRole('button', { name: /Sí, cancelar y avisarle por WhatsApp/ }).click()
+  let wa = await popup
+  await expect.poll(() => decodeURIComponent(wa.url().replace(/\+/g, ' '))).toContain('quedó cancelada')
+  await wa.close()
+  await expect.poll(async () => (await state()).appointments.find((a) => a.id === id)?.status).toBe('cancelled')
+
+  // Pedida (por internet): Denegar
+  await page.request.patch(`http://localhost:54321/rest/v1/appointments?id=eq.${id}`, { data: { status: 'requested', source: 'online' } })
+  await page.reload()
+  await expect(page.getByText('La pidió por internet')).toBeVisible()
+  page.once('dialog', (d) => d.accept())
+  popup = page.waitForEvent('popup')
+  await page.getByRole('button', { name: /No puedo esa hora/ }).click()
+  wa = await popup
+  await expect.poll(() => decodeURIComponent(wa.url().replace(/\+/g, ' '))).toContain('no tengo espacio')
+  await wa.close()
+  await expect.poll(async () => (await state()).appointments.find((a) => a.id === id)?.status).toBe('cancelled')
+})
+
+test('tarjeta de regalo: el link de la clienta la enseña en grande (con confeti) y el mensaje lleva el link', async ({ page, browser }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/mas/regalos')
+  await page.getByRole('button', { name: /Vender tarjeta de regalo/ }).click()
+  await page.getByRole('button', { name: '$50', exact: true }).click()
+  await page.getByLabel('Para quién').fill('Mamá Linda')
+  await page.getByRole('button', { name: 'Vender tarjeta de $50.00' }).click()
+  const card = (await state()).gift_cards.at(-1)!
+  await expect(page.getByRole('button', { name: /Enviar tarjeta \(imagen\)/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Enviar por WhatsApp/ })).toHaveAttribute('href', new RegExp(`regalo%2F${card.id}`))
+
+  const c = await browser.newPage()
+  await c.goto(`http://localhost:4321/regalo/${card.id}`)
+  await expect(c.getByRole('heading', { name: /Mamá, tienes un regalo/ })).toBeVisible()
+  await expect(c.getByLabel(`Tarjeta ${card.code}`)).toContainText('$50.00')
+  await expect(c.locator('canvas')).toHaveCount(1)
+  await c.close()
+})

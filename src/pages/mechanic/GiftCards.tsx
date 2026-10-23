@@ -7,6 +7,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { db } from '../../lib/db'
 import { formatDate, formatMoney } from '../../lib/format'
 import { whatsappLink } from '../../lib/links'
+import { shareAsImage } from '../../lib/shareImage'
 import { must, num, useLoad } from '../../lib/useLoad'
 
 export interface GiftCard {
@@ -99,10 +100,20 @@ export default function GiftCards() {
       <Sheet open={Boolean(show)} title="Tarjeta de regalo" onClose={() => setShow(null)}>
         {show && (
           <div className="space-y-3">
-            <GiftCardView card={show} business={data.business} />
+            <div id="tarjeta-regalo"><GiftCardView card={show} business={data.business} /></div>
             <p className="text-center text-base text-slate-700">Le queda <b>{formatMoney(Number(show.balance))}</b> · vendida el {formatDate(show.sold_at)}</p>
-            <a href={whatsappLink(show.phone ?? '', `🎁 ¡Tienes una tarjeta de regalo de ${formatMoney(Number(show.amount))} en ${data.business}!${show.recipient_name ? ` Para: ${show.recipient_name}.` : ''}${show.buyer_name ? ` De parte de: ${show.buyer_name}.` : ''} Tu código es ${show.code}. Enséñalo cuando vengas. 💅`)}
-              target="_blank" rel="noreferrer" className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-lg font-bold text-white"><WhatsAppIcon size={24} /> Enviar por WhatsApp</a>
+            {(() => {
+              // El mensaje lleva el link donde la tarjeta se ve en grande, con confeti
+              const msg = `🎁 ¡Tienes una tarjeta de regalo de ${formatMoney(Number(show.amount))} en ${data.business}!${show.recipient_name ? ` Para: ${show.recipient_name}.` : ''}${show.buyer_name ? ` De parte de: ${show.buyer_name}.` : ''} Tu código es ${show.code}. Ábrela aquí: ${window.location.origin}/regalo/${show.id} 💅`
+              return (
+                <>
+                  <button type="button" onClick={() => { const el = document.getElementById('tarjeta-regalo'); if (el) shareAsImage(el, `tarjeta-regalo-${show.code}.png`, msg).catch(() => undefined) }}
+                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-pink-600 text-lg font-bold text-white active:bg-pink-700"><Gift size={22} /> Enviar tarjeta (imagen)</button>
+                  <a href={whatsappLink(show.phone ?? '', msg)}
+                    target="_blank" rel="noreferrer" className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-lg font-bold text-white"><WhatsAppIcon size={24} /> Enviar por WhatsApp</a>
+                </>
+              )
+            })()}
             <FixCard key={show.id} card={show} onDone={(c) => { setShow(c); reload() }} />
             <Button variant="ghost" onClick={() => setShow(null)}>Listo</Button>
           </div>

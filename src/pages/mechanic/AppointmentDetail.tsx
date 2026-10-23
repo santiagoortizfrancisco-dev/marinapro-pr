@@ -67,7 +67,7 @@ export default function AppointmentDetail() {
       <BackTitle to={`/agenda?dia=${prDay(a.starts_at)}`}>{w.salon ? c.full_name : <>{b.name} · {c.full_name.split(' ').slice(0, 2).join(' ')}</>}</BackTitle>
 
       {w.salon && woId ? (
-        <SalonVisit appt={a} woId={woId} onEdit={() => navigate(`/citas/${a.id}/editar`)} onCancel={() => setCancelOpen(true)} onActivate={() => setStatus('confirmed')} />
+        <SalonVisit appt={a} woId={woId} onEdit={() => navigate(`/citas/${a.id}/editar`)} onCancel={() => setCancelOpen(true)} onActivate={() => setStatus('confirmed')} onDeny={() => setStatus('cancelled')} />
       ) : <>
       {/* La cita */}
       <section className="rounded-2xl border-2 border-slate-200 bg-white p-4">
@@ -139,7 +139,13 @@ export default function AppointmentDetail() {
       <Sheet open={cancelOpen} title="¿Cancelar esta cita?" onClose={() => setCancelOpen(false)}>
         <p className="mb-5 text-base text-slate-600">La cita queda marcada como cancelada y sale de la agenda. Acuérdate de avisarle al cliente.</p>
         <div className="space-y-3">
-          <Button disabled={busy} onClick={() => setStatus('cancelled')} className="bg-red-700 active:bg-red-800"><XCircle /> Sí, cancelar</Button>
+          {w.salon && c.phone && (
+            <Button disabled={busy} className="bg-red-700 active:bg-red-800" onClick={() => {
+              window.open(whatsappLink(c.phone!, `Hola ${firstName}, tu cita del ${formatLongDate(a.starts_at).toLowerCase()} a las ${formatTime(a.starts_at)} quedó cancelada. Si quieres otra fecha, me avisas. 💅 ${profile?.full_name ?? ''}`.trim()), '_blank')
+              setStatus('cancelled')
+            }}><XCircle /> Sí, cancelar y avisarle por WhatsApp</Button>
+          )}
+          <Button disabled={busy} onClick={() => setStatus('cancelled')} className={w.salon && c.phone ? '' : 'bg-red-700 active:bg-red-800'} variant={w.salon && c.phone ? 'secondary' : undefined}><XCircle /> {w.salon && c.phone ? 'Cancelar sin avisarle' : 'Sí, cancelar'}</Button>
           <Button variant="secondary" onClick={() => setCancelOpen(false)}>No</Button>
         </div>
       </Sheet>

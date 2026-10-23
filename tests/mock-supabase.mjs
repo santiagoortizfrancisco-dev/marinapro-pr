@@ -338,6 +338,13 @@ const RPC = {
     db.boats = db.boats.filter((b) => !gone.includes(b.client_id))
     return null
   },
+  gift_card_public: ({ p_id }) => {
+    const g = db.gift_cards.find((x) => x.id === p_id)
+    if (!g) return null
+    const m = db.mechanics.find((x) => x.profile_id === g.mechanic_id) ?? db.mechanics[0]
+    const p = db.profiles.find((x) => x.id === m.profile_id)
+    return { business: m.business_name, phone: p?.phone ?? null, town: p?.town ?? null, logo_path: m.logo_path, brand_color: m.brand_color, code: g.code, amount: g.amount, balance: g.balance, recipient_name: g.recipient_name, buyer_name: g.buyer_name }
+  },
   request_info: ({ p_name, p_email, p_type, p_message }) => {
     if (String(p_name ?? '').trim().length < 2) throw Object.assign(new Error('Escribe tu nombre.'), { status: 400 })
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(p_email ?? '').trim())) throw Object.assign(new Error('Escribe tu email.'), { status: 400 })

@@ -46,12 +46,13 @@ function Action({ label, icon, href, onClick, tone = 'bg-slate-100 text-slate-70
  * La visita de una clienta en el salón: la cita arriba y la cuenta abajo, como un recibo.
  * Cobrar es un solo botón: propina (si hay), cómo pagó, y listo.
  */
-export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate }: {
+export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate, onDeny }: {
   appt: AppointmentFull
   woId: string
   onEdit: () => void
   onCancel: () => void
   onActivate: () => void
+  onDeny: () => void
 }) {
   const { session, profile } = useAuth()
   const [params, setParams] = useSearchParams()
@@ -212,6 +213,15 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
           <button type="button" onClick={() => { onActivate(); if (c.phone) window.open(whatsappLink(c.phone, confirmMsg), '_blank') }}
             className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-lg font-extrabold text-white active:bg-emerald-700">
             <Check /> Confirmar cita{c.phone ? ' por WhatsApp' : ''}
+          </button>
+          {/* No hay espacio a esa hora: se deniega y se le ofrece otra */}
+          <button type="button" onClick={() => {
+            if (!window.confirm('¿Denegar esta cita? Queda cancelada.')) return
+            onDeny()
+            if (c.phone) window.open(whatsappLink(c.phone, `Hola ${firstName}, lo siento, no tengo espacio el ${formatLongDate(a.starts_at).toLowerCase()} a las ${formatTime(a.starts_at)}. ¿Te funciona otro día u hora? 💅 ${sign}`.trim()), '_blank')
+          }}
+            className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white text-base font-bold text-red-700 ring-2 ring-red-200 active:bg-red-50">
+            <XCircle size={20} /> No puedo esa hora (denegar)
           </button>
         </section>
       )}

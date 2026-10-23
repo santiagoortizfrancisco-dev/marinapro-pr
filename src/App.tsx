@@ -37,6 +37,7 @@ import BookingSettings from './pages/mechanic/BookingSettings'
 import GiftCards from './pages/mechanic/GiftCards'
 import SalonBooking from './pages/public/SalonBooking'
 import Landing from './pages/public/Landing'
+import GiftCardPublic from './pages/public/GiftCardPublic'
 import { useWords } from './lib/trade'
 
 /** La cita: la de salón (servicios y empleada) o la de servicio en la calle. */
@@ -54,7 +55,7 @@ export default function App() {
   const { pathname } = useLocation()
 
   // Estimado / factura y directorio de mecánicos: se abren sin cuenta
-  if (pathname.startsWith('/d/') || pathname === '/mecanicos' || pathname.startsWith('/mecanicos/') || pathname.startsWith('/reservar/') || pathname === '/info') {
+  if (pathname.startsWith('/d/') || pathname === '/mecanicos' || pathname.startsWith('/mecanicos/') || pathname.startsWith('/reservar/') || pathname === '/info' || pathname.startsWith('/regalo/')) {
     return (
       <Routes>
         <Route path="/d/:token" element={<PublicDoc />} />
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="/mecanicos/:slug" element={<MechanicProfile />} />
         <Route path="/reservar/:slug" element={<SalonBooking />} />
         <Route path="/info" element={<Landing />} />
+        <Route path="/regalo/:id" element={<GiftCardPublic />} />
       </Routes>
     )
   }
