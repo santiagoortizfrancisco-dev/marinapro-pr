@@ -68,7 +68,7 @@ export default function More() {
         </Link>
       )}
 
-      {profile?.role === 'mechanic' && (
+      {profile?.role === 'mechanic' && !words.storage && (
         <Link to="/mas/catalogo" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
           <IconBadge icon={ListChecks} tone="amber" />
           <span className="flex-1">
@@ -102,7 +102,7 @@ export default function More() {
       )}
 
       {profile?.role === 'mechanic' && words.salon && <h2 className="mb-2 mt-5 px-1 text-sm font-extrabold uppercase tracking-wider text-pink-700">Tu cuenta</h2>}
-      {profile?.role === 'mechanic' && !session?.user.is_anonymous && !words.salon && (
+      {profile?.role === 'mechanic' && !session?.user.is_anonymous && !words.salon && !words.storage && (
         <Link to="/mas/perfil-publico" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
           <IconBadge icon={Globe} tone="blue" />
           <span className="flex-1">

@@ -160,6 +160,8 @@ export default function PublicDoc() {
   const t = doc.totals
   const words = wordsFor(doc.business.business_type as Trade | undefined)
   const salon = words.salon
+  // Salón y guardería: un solo subtotal, sin mano de obra ni piezas
+  const simple = salon || words.storage
   const accent = salon ? '#ec4899' : ORANGE
   // Salón sin color propio (o con el negro de siempre): rosado
   const color = salon && (!doc.business.brand_color || doc.business.brand_color === DEFAULT_BRAND) ? '#db2777' : doc.business.brand_color || DEFAULT_BRAND
@@ -263,13 +265,13 @@ export default function PublicDoc() {
         </table>
 
         <dl className="ml-auto mt-4 max-w-xs text-base">
-          {salon ? (
-            <div className="flex justify-between py-1"><dt>Servicios</dt><dd>{formatMoney(Number(t.labor) + Number(t.parts))}</dd></div>
+          {simple ? (
+            <div className="flex justify-between py-1"><dt>{salon ? 'Servicios' : 'Subtotal'}</dt><dd>{formatMoney(Number(t.labor) + Number(t.parts))}</dd></div>
           ) : <>
             <div className="flex justify-between py-1"><dt>{doc.parts.some((p) => p.kind === 'service') ? 'Mano de obra y servicios' : 'Mano de obra'}</dt><dd>{formatMoney(Number(t.labor))}</dd></div>
             <div className="flex justify-between py-1"><dt>Piezas</dt><dd>{formatMoney(Number(t.parts))}</dd></div>
           </>}
-          <div className="flex justify-between py-1"><dt>IVU {percent(t.ivu_rate)}{ivuOn && !salon ? ` (${ivuOn})` : ''}</dt><dd>{formatMoney(Number(t.ivu))}</dd></div>
+          <div className="flex justify-between py-1"><dt>IVU {percent(t.ivu_rate)}{ivuOn && !simple ? ` (${ivuOn})` : ''}</dt><dd>{formatMoney(Number(t.ivu))}</dd></div>
           <div className="mt-2 flex items-center justify-between rounded-xl bg-navy-900 px-4 py-3 text-white"><dt className="text-lg font-extrabold">TOTAL</dt><dd className="text-2xl font-extrabold" style={{ color: salon ? '#fbcfe8' : '#FDBA74' }}>{formatMoney(Number(t.total))}</dd></div>
           {payments.map((py, i) => (
             <div key={i} className="flex justify-between py-1 text-emerald-800">
@@ -325,7 +327,7 @@ export default function PublicDoc() {
         )}
         {doc.policies && (
           <section className="mt-5 border-t border-slate-200 pt-3">
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[var(--accent)]">{salon ? 'Políticas' : 'Garantía y políticas'}</div>
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[var(--accent)]">{salon ? 'Políticas' : words.storage ? 'Reglas de la guardería' : 'Garantía y políticas'}</div>
             <p className="whitespace-pre-line text-sm text-slate-700">{doc.policies}</p>
           </section>
         )}

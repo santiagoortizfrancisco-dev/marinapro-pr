@@ -83,7 +83,7 @@ function build(trade: Trade, item: string, items: string, itemExample: string, w
     hasMakeModel: item !== 'propiedad' && item !== 'piscina',
     itemOf: (name) => `${cap(item)} de ${name}`,
     itemExample,
-    engines: marine,
+    engines: trade === 'marine',
     storage: trade === 'storage',
     seaTrial: trade === 'marine',
     marina: marine,

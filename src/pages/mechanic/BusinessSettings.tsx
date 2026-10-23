@@ -13,6 +13,13 @@ import { useMechanic } from '../../lib/useMechanic'
 import { BackTitle, ErrorBox, Field, FormActions, Input, Loading, Select, Textarea, Toggle } from '../../components/ui'
 
 /** Datos del negocio: salen en las facturas. */
+/** Reglas de ejemplo para la factura de una guardería (el dueño las cambia). */
+const STORAGE_RULES = `La renta del espacio se paga por adelantado y vence en la fecha indicada en la factura. Pagos atrasados pueden llevar recargo.
+El bote tiene que tener seguro vigente y marbete al día.
+Para bajar o sacar el bote, avise con anticipación.
+La guardería no responde por daños causados por tormentas, huracanes u otras causas fuera de su control.
+(Texto a revisar con un abogado.)`
+
 export default function BusinessSettings() {
   const navigate = useNavigate()
   const { profile, session, refreshProfile } = useAuth()
@@ -23,6 +30,8 @@ export default function BusinessSettings() {
   })
   const [busy, setBusy] = useState(false)
   const [trade, setTradeLocal] = useState<Trade>('marine')
+  // Salón y guardería: sin tarifa por hora ni garantía; un solo IVU
+  const simple = trade === 'beauty' || trade === 'storage'
   const [useEstimates, setUseEstimates] = useState(true)
   const setTrade = useSetTrade()
   // El oficio se escoge una sola vez; después solo el administrador lo cambia
@@ -176,7 +185,7 @@ export default function BusinessSettings() {
             </div>
           )}
         </Field>
-        <Toggle checked={useEstimates} onChange={setUseEstimates} label="Uso estimados (cotizaciones)" hint="Le envías el precio al cliente para que lo apruebe antes de trabajar. Los salones casi nunca los usan." />
+        {trade !== 'storage' && <Toggle checked={useEstimates} onChange={setUseEstimates} label="Uso estimados (cotizaciones)" hint="Le envías el precio al cliente para que lo apruebe antes de trabajar. Los salones casi nunca los usan." />}
         <Field label="Nombre del negocio">
           <Input value={f.business_name} onChange={(e) => set('business_name', e.target.value)} placeholder="Rivera Service" />
         </Field>
@@ -197,34 +206,37 @@ export default function BusinessSettings() {
         </Field>
 
         <h2 className="pt-3 text-xl font-extrabold text-navy-900">Precios</h2>
-        <div className={`grid gap-3 ${trade === 'beauty' ? 'grid-cols-1' : 'grid-cols-2'}`}>
-          {trade !== 'beauty' && <Field label="Tarifa por hora ($)">
+        <div className={`grid gap-3 ${simple ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {!simple && <Field label="Tarifa por hora ($)">
             <Input inputMode="decimal" value={f.labor_rate_hour} onChange={(e) => set('labor_rate_hour', e.target.value)} placeholder="85" />
           </Field>}
           <Field label="IVU (%)">
             <Input inputMode="decimal" value={f.ivu_percent} onChange={(e) => set('ivu_percent', e.target.value)} placeholder="11.5" />
           </Field>
         </div>
-        <p className="text-sm text-slate-500">{trade === 'beauty' ? 'Para citas nuevas. En cada cuenta puedes poner o quitar el IVU.' : 'Para trabajos nuevos. En cada trabajo puedes poner o quitar el IVU.'}</p>
-        {trade === 'beauty' ? (
+        <p className="text-sm text-slate-500">{trade === 'beauty' ? 'Para citas nuevas. En cada cuenta puedes poner o quitar el IVU.' : trade === 'storage' ? 'Para facturas nuevas. En cada factura puedes poner o quitar el IVU.' : 'Para trabajos nuevos. En cada trabajo puedes poner o quitar el IVU.'}</p>
+        {simple ? (
           <Toggle checked={f.ivu_on_labor} onChange={(v) => setF({ ...f, ivu_on_labor: v, ivu_on_parts: v })} label="Cobrar IVU" />
         ) : <>
           <Toggle checked={f.ivu_on_labor} onChange={(v) => set('ivu_on_labor', v)} label="Cobrar IVU en mano de obra" />
           <Toggle checked={f.ivu_on_parts} onChange={(v) => set('ivu_on_parts', v)} label="Cobrar IVU en piezas" />
         </>}
 
-        <h2 className="pt-3 text-xl font-extrabold text-navy-900">{trade === 'beauty' ? 'Facturas y políticas' : 'Facturas y garantía'}</h2>
-        <div className={`grid gap-3 ${trade === 'beauty' ? 'grid-cols-1' : 'grid-cols-2'}`}>
+        <h2 className="pt-3 text-xl font-extrabold text-navy-900">{simple ? 'Facturas y políticas' : 'Facturas y garantía'}</h2>
+        <div className={`grid gap-3 ${simple ? 'grid-cols-1' : 'grid-cols-2'}`}>
           <Field label="Próxima factura #">
             <Input inputMode="numeric" value={f.next_invoice_number} onChange={(e) => set('next_invoice_number', e.target.value.replace(/\D/g, ''))} />
           </Field>
-          {trade !== 'beauty' && <Field label="Garantía (días)">
+          {!simple && <Field label="Garantía (días)">
             <Input inputMode="numeric" value={f.warranty_days} onChange={(e) => set('warranty_days', e.target.value.replace(/\D/g, ''))} />
           </Field>}
         </div>
-        <Field label={trade === 'beauty' ? 'Políticas del salón' : 'Políticas de garantía'} hint={trade === 'beauty' ? 'Salen al final de la factura: cancelaciones, tardanzas, arreglos.' : 'Salen al final del estimado y la factura. (Revisar con un abogado.)'}>
+        <Field label={trade === 'beauty' ? 'Políticas del salón' : trade === 'storage' ? 'Reglas de la guardería' : 'Políticas de garantía'} hint={trade === 'beauty' ? 'Salen al final de la factura: cancelaciones, tardanzas, arreglos.' : trade === 'storage' ? 'Salen al final de la factura: pagos, atrasos, seguro, tormentas. (Revisar con un abogado.)' : 'Salen al final del estimado y la factura. (Revisar con un abogado.)'}>
           <Textarea rows={9} value={f.policies_text} onChange={(e) => set('policies_text', e.target.value)} />
         </Field>
+        {trade === 'storage' && f.policies_text !== STORAGE_RULES && (
+          <button type="button" onClick={() => set('policies_text', STORAGE_RULES)} className="min-h-12 w-full rounded-xl bg-slate-100 text-base font-bold text-navy-800 active:bg-slate-200">Usar las reglas de ejemplo de guardería</button>
+        )}
         <FormActions busy={busy} error={saveError} saveLabel="Guardar" />
       </form>
     </>

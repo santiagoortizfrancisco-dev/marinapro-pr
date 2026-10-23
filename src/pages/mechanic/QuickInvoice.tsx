@@ -253,7 +253,7 @@ export default function QuickInvoice() {
             <div className="flex"><LinkButton href={whatsappLink(done.phone, msg)} external variant="whatsapp"><WhatsAppIcon size={24} /> {tw.salon && left <= 0.004 ? 'Enviar recibo por WhatsApp' : 'Enviar factura por WhatsApp'}</LinkButton></div>
           )}
           <div className="flex"><LinkButton href={`/d/${done.invoice.public_token}?pago=${way}`}><ExternalLink size={20} /> Ver factura o PDF</LinkButton></div>
-          <Button variant="secondary" onClick={() => navigate(`/trabajos/${done.woId}`)}>{tw.salon ? 'Abrir la cuenta (cambiar o borrar)' : 'Abrir el trabajo'}</Button>
+          <Button variant="secondary" onClick={() => navigate(`/trabajos/${done.woId}`)}>{tw.salon ? 'Abrir la cuenta (cambiar o borrar)' : tw.storage ? 'Abrir la factura (cambiar o borrar)' : 'Abrir el trabajo'}</Button>
           <Button variant="ghost" onClick={() => navigate(tw.salon ? '/' : '/trabajos')}>Listo</Button>
         </div>
         <PaySheet open={cobrarOpen} withTip withGift balance={left} title="Pagar" onClose={() => setCobrarOpen(false)}

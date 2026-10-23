@@ -279,7 +279,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
 
         {!invoice?.paid_at && (
           <>
-            <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700! active:bg-emerald-800!"><HandCoins /> Recibir pago o depósito</Button>
+            <Button disabled={busy} onClick={() => setPayOpen(true)} className="bg-emerald-700! active:bg-emerald-800!"><HandCoins /> {invoice ? 'Recibir pago' : 'Recibir pago o depósito'}</Button>
 
             {!invoice ? (
               <Button variant="secondary" disabled={busy} onClick={makeInvoice}><Receipt /> {busy ? 'Haciendo factura…' : 'Hacer factura'}</Button>
@@ -334,12 +334,12 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
     <>
       {embedded ? (
         <div className="mb-3 mt-8 flex items-center justify-between gap-2 border-t-4 border-navy-800 pt-4">
-          <h2 className="text-2xl font-extrabold text-navy-900">{w.salon ? 'La cuenta' : 'El trabajo'}</h2>
+          <h2 className="text-2xl font-extrabold text-navy-900">{w.salon ? 'La cuenta' : w.storage ? 'La factura' : 'El trabajo'}</h2>
           <Pill label={st.label} style={st.style} />
         </div>
       ) : (
         <>
-          <BackTitle to="/trabajos" subtitle={`Abierto el ${formatDate(wo.created_at)}`}>{w.salon ? 'Cuenta' : 'Trabajo'} · {boat.name}</BackTitle>
+          <BackTitle to="/trabajos" subtitle={`Abierto el ${formatDate(wo.created_at)}`}>{w.salon ? 'Cuenta' : w.storage ? 'Factura' : 'Trabajo'} · {boat.name}</BackTitle>
           <div className="mb-3 flex items-center justify-between gap-2">
             <Link to={`/botes/${boat.id}`} className="flex min-h-12 flex-1 items-center gap-2 rounded-xl bg-slate-100 px-4 text-base font-semibold text-slate-800">
               <Ship size={20} /> {boat.name} · {client.full_name}
@@ -360,7 +360,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
       {/* Ya facturado: lo primero es cobrar */}
       {billed && cobrarBlock}
 
-      {!billed && !locked && !w.salon && (
+      {!billed && !locked && !w.salon && !w.storage && (
         <Section title="¿En qué va?" icon={ListChecks} tone="navy">
           <Choice columns={3} value={wo.status} onChange={setStatus} options={WORK_STEPS} />
         </Section>
@@ -386,7 +386,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
           {parts.length === 0 && <p className="p-3 text-base text-slate-600">Todavía no hay nada. Toca “Añadir lo que cobras”.</p>}
           {[...parts].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'service' ? -1 : 1)).map((p) => (
             <button key={p.id} disabled={locked} onClick={() => { setEditPart(p); setPartOpen(true) }} className="flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left active:bg-slate-50">
-              {p.kind === 'service' ? <Wrench size={20} className="shrink-0 text-navy-700" /> : <Package size={20} className="shrink-0 text-navy-700" />}
+              {w.storage ? <FileText size={20} className="shrink-0 text-navy-700" /> : p.kind === 'service' ? <Wrench size={20} className="shrink-0 text-navy-700" /> : <Package size={20} className="shrink-0 text-navy-700" />}
               <span className="min-w-0 flex-1">
                 <span className="block text-base font-bold text-slate-900">{p.description}</span>
                 {(Number(p.qty) !== 1 || p.part_number || (p.kind !== 'service' && !p.received_at)) && (
@@ -398,7 +398,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
               <span className="shrink-0 text-right text-base font-bold text-slate-900">{p.supplied_by === 'client' ? <span className="text-sm text-slate-500">No se cobra</span> : Number(p.unit_cost) === 0 ? <span className="text-sm text-slate-500">Incluido</span> : formatMoney(Number(p.qty) * Number(p.unit_cost))}</span>
             </button>
           ))}
-          {!w.salon && <Row icon={Clock} title="Mano de obra por hora" summary={Number(wo.labor_hours) > 0 ? `${Number(wo.labor_hours)} h × ${formatMoney(Number(wo.labor_rate))} = ${formatMoney(totals.hours)}` : 'Solo si cobras por hora'}>
+          {!w.salon && !w.storage && <Row icon={Clock} title="Mano de obra por hora" summary={Number(wo.labor_hours) > 0 ? `${Number(wo.labor_hours)} h × ${formatMoney(Number(wo.labor_rate))} = ${formatMoney(totals.hours)}` : 'Solo si cobras por hora'}>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Horas">
                 <Input inputMode="decimal" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} onBlur={() => patch({ labor_hours: num(laborHours) ?? 0 })} />
@@ -410,8 +410,12 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
             <p className="mt-2 text-right text-lg font-bold text-navy-900">{formatMoney(totals.hours)}</p>
           </Row>}
           <dl className="px-3 py-2 text-base">
-            <div className="flex justify-between py-0.5 text-slate-600"><dt>Mano de obra y servicios</dt><dd>{formatMoney(totals.labor)}</dd></div>
-            <div className="flex justify-between py-0.5 text-slate-600"><dt>Piezas</dt><dd>{formatMoney(totals.parts)}</dd></div>
+            {w.storage && totals.parts === 0 ? (
+              <div className="flex justify-between py-0.5 text-slate-600"><dt>Subtotal</dt><dd>{formatMoney(totals.labor)}</dd></div>
+            ) : <>
+              <div className="flex justify-between py-0.5 text-slate-600"><dt>Mano de obra y servicios</dt><dd>{formatMoney(totals.labor)}</dd></div>
+              <div className="flex justify-between py-0.5 text-slate-600"><dt>Piezas</dt><dd>{formatMoney(totals.parts)}</dd></div>
+            </>}
             <div className="flex justify-between py-0.5 text-slate-600"><dt>IVU {percent(mech.ivu_rate)}</dt><dd>{formatMoney(totals.ivu)}</dd></div>
             <div className="mt-1 flex justify-between border-t-2 border-slate-200 pt-2 text-2xl font-extrabold text-navy-900"><dt>TOTAL</dt><dd>{formatMoney(totals.total)}</dd></div>
           </dl>
@@ -427,8 +431,8 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </div>
       </section>
 
-      {/* Detalles del trabajo: cada cosa en su renglón, se abre con un toque */}
-      <section className="mt-6">
+      {/* Detalles del trabajo: cada cosa en su renglón, se abre con un toque (la guardería no los usa) */}
+      {!w.storage && <section className="mt-6">
         <h2 className="mb-2 flex items-center gap-2 text-xl font-extrabold text-navy-900"><IconBadge icon={Wrench} tone="amber" size="sm" /> {w.salon ? 'Fotos y próxima visita' : 'Detalles del trabajo'}</h2>
         <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
           {!w.salon && <Row icon={Wrench} title="El problema" summary={wo.work_done || wo.diagnosis || wo.complaint || 'Lo que dice el cliente y lo que encontraste'} defaultOpen={!billed && !(wo.complaint || wo.diagnosis || wo.work_done)}>
@@ -471,9 +475,9 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
             )
           )}
         </div>
-      </section>
+      </section>}
 
-      {!invoice && mech.use_estimates !== false && <Section title="Estimado" icon={FileText} tone="amber">
+      {!invoice && mech.use_estimates !== false && !w.storage && <Section title="Estimado" icon={FileText} tone="amber">
         {wo.estimate_approved_at ? (
           <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-base font-semibold text-emerald-900">
             <CheckCircle2 />
