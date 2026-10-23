@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { Check, ChevronDown, Search, UserPlus, X } from 'lucide-react'
+import { Check, CheckCircle2, ChevronDown, Search, UserPlus, X } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import { db } from '../../lib/db'
-import { formatMoney, formatTime, prDay, prRange, prTime, prToISO, todayPR } from '../../lib/format'
+import { formatDate, formatMoney, formatTime, prDay, prRange, prTime, prToISO, todayPR } from '../../lib/format'
 import { clientRecordId, loadSalonMenu, loadStaff, minutesLabel, type SalonService, type Staff } from '../../lib/salon'
 import { blank } from '../../lib/useLoad'
-import { BackTitle, Field, FormActions, Input, Loading } from '../../components/ui'
+import { BackTitle, Button, Field, Input, Loading } from '../../components/ui'
 import TimeSelect from '../../components/TimeSelect'
 import { useDraft } from '../../lib/draft'
 import DraftBanner from '../../components/DraftBanner'
@@ -61,6 +61,10 @@ export default function SalonAppointmentForm() {
   const [search, setSearch] = useState('')
   const [picked, setPicked] = useState<string[]>([])
   const [extras, setExtras] = useState<string[]>([])
+  // Servicios: una pestaña por tipo (Uñas, Pelo, Spa), los más pedidos primero; al terminar se cierra en una línea
+  const [cat, setCat] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false)
+  const [listOpen, setListOpen] = useState<boolean | null>(null)
   const [staffId, setStaffId] = useState<string | null>(params.get('empleada'))
   const [day, setDay] = useState(startDay)
   const [time, setTime] = useState(now ? prTime(new Date()) : defaultTime(startDay, params.get('hora')))
@@ -127,6 +131,13 @@ export default function SalonAppointmentForm() {
   const minutes = length ?? (fromServices || 60)
   const price = selected.reduce((t, s) => t + Number(s.last_price ?? 0), 0)
   const categories = [...new Set(menu.map((m) => m.category ?? 'Otros'))]
+  const tab = cat ?? categories[0] ?? null
+  // Los más pedidos primero; si todavía no hay historial, se ven todos los de la pestaña
+  const inTab = menu.filter((m) => (m.category ?? 'Otros') === tab).sort((x, y) => Number(y.use_count ?? 0) - Number(x.use_count ?? 0))
+  const hasUsage = inTab.some((m) => Number(m.use_count ?? 0) > 0)
+  const shown = showAll || !hasUsage ? inTab : inTab.slice(0, 6)
+  // Al cambiar una cita que ya tiene servicios, empieza cerrado en una línea
+  const open = listOpen ?? !(id && picked.length > 0)
   const busyThen = sameDay.filter((x) => !staffId || !x.staff_id || x.staff_id === staffId)
 
   function toggle(sid: string) {
@@ -246,37 +257,52 @@ export default function SalonAppointmentForm() {
           )}
         </Step>
 
-        {/* 2. Los servicios: una lista sencilla, se marcan con un toque */}
+        {/* 2. Los servicios: pestañas por tipo, botones en dos columnas; al escoger queda en una línea */}
         <Step n={2} title="¿Qué se va a hacer?" hint="opcional">
-          <div role="group" aria-label="Servicios" className="-mx-1">
-            {categories.map((cat) => (
-              <div key={cat} className="mb-2">
-                <div className="px-1 pb-1 pt-2 text-xs font-extrabold uppercase tracking-wider text-pink-700">{cat}</div>
-                <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-slate-50">
-                  {menu.filter((m) => (m.category ?? 'Otros') === cat).map((m) => {
-                    const on = picked.includes(m.id)
-                    return (
-                      <button key={m.id} type="button" onClick={() => toggle(m.id)} aria-pressed={on}
-                        className={`flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left transition ${on ? 'bg-pink-50' : 'active:bg-slate-100'}`}>
-                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 ${on ? 'border-pink-600 bg-pink-600 text-white' : 'border-slate-300 bg-white'}`}>{on && <Check size={16} strokeWidth={3} />}</span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-base font-bold leading-tight text-slate-900">{m.name}</span>
-                          {m.duration_min ? <span className="block text-sm text-slate-500">{minutesLabel(m.duration_min)}</span> : null}
-                        </span>
-                        {m.last_price != null && <span className="shrink-0 text-base font-bold text-slate-700">{formatMoney(Number(m.last_price))}</span>}
-                      </button>
-                    )
-                  })}
-                </div>
+          {!open && selected.length > 0 ? (
+            <div className="rounded-2xl bg-pink-50 p-3 ring-1 ring-pink-200" aria-label="Resumen de la cita">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 size={22} className="mt-0.5 shrink-0 text-pink-600" />
+                <span className="min-w-0 flex-1 text-base font-extrabold text-slate-900">{selected.map((x) => x.name).join(' + ')}</span>
               </div>
-            ))}
-          </div>
-          {selected.length > 0 ? (
-            <div className="mt-2 flex items-center justify-between rounded-2xl bg-pink-600 px-4 py-3 text-base font-extrabold text-white" aria-label="Resumen de la cita">
-              <span>{selected.length} {selected.length === 1 ? 'servicio' : 'servicios'} · {minutesLabel(fromServices)}</span>{price > 0 && <span className="text-lg">{formatMoney(price)}</span>}
+              <div className="mt-1 pl-8 text-base text-slate-700">{minutesLabel(fromServices)}{price > 0 ? ` · ${formatMoney(price)}` : ''}</div>
+              <button type="button" onClick={() => setListOpen(true)} className="mt-2 min-h-11 w-full rounded-xl bg-white text-base font-bold text-pink-700 ring-1 ring-pink-200">Cambiar o añadir otro</button>
             </div>
           ) : (
-            <p className="mt-1 text-sm text-slate-500">Si no sabes todavía, déjalo así. El precio lo pones al cobrar.</p>
+            <>
+              {categories.length > 1 && (
+                <div className="mb-3 flex gap-2" role="tablist" aria-label="Tipo de servicio">
+                  {categories.map((c) => (
+                    <button key={c} type="button" role="tab" aria-selected={tab === c} onClick={() => { setCat(c); setShowAll(false) }}
+                      className={`min-h-11 flex-1 rounded-full text-base font-bold ${tab === c ? 'bg-pink-600 text-white' : 'bg-pink-50 text-pink-800'}`}>{c}</button>
+                  ))}
+                </div>
+              )}
+              <div role="group" aria-label="Servicios" className="grid grid-cols-2 gap-2">
+                {shown.map((m) => {
+                  const on = picked.includes(m.id)
+                  return (
+                    <button key={m.id} type="button" onClick={() => toggle(m.id)} aria-pressed={on}
+                      className={`relative flex min-h-16 flex-col justify-center rounded-2xl px-3 py-2 text-left transition ${on ? 'bg-pink-600 text-white' : 'bg-slate-50 text-slate-900 ring-1 ring-slate-200 active:bg-pink-50'}`}>
+                      {on && <Check size={18} strokeWidth={3} className="absolute right-2 top-2" />}
+                      <span className="pr-5 text-base font-bold leading-tight">{m.name}</span>
+                      <span className={`text-sm ${on ? 'text-pink-100' : 'text-slate-500'}`}>{[m.duration_min ? minutesLabel(m.duration_min) : null, m.last_price != null ? formatMoney(Number(m.last_price)) : null].filter(Boolean).join(' · ')}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              {inTab.length > shown.length && (
+                <button type="button" onClick={() => setShowAll(true)} className="mt-2 min-h-11 w-full text-base font-bold text-pink-700">Ver todos ({inTab.length})</button>
+              )}
+              {selected.length > 0 ? (
+                <div className="mt-3 flex items-center gap-2 rounded-2xl bg-pink-600 py-2 pl-4 pr-2 text-white" aria-label="Resumen de la cita">
+                  <span className="min-w-0 flex-1 text-base font-extrabold">{selected.length} {selected.length === 1 ? 'servicio' : 'servicios'} · {minutesLabel(fromServices)}{price > 0 && <> · {formatMoney(price)}</>}</span>
+                  <button type="button" onClick={() => setListOpen(false)} className="min-h-11 shrink-0 rounded-xl bg-white px-4 text-base font-extrabold text-pink-700">Listo ✓</button>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-slate-500">Si no sabes todavía, déjalo así. El precio lo pones al cobrar.</p>
+              )}
+            </>
           )}
         </Step>
 
@@ -341,7 +367,14 @@ export default function SalonAppointmentForm() {
           </div>
         </details>
 
-        <FormActions busy={busy} error={error} saveLabel={id ? 'Guardar cambios' : now ? 'Seguir a cobrar' : 'Guardar cita'} />
+        <div className="sticky bottom-[calc(4.4rem+env(safe-area-inset-bottom))] z-10 -mx-4 space-y-2 border-t border-pink-100 bg-white/95 px-4 pb-3 pt-2 backdrop-blur">
+          {error && <p className="rounded-xl bg-red-100 p-3 text-base font-semibold text-red-800">{error}</p>}
+          <p className="truncate text-center text-sm font-semibold text-slate-600">
+            {[chosen?.full_name ?? newClient?.full_name?.trim() ?? null, now ? 'Ahora' : day && time ? `${formatDate(prToISO(day, time)).slice(0, 5)} · ${formatTime(prToISO(day, time))}` : null, selected.length ? minutesLabel(minutes) : null].filter(Boolean).join(' · ')}
+          </p>
+          <Button type="submit" disabled={busy} className="bg-pink-600! active:bg-pink-700!">{busy ? 'Guardando…' : id ? 'Guardar cambios' : now ? 'Seguir a cobrar' : 'Guardar cita'}</Button>
+        </div>
+        <Button type="button" variant="ghost" onClick={() => navigate(-1)}>Cancelar</Button>
       </form>
     </>
   )

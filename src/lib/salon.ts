@@ -18,6 +18,8 @@ export interface SalonService {
   category: string | null
   last_price: number | null
   duration_min: number | null
+  /** Cuántas veces se ha cobrado (los más pedidos salen primero) */
+  use_count?: number | null
 }
 
 /** Colores para distinguir a cada empleada en la agenda. */
@@ -30,7 +32,7 @@ export async function loadStaff(): Promise<Staff[]> {
 
 /** El menú del salón (uñas primero). Si todavía no tiene, se le carga uno de ejemplo. */
 export async function loadSalonMenu(mechanicId: string): Promise<SalonService[]> {
-  const read = () => db().from('catalog_items').select('id, name, category, last_price, duration_min').eq('mechanic_id', mechanicId).eq('kind', 'service')
+  const read = () => db().from('catalog_items').select('id, name, category, last_price, duration_min, use_count').eq('mechanic_id', mechanicId).eq('kind', 'service')
   let { data } = await read()
   if (!data || data.length === 0) {
     await db().rpc('seed_beauty_services', { p_mech: mechanicId })
