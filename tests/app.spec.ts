@@ -9,11 +9,12 @@ const PASSWORD = 'prueba-del-bot' // contraseña del Supabase de prueba (tests/m
 type State = Record<string, Record<string, unknown>[]>
 const state = async (): Promise<State> => (await fetch(`${MOCK}/__state`)).json()
 
-/** Mañana en Puerto Rico (la cita de ejemplo es mañana a las 9:00 AM). */
+/** El próximo día de trabajo en Puerto Rico (la cita de ejemplo es ese día a las 9:00 AM; el domingo no se trabaja). */
 function tomorrowPR() {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Puerto_Rico' }).format(new Date())
   const d = new Date(`${today}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() + 1)
+  if (d.getUTCDay() === 0) d.setUTCDate(d.getUTCDate() + 1)
   return d.toISOString().slice(0, 10)
 }
 

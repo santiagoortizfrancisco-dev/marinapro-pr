@@ -28,7 +28,9 @@ let signups = {} // id -> { email, user_metadata }
 function reset() {
   passwords = {}
   signups = {}
-  const tomorrow = addDays(prDay(), 1)
+  // La cita de ejemplo: el próximo día de trabajo (el taller no trabaja domingos)
+  const next = addDays(prDay(), 1)
+  const tomorrow = new Date(`${next}T12:00:00Z`).getUTCDay() === 0 ? addDays(next, 1) : next
   const now = new Date().toISOString()
   db = {
     profiles: [
