@@ -737,3 +737,18 @@ test('guardería: zonas y espacios numerados; nunca dos botes en el mismo espaci
   assert.equal((await as(B, `select * from storage_zones`)).length, 0, 'otro negocio no ve las zonas')
   assert.equal((await as(B, `select * from storage_spots`)).length, 0)
 })
+
+test('guardería sencilla: precio por zona, la renta dice el mes y el espacio, y empieza con reglas de guardería', async () => {
+  const G = (await sys(`select profile_id from mechanics where business_name = 'Marina del Este'`))[0].profile_id
+  assert.ok(!(await one(G, `select policies_text from mechanics where profile_id = '${G}'`)).policies_text.startsWith('Garantía de mano de obra'), 'ya no tiene la garantía de mecánico')
+  const z = (await one(G, `insert into storage_zones (mechanic_id, name, kind, price, per_foot) values ('${G}', 'Patio B', 'land', 12, true) returning price, per_foot`))
+  assert.equal(Number(z.price), 12)
+  assert.equal(z.per_foot, true)
+  assert.equal((await one(G, `select storage_bill_month('2026-12-01') n`)).n >= 1, true)
+  const line = (await one(G, `select p.description from storage_bills sb join work_order_parts p on p.work_order_id = sb.work_order_id where sb.month = '2026-12-01' and p.description like 'Renta%' limit 1`)).description
+  assert.match(line, /^Renta de diciembre 2026 · .+ · \d+ pies$/)
+  const N = (await db.query(`insert into auth.users(email) values ('nueva@guarderia.test') returning id`)).rows[0].id
+  await as(N, `select set_my_role('mechanic','Nueva','787-555-0001','Salinas','Guardería Nueva')`)
+  await as(N, `update mechanics set business_type = 'storage', business_type_set = true where profile_id = '${N}'`)
+  assert.match((await one(N, `select policies_text from mechanics where profile_id = '${N}'`)).policies_text, /seguro vigente/)
+})

@@ -30,7 +30,12 @@ export interface Contract {
   spot_id: string | null; away_since: string | null; away_spot_id: string | null
   boats: StorageBoat | null
 }
-export interface Zone { id: string; name: string; kind: 'land' | 'water'; sort: number }
+export interface Zone { id: string; name: string; kind: 'land' | 'water'; sort: number; price: number | null; per_foot: boolean }
+
+/** Precio del mes de un bote en esa zona: pies × precio, o fijo. */
+export const zonePrice = (z: Pick<Zone, 'price' | 'per_foot'> | undefined, ft: number | null) =>
+  z?.price == null ? null : z.per_foot ? (ft ? Math.round(Number(z.price) * Number(ft) * 100) / 100 : null) : Number(z.price)
+export const zonePriceText = (z: Pick<Zone, 'price' | 'per_foot'>) => z.price == null ? 'Sin precio' : z.per_foot ? `${formatMoney(Number(z.price))} por pie al mes` : `${formatMoney(Number(z.price))} al mes`
 export interface Spot { id: string; zone_id: string; label: string; status: 'ok' | 'reserved' | 'out_of_service'; note: string | null; sort: number }
 
 export type SpotState = 'free' | 'occupied' | 'away' | 'temp' | 'reserved' | 'out'

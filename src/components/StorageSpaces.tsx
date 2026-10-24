@@ -4,7 +4,7 @@ import { Sheet } from './Sheet'
 import { Button, CARD, EmptyState, Field, Input } from './ui'
 import { db } from '../lib/db'
 import { formatDate } from '../lib/format'
-import { spotName, spotState, type Contract, type Spot, type SpotState, type Zone } from '../lib/storage'
+import { spotName, spotState, zonePriceText, type Contract, type Spot, type SpotState, type Zone } from '../lib/storage'
 
 /** Color y texto de cada estado del cuadro. */
 const LOOK: Record<SpotState, { label: string; tile: string }> = {
@@ -30,13 +30,13 @@ interface Props {
  * Un toque en el cuadro: asignar bote, reservar, fuera de servicio, salió al agua, volvió, mover o desocupar.
  */
 export default function StorageSpaces({ zones, spots, contracts, me, reload, flash, onNewContract, onOpenContract }: Props) {
-  const [zoneEdit, setZoneEdit] = useState<Partial<Zone> & { prefix?: string; count?: string } | null>(null)
+  const [zoneEdit, setZoneEdit] = useState<ZoneDraft | null>(null)
   const [open, setOpen] = useState<Spot | null>(null)
   const sorted = [...zones].sort((a, b) => (a.kind === b.kind ? a.sort - b.sort || a.name.localeCompare(b.name) : a.kind === 'land' ? -1 : 1))
 
   return (
     <>
-      <Button onClick={() => setZoneEdit({ kind: 'land', prefix: '', count: '10' })}><Plus /> Añadir zona</Button>
+      <Button onClick={() => setZoneEdit({ kind: 'land', prefix: '', count: '10', per_foot: true, priceText: '' })}><Plus /> Añadir zona</Button>
       {zones.length === 0 && (
         <div className="mt-4"><EmptyState icon={Warehouse} title="Todavía no hay zonas" text="Crea tus zonas de tierra (patio, rack) y tus muelles, con sus espacios numerados. Después tocas un cuadro para poner un bote." /></div>
       )}
@@ -58,10 +58,10 @@ export default function StorageSpaces({ zones, spots, contracts, me, reload, fla
             <div className="mb-2 flex items-center gap-2">
               {z.kind === 'water' ? <Anchor size={22} className="text-navy-700" /> : <Warehouse size={22} className="text-navy-700" />}
               <h2 className="min-w-0 flex-1 truncate text-xl font-extrabold text-navy-900">{z.name}</h2>
-              <button type="button" aria-label={`Cambiar zona ${z.name}`} onClick={() => setZoneEdit({ ...z, prefix: guessPrefix(mine), count: '' })} className="flex h-11 w-11 items-center justify-center text-slate-500"><Pencil size={20} /></button>
+              <button type="button" aria-label={`Cambiar zona ${z.name}`} onClick={() => setZoneEdit({ ...z, prefix: guessPrefix(mine), count: '', priceText: z.price != null ? String(z.price) : '' })} className="flex h-11 w-11 items-center justify-center text-slate-500"><Pencil size={20} /></button>
             </div>
             <p className="mb-2 px-1 text-sm text-slate-600">
-              {z.kind === 'water' ? 'Agua / muelle' : 'Tierra'} · {count(['occupied', 'temp'])} ocupados · {count(['free'])} libres · {count(['away', 'reserved'])} reservados{count(['out']) ? ` · ${count(['out'])} fuera` : ''}
+              {z.kind === 'water' ? 'Agua / muelle' : 'Tierra'} · <b>{zonePriceText(z)}</b> · {count(['occupied', 'temp'])} ocupados · {count(['free'])} libres · {count(['away', 'reserved'])} reservados{count(['out']) ? ` · ${count(['out'])} fuera` : ''}
             </p>
             <div className="grid grid-cols-4 gap-2">
               {mine.map((s, i) => {
@@ -87,6 +87,8 @@ export default function StorageSpaces({ zones, spots, contracts, me, reload, fla
   )
 }
 
+type ZoneDraft = Partial<Zone> & { prefix?: string; count?: string; priceText?: string }
+
 /** "A-12" → "A-" (para seguir numerando igual) */
 function guessPrefix(spots: Spot[]) {
   const m = spots.at(-1)?.label.match(/^(.*?)(\d+)$/)
@@ -98,7 +100,7 @@ function nextNumber(spots: Spot[], prefix: string) {
 }
 
 function ZoneSheet({ edit, setEdit, spots, contracts, me, reload, flash }: {
-  edit: (Partial<Zone> & { prefix?: string; count?: string }) | null; setEdit: (z: (Partial<Zone> & { prefix?: string; count?: string }) | null) => void
+  edit: ZoneDraft | null; setEdit: (z: ZoneDraft | null) => void
   spots: Spot[]; contracts: Contract[]; me: string; reload: () => void; flash: (m: string) => void
 }) {
   const [busy, setBusy] = useState(false)
@@ -108,20 +110,22 @@ function ZoneSheet({ edit, setEdit, spots, contracts, me, reload, flash }: {
   const count = Number(edit.count || 0)
   const prefix = edit.prefix ?? ''
   const from = nextNumber(mine, prefix)
-  const set = (p: Partial<Zone> & { prefix?: string; count?: string }) => setEdit({ ...edit, ...p })
+  const set = (p: ZoneDraft) => setEdit({ ...edit, ...p })
 
   async function save() {
     if (!edit?.name?.trim()) return setError('Escribe el nombre de la zona.')
     if (!edit.id && count < 1) return setError('¿Cuántos espacios tiene?')
     if (count > 300) return setError('Máximo 300 espacios a la vez.')
+    const price = edit.priceText?.trim() ? Number(edit.priceText.replace(/[$,\s]/g, '')) : null
+    if (price != null && !(price >= 0)) return setError('Escribe el precio con números. Ej.: 12')
     setBusy(true)
     setError('')
     let id = edit.id
     if (id) {
-      const { error } = await db().from('storage_zones').update({ name: edit.name.trim(), kind: edit.kind }).eq('id', id)
+      const { error } = await db().from('storage_zones').update({ name: edit.name.trim(), kind: edit.kind, price, per_foot: edit.per_foot ?? true }).eq('id', id)
       if (error) { setBusy(false); return setError('No se pudo guardar. Intenta otra vez.') }
     } else {
-      const { data, error } = await db().from('storage_zones').insert({ mechanic_id: me, name: edit.name.trim(), kind: edit.kind ?? 'land' }).select('id').single()
+      const { data, error } = await db().from('storage_zones').insert({ mechanic_id: me, name: edit.name.trim(), kind: edit.kind ?? 'land', price, per_foot: edit.per_foot ?? true }).select('id').single()
       if (error || !data) { setBusy(false); return setError('No se pudo guardar. Intenta otra vez.') }
       id = (data as { id: string }).id
     }
@@ -148,6 +152,17 @@ function ZoneSheet({ edit, setEdit, spots, contracts, me, reload, flash }: {
             ))}
           </div>
         </Field>
+        <div className="rounded-2xl bg-slate-50 p-3">
+          <p className="mb-2 text-base font-bold text-slate-800">Precio de esta zona</p>
+          <div className="mb-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Cómo se cobra la zona">
+            {([[true, 'Por pie al mes'], [false, 'Fijo al mes']] as const).map(([v, l]) => (
+              <button key={l} type="button" role="radio" aria-checked={(edit.per_foot ?? true) === v} onClick={() => set({ per_foot: v })}
+                className={`min-h-12 rounded-xl border-2 text-base font-bold ${(edit.per_foot ?? true) === v ? 'border-navy-800 bg-navy-800 text-white' : 'border-slate-300 bg-white text-slate-800'}`}>{l}</button>
+            ))}
+          </div>
+          <Input aria-label="Precio de la zona" inputMode="decimal" value={edit.priceText ?? ''} onChange={(e) => set({ priceText: e.target.value })} placeholder={(edit.per_foot ?? true) ? '$ por pie (ej. 12)' : '$ al mes (ej. 250)'} />
+          <p className="mt-1 text-sm text-slate-600">{(edit.per_foot ?? true) ? 'Un bote de 25 pies a $12 el pie paga $300 al mes. El app lo calcula solo.' : 'Todos los botes de esta zona pagan lo mismo.'}</p>
+        </div>
         <div className="rounded-2xl bg-slate-50 p-3">
           <p className="mb-2 text-base font-bold text-slate-800">{edit.id ? 'Añadir más espacios' : 'Sus espacios'}</p>
           <div className="grid grid-cols-2 gap-3">

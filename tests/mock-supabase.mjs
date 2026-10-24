@@ -105,6 +105,7 @@ const DEFAULTS = {
   service_packages: () => ({ items: [], use_count: 0 }),
   payments: () => ({ method: 'cash', paid_at: new Date().toISOString(), note: null, tip: 0, gift_card_id: null }),
   gift_cards: () => ({ recipient_name: null, buyer_name: null, phone: null, method: 'cash', note: null, sold_at: new Date().toISOString() }),
+  storage_zones: () => ({ price: null, per_foot: true, sort: 0 }),
   work_order_parts: () => ({ kind: 'part', part_number: null, qty: 1, unit_cost: 0, supplied_by: 'mechanic', supplier: null, eta: null, received_at: null }),
 }
 
@@ -657,6 +658,8 @@ http.createServer((req, res) => {
           db.admin_signups.push({ id: randomUUID(), profile_id: r.profile_id, full_name: prof?.full_name ?? null, business_name: r.business_name, business_type: patch.business_type ?? r.business_type, email: prof?.email ?? null, phone: prof?.phone ?? null, town: prof?.town ?? null, created_at: new Date().toISOString(), seen_at: null })
         }
         if (table === 'storage_contracts') found.forEach((r) => checkSpot({ ...r, ...patch }, r))
+        // Como 0033: al escoger guardería, la garantía de mecánico por defecto se cambia por reglas de guardería
+        if (table === 'mechanics' && patch.business_type === 'storage') found.forEach((r) => { if (/^Garantía de mano de obra/.test(r.policies_text ?? '') && !patch.policies_text) patch.policies_text = 'La renta del espacio se paga por adelantado. El bote tiene que tener seguro vigente y marbete al día.' })
         found.forEach((r) => Object.assign(r, patch))
         if (table === 'storage_contracts') found.forEach((r) => checkSpot(r, r))
         return out(found)

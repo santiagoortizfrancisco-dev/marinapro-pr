@@ -4,13 +4,12 @@ import { AlertTriangle, ExternalLink, FileText, Pencil, Plus, Ship, Trash2, Ware
 import { useAuth } from '../../auth/AuthProvider'
 import { WhatsAppIcon } from '../../components/BrandIcons'
 import { Sheet, Toast } from '../../components/Sheet'
-import { PRICES_SEEN } from '../../components/StorageNext'
 import StorageSpaces from '../../components/StorageSpaces'
 import { BackTitle, Button, CARD, EmptyState, Field, Input, Loading, Select, Textarea } from '../../components/ui'
 import { db } from '../../lib/db'
 import { addDays, daysUntil, formatDate, formatMoney, todayPR } from '../../lib/format'
 import { whatsappLink } from '../../lib/links'
-import { basisText, priceFor, spotName, spotState, type Basis, type Contract, type Rate, type Spot, type StorageBoat, type Zone } from '../../lib/storage'
+import { basisText, priceFor, spotName, spotState, zonePrice, type Basis, type Contract, type Rate, type Spot, type StorageBoat, type Zone } from '../../lib/storage'
 import { must, num, useLoad } from '../../lib/useLoad'
 
 type Boat = StorageBoat
@@ -41,7 +40,7 @@ export default function Storage() {
   const [params] = useSearchParams()
   const [tab, setTab] = useState<Tab>(() => (['spaces', 'bill', 'rates'].includes(params.get('tab') ?? '') ? params.get('tab') as Tab : 'boats'))
   // Desde un cuadro de Espacios: abrir el contrato de un bote, o uno nuevo con ese espacio
-  const [intent, setIntent] = useState<{ boat?: string; spot?: string } | null>(params.get('bote') ? { boat: params.get('bote')! } : null)
+  const [intent, setIntent] = useState<{ boat?: string; spot?: string } | null>(params.get('bote') ? { boat: params.get('bote')! } : params.get('espacio') ? { spot: params.get('espacio')! } : null)
   const [month, setMonth] = useState(firstOf(todayPR()))
   const [toast, setToast] = useState<string | null>(null)
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500) }
@@ -190,9 +189,15 @@ function ContractSheet({ edit, setEdit, data, me, reload }: { edit: Partial<Cont
   const boat = data.boats.find((b) => b.id === edit?.boat_id)
   const set = (patch: Partial<Contract>) => setEdit({ ...edit, ...patch })
   // Al escoger bote o espacio, sugiere el precio (se puede cambiar)
-  const suggest = (boatId?: string, rateId?: string | null) => {
-    const r = data.rates.find((x) => x.id === rateId)
+  // Con zonas: el precio sale de la zona del cuadro (pies × precio). Sin zonas: de la lista de Precios.
+  const useZones = data.zones.length > 0
+  const suggest = (boatId?: string, rateId?: string | null, spotId?: string | null) => {
     const b = data.boats.find((x) => x.id === boatId)
+    if (useZones) {
+      const sp = data.spots.find((x) => x.id === spotId)
+      return zonePrice(data.zones.find((z) => z.id === sp?.zone_id), b?.length_ft ?? null) ?? undefined
+    }
+    const r = data.rates.find((x) => x.id === rateId)
     return r ? priceFor(r, b?.length_ft ?? null) : undefined
   }
 
@@ -222,7 +227,7 @@ function ContractSheet({ edit, setEdit, data, me, reload }: { edit: Partial<Cont
           <Field label="Bote *">
             {edit.id ? <p className="text-lg font-bold text-navy-900">{boat?.name} · {boat?.clients?.full_name}</p> : (
               <>
-                <Select aria-label="Bote" value={edit.boat_id ?? ''} onChange={(e) => set({ boat_id: e.target.value, monthly_price: suggest(e.target.value, edit.rate_id) ?? edit.monthly_price })}>
+                <Select aria-label="Bote" value={edit.boat_id ?? ''} onChange={(e) => set({ boat_id: e.target.value, monthly_price: suggest(e.target.value, edit.rate_id, edit.spot_id) ?? edit.monthly_price })}>
                   <option value="">Escoge…</option>
                   {boats.map((b) => <option key={b.id} value={b.id}>{b.name}{b.length_ft ? ` (${Number(b.length_ft)}')` : ''} · {b.clients?.full_name ?? ''}</option>)}
                 </Select>
@@ -230,17 +235,17 @@ function ContractSheet({ edit, setEdit, data, me, reload }: { edit: Partial<Cont
               </>
             )}
           </Field>
-          <Field label="Espacio">
+          {!useZones && <Field label="Espacio">
             <Select aria-label="Espacio" value={edit.rate_id ?? ''} onChange={(e) => set({ rate_id: e.target.value || null, monthly_price: suggest(edit.boat_id, e.target.value) ?? edit.monthly_price })}>
               <option value="">Otro</option>
               {spaces.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </Select>
-          </Field>
+          </Field>}
           {data.spots.length > 0 ? (
             <Field label="Su cuadro" hint="Solo salen los libres. Los cuadros se crean en Espacios.">
               <Select aria-label="Su cuadro" value={edit.spot_id ?? ''} onChange={(e) => {
                 const sp = data.spots.find((x) => x.id === e.target.value)
-                set({ spot_id: sp?.id ?? null, space_label: sp ? spotName(sp, data.zones) : null })
+                set({ spot_id: sp?.id ?? null, space_label: sp ? spotName(sp, data.zones) : null, monthly_price: suggest(edit.boat_id, edit.rate_id, sp?.id) ?? edit.monthly_price })
               }}>
                 <option value="">Sin cuadro todavía</option>
                 {data.spots.filter((sp) => sp.id === edit.spot_id || ['free', 'reserved'].includes(spotState(sp, data.contracts).state)).map((sp) => (
@@ -460,8 +465,6 @@ function BillTab({ data, me, month, setMonth, reload, flash, signature }: { data
 
 // ---------------------------------------------------------------------------------------------
 function RatesTab({ rates, me, reload }: { rates: Rate[]; me: string; reload: () => void }) {
-  // Primeros pasos: ya vio sus precios (al abrir, sin esperar)
-  useState(() => { try { localStorage.setItem(PRICES_SEEN, '1') } catch { /* sin memoria */ } })
   const [edit, setEdit] = useState<Partial<Rate> | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)

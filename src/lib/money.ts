@@ -5,6 +5,7 @@ import type { Invoice, Payment, WorkOrder } from './types'
 /** Un trabajo con su bote, su cliente, su factura (si tiene) y lo que ya le han pagado: lo que hace falta para saber quién debe. */
 export interface MoneyRow {
   id: string
+  boat_id: string
   status: WorkOrder['status']
   created_at: string
   completed_at: string | null
@@ -13,7 +14,7 @@ export interface MoneyRow {
   payments: Pick<Payment, 'id' | 'amount' | 'method' | 'paid_at'>[]
 }
 
-const SELECT = 'id, status, created_at, completed_at, boats(name, clients(id, full_name, phone)), invoices(id, number, total, paid_at, payment_method, public_token, created_at), payments(id, amount, method, paid_at)'
+const SELECT = 'id, boat_id, status, created_at, completed_at, boats(name, clients(id, full_name, phone)), invoices(id, number, total, paid_at, payment_method, public_token, created_at), payments(id, amount, method, paid_at)'
 
 type Raw = Omit<MoneyRow, 'invoice' | 'payments'> & { invoices: MoneyRow['invoice'][] | MoneyRow['invoice']; payments: MoneyRow['payments'] | null }
 

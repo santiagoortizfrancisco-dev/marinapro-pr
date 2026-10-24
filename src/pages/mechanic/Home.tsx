@@ -5,7 +5,7 @@ import { NailPolishIcon, NailsHandIcon } from '../../components/BeautyIcons'
 import { GaugeIcon, PistonIcon, PropellerIcon, SparkPlugIcon } from '../../components/PartIcons'
 import { useAuth } from '../../auth/AuthProvider'
 import DueServices from '../../components/DueServices'
-import StorageNext from '../../components/StorageNext'
+import StorageHome from '../../components/StorageHome'
 import SalonReminders from '../../components/SalonReminders'
 import ExamplesBanner from '../../components/ExamplesBanner'
 import { db } from '../../lib/db'
@@ -153,28 +153,7 @@ export default function Home() {
         </div>
       )}
 
-      {look === 'storage' && (
-        <>
-          {/* Lo primero: los primeros pasos o lo próximo que toca */}
-          {session && <div className="-mt-4 mb-4"><StorageNext me={session.user.id} debt={data?.debt ?? null} /></div>}
-          <Link to="/guarderia" className="flex min-h-36 flex-col justify-between rounded-3xl bg-navy-800 p-5 text-white shadow-xl shadow-navy-900/25 transition active:scale-[0.99]">
-            <span className="flex items-center gap-3">
-              <Anchor size={40} />
-              <span className="flex-1 text-3xl font-extrabold">Guardería</span>
-              <ChevronRight size={28} />
-            </span>
-            <span className="mt-3 block text-lg font-semibold text-navy-100">
-              {data ? `${data.yard.boats} ${data.yard.boats === 1 ? 'bote' : 'botes'} · ${formatMoney(data.yard.monthly)} al mes` : '…'}
-            </span>
-            {data && data.yard.alerts > 0 && <span className="mt-2 inline-flex w-fit items-center gap-2 rounded-full bg-amber-400 px-3 py-1 text-base font-extrabold text-navy-900">⚠️ {data.yard.alerts} {data.yard.alerts === 1 ? 'contrato o seguro' : 'contratos o seguros'} por vencer</span>}
-          </Link>
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            <PlainTile to="/cobrar" icon={Receipt} label="Factura rápida" color="#0369a1" />
-            <PlainTile to="/clientes" icon={Users} label={words.Clients} color="#334155" />
-            <PlainTile to="/trabajos" icon={Wallet} label="Me deben" sub={debt} color="#dc2626" />
-          </div>
-        </>
-      )}
+      {look === 'storage' && session && <StorageHome me={session.user.id} />}
 
       {words.salon && <SalonReminders />}
 
