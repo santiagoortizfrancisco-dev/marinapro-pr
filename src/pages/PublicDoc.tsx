@@ -170,7 +170,8 @@ export default function PublicDoc() {
   const ivuOn = [t.ivu_on_labor && 'mano de obra', t.ivu_on_parts && 'piezas'].filter(Boolean).join(' y ')
   const payments = doc.payments ?? []
   const balance = Math.max(0, Math.round((Number(t.total) - payments.reduce((x, py) => x + Number(py.amount), 0)) * 100) / 100)
-  const boatLine = [[doc.boat.make, doc.boat.model, doc.boat.year].filter(Boolean).join(' '), [words.marina ? doc.boat.marina : null, words.marina && doc.boat.slip ? `muelle ${doc.boat.slip}` : null, doc.boat.town].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
+  // Guardería: el bote por su nombre; su espacio sale en la línea de la renta
+  const boatLine = words.storage ? '' : [[doc.boat.make, doc.boat.model, doc.boat.year].filter(Boolean).join(' '), [words.marina ? doc.boat.marina : null, words.marina && doc.boat.slip ? `muelle ${doc.boat.slip}` : null, doc.boat.town].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
 
   return (
     <div className="min-h-full bg-slate-100 py-4 print:bg-white print:py-0">
@@ -221,7 +222,7 @@ export default function PublicDoc() {
           </div>}
         </section>
 
-        {!salon && [['Problema reportado', doc.work.complaint], ['Diagnóstico', doc.work.diagnosis], ['Trabajo realizado', doc.work.work_done]].map(([label, text]) =>
+        {!simple && [['Problema reportado', doc.work.complaint], ['Diagnóstico', doc.work.diagnosis], ['Trabajo realizado', doc.work.work_done]].map(([label, text]) =>
           text ? (
             <section key={label} className="mt-4">
               <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[var(--accent)]">{label}</div>
@@ -235,8 +236,8 @@ export default function PublicDoc() {
           <thead>
             <tr className="bg-navy-50 text-left text-sm uppercase text-navy-900">
               <th className="rounded-l-lg px-2 py-2">{salon ? 'Servicio' : 'Descripción'}</th>
-              {!salon && <th className="py-2 pl-2 text-right">Cant.</th>}
-              {!salon && <th className="py-2 pl-3 text-right">Precio</th>}
+              {!simple && <th className="py-2 pl-2 text-right">Cant.</th>}
+              {!simple && <th className="py-2 pl-3 text-right">Precio</th>}
               <th className="rounded-r-lg py-2 pl-3 pr-2 text-right">Total</th>
             </tr>
           </thead>
@@ -256,8 +257,8 @@ export default function PublicDoc() {
                   {p.part_number && <span className="block text-sm text-slate-500"># {p.part_number}</span>}
                   {p.supplied_by === 'client' && <span className="block text-sm text-slate-500">Pieza suplida por el cliente: solo se garantiza la instalación.</span>}
                 </td>
-                {!salon && <td className="whitespace-nowrap py-2 pl-3 text-right">{Number(p.qty)}</td>}
-                {!salon && <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' || Number(p.unit_cost) === 0 ? '—' : formatMoney(Number(p.unit_cost))}</td>}
+                {!simple && <td className="whitespace-nowrap py-2 pl-3 text-right">{Number(p.qty)}</td>}
+                {!simple && <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' || Number(p.unit_cost) === 0 ? '—' : formatMoney(Number(p.unit_cost))}</td>}
                 <td className="whitespace-nowrap py-2 pl-3 text-right">{p.supplied_by === 'client' ? 'No se cobra' : Number(p.unit_cost) === 0 ? 'Incluido' : formatMoney(Number(p.qty) * Number(p.unit_cost))}</td>
               </tr>
             ))}
@@ -271,7 +272,7 @@ export default function PublicDoc() {
             <div className="flex justify-between py-1"><dt>{doc.parts.some((p) => p.kind === 'service') ? 'Mano de obra y servicios' : 'Mano de obra'}</dt><dd>{formatMoney(Number(t.labor))}</dd></div>
             <div className="flex justify-between py-1"><dt>Piezas</dt><dd>{formatMoney(Number(t.parts))}</dd></div>
           </>}
-          <div className="flex justify-between py-1"><dt>IVU {percent(t.ivu_rate)}{ivuOn && !simple ? ` (${ivuOn})` : ''}</dt><dd>{formatMoney(Number(t.ivu))}</dd></div>
+          {!(words.storage && Number(t.ivu) === 0) && <div className="flex justify-between py-1"><dt>IVU {percent(t.ivu_rate)}{ivuOn && !simple ? ` (${ivuOn})` : ''}</dt><dd>{formatMoney(Number(t.ivu))}</dd></div>}
           <div className="mt-2 flex items-center justify-between rounded-xl bg-navy-900 px-4 py-3 text-white"><dt className="text-lg font-extrabold">TOTAL</dt><dd className="text-2xl font-extrabold" style={{ color: salon ? '#fbcfe8' : '#FDBA74' }}>{formatMoney(Number(t.total))}</dd></div>
           {payments.map((py, i) => (
             <div key={i} className="flex justify-between py-1 text-emerald-800">
@@ -325,7 +326,8 @@ export default function PublicDoc() {
             )}
           </section>
         )}
-        {doc.policies && (
+        {/* Guardería: el texto de garantía de mecánico (el que viene por defecto) no aplica */}
+        {doc.policies && !(words.storage && /garant[ií]a de mano de obra/i.test(doc.policies)) && (
           <section className="mt-5 border-t border-slate-200 pt-3">
             <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700 before:h-3 before:w-1 before:rounded before:bg-[var(--accent)]">{salon ? 'Políticas' : words.storage ? 'Reglas de la guardería' : 'Garantía y políticas'}</div>
             <p className="whitespace-pre-line text-sm text-slate-700">{doc.policies}</p>
