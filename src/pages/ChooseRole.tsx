@@ -18,6 +18,7 @@ export default function ChooseRole() {
   const [trade, setTrade] = useState<Trade>(meta.business_type ?? 'general')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [askStart, setAskStart] = useState(false)
 
   // Se registró con "Crear mi cuenta": ya llenó todo, no se lo volvemos a pedir
   const auto = useRef(false)
@@ -48,16 +49,42 @@ export default function ChooseRole() {
       // A qué se dedica: cambia las palabras del app (bote, carro, equipo, propiedad…)
       await supabase.from('mechanics').update({ business_type: trade, business_type_set: true, use_estimates: trade !== 'beauty' && trade !== 'storage' }).eq('profile_id', session!.user.id)
       if (trade === 'beauty') await supabase.rpc('seed_beauty_services', { p_mech: session!.user.id })
-      // Empieza con ejemplos para ver cómo funciona (se borran con un botón en Inicio).
-      // La guardería no: empieza vacía y el paso a paso de Inicio la lleva.
-      if (trade !== 'storage') await supabase.rpc('load_examples')
       try { localStorage.setItem('tipo-de-negocio', trade) } catch { /* sin memoria: no pasa nada */ }
     }
     running.current = false
     setBusy(false)
     // Si ya quedó guardado antes (otro toque), no es un error: entra
-    if (error && !/ya fue escogido/.test(error.message)) setError('No se pudo guardar. Intenta otra vez.')
-    else await refreshProfile()
+    if (error && !/ya fue escogido/.test(error.message)) return setError('No se pudo guardar. Intenta otra vez.')
+    // Antes de entrar: ¿empieza con lo suyo o con ejemplos? (la guardería empieza vacía; su Inicio la lleva paso a paso)
+    if (!error && trade !== 'storage') return setAskStart(true)
+    await refreshProfile()
+  }
+
+  async function start(withExamples: boolean) {
+    setBusy(true)
+    if (withExamples) await supabase?.rpc('load_examples')
+    await refreshProfile()
+  }
+
+  // Último paso: empezar vacío (lo recomendado) o ver cómo funciona con ejemplos
+  if (askStart) {
+    return (
+      <div className="safe-top safe-bottom mx-auto max-w-md px-6 py-10">
+        <h1 className="text-3xl font-extrabold text-navy-900">¡Tu cuenta está lista!</h1>
+        <p className="mt-2 text-lg text-slate-700">¿Cómo quieres empezar?</p>
+        <div className="mt-6 space-y-3">
+          <button type="button" disabled={busy} onClick={() => start(false)} className="w-full rounded-2xl bg-navy-800 p-5 text-left text-white shadow-lg active:scale-[0.99]">
+            <span className="block text-xl font-extrabold">Empezar con lo mío</span>
+            <span className="block text-base text-navy-100">Sin nada de ejemplo, lista para tus clientes de verdad.</span>
+          </button>
+          <button type="button" disabled={busy} onClick={() => start(true)} className="w-full rounded-2xl bg-white p-5 text-left text-navy-900 ring-2 ring-navy-200 active:scale-[0.99]">
+            <span className="block text-xl font-extrabold">Ver cómo funciona con ejemplos</span>
+            <span className="block text-base text-slate-600">Con clientes y cobros de ejemplo. Los borras con un botón cuando quieras.</span>
+          </button>
+        </div>
+        {busy && <p className="mt-4 text-center text-base font-bold text-navy-900">Preparando…</p>}
+      </div>
+    )
   }
 
   // Se registró con todo lleno: mientras se guarda, no se enseña el formulario (para que no lo toquen dos veces)

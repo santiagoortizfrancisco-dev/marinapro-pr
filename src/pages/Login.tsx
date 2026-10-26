@@ -143,7 +143,15 @@ export default function Login() {
 
           {isSupabaseConfigured && step === 'password' && (
             <form onSubmit={signInWithPassword} className="space-y-5">
-              <h2 className="text-2xl font-bold text-navy-900">Entrar</h2>
+              {/* Primera vez en este celular: lo primero es crear la cuenta */}
+              {!remembered && (
+                <div className="rounded-2xl bg-navy-50 p-4 ring-1 ring-navy-100">
+                  <p className="text-xl font-extrabold text-navy-900">¿Primera vez aquí?</p>
+                  <p className="mb-3 text-base text-slate-600">Crea tu cuenta gratis en un minuto.</p>
+                  <Button type="button" onClick={() => { setStep('signup'); setError('') }}><UserPlus /> Soy nuevo: crear mi cuenta</Button>
+                </div>
+              )}
+              <h2 className="text-2xl font-bold text-navy-900">{remembered ? 'Entrar' : '¿Ya tienes cuenta? Entra'}</h2>
               {remembered ? (
                 <div className="flex items-center gap-3 rounded-xl bg-navy-50 px-4 py-3">
                   <span className="min-w-0 flex-1">
@@ -189,9 +197,9 @@ export default function Login() {
                 Entrar con código por email
               </Button>
               <div className="border-t border-slate-200 pt-5">
-                <Button type="button" variant="secondary" onClick={() => { setStep('signup'); setError('') }}>
+                {remembered && <Button type="button" variant="secondary" onClick={() => { setStep('signup'); setError('') }}>
                   <UserPlus /> ¿Tienes un negocio de servicio? Crea tu cuenta
-                </Button>
+                </Button>}
                 <a href="/info" className="mt-3 block text-center text-base font-bold text-navy-700 underline">¿Qué es FacturaFácil PR? Conócelo aquí</a>
               </div>
             </form>

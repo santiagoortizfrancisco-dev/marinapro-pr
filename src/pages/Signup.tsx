@@ -68,18 +68,34 @@ export default function Signup({ onBack, onWaitEmail }: { onBack: () => void; on
     if (!data.session) onWaitEmail(email)
   }
 
+  // Paso 1: la bienvenida y qué tipo de negocio tiene (el resto del app usa sus palabras)
+  if (!trade) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-2xl font-extrabold text-navy-900">¡Bienvenido a FacturaFácil PR!</h2>
+        <p className="text-lg text-slate-700">¿Qué tipo de negocio tienes?</p>
+        <TradePicker value={trade} onChange={setTrade} />
+        <p className="text-sm text-slate-500">Así el app usa tus palabras: clienta o cliente, bote, carro, piscina…</p>
+        <Button type="button" variant="ghost" onClick={onBack}>Ya tengo cuenta: entrar</Button>
+      </div>
+    )
+  }
+  const chosen = TRADES.find((t) => t.value === trade)!
+
+  // Paso 2: sus datos y cómo va a entrar
   return (
     <form onSubmit={submit} className="space-y-4">
       <h2 className="flex items-center gap-2 text-2xl font-bold text-navy-900"><UserPlus /> Crear mi cuenta</h2>
-      <p className="text-base text-slate-600">Para cualquier negocio de servicio. Toma un minuto y entras enseguida.</p>
-      <Field label="¿A qué te dedicas? *">
-        <TradePicker value={trade} onChange={setTrade} />
-      </Field>
+      <div className="flex items-center gap-3 rounded-xl bg-navy-50 px-4 py-3">
+        <span className="text-2xl" aria-hidden="true">{chosen.emoji}</span>
+        <span className="min-w-0 flex-1 text-base font-bold text-navy-900">{chosen.label}</span>
+        <button type="button" onClick={() => setTrade(null)} className="shrink-0 rounded-lg border-2 border-navy-800 px-3 py-1.5 text-sm font-bold text-navy-800">Cambiar</button>
+      </div>
       <Field label="Tu nombre completo *" icon={User}>
         <Input autoComplete="name" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} />
       </Field>
       <Field label="Nombre de tu compañía" icon={Building2} tone="teal" hint="Sale arriba en el app y en tus facturas">
-        <Input value={f.business_name} onChange={(e) => set('business_name', e.target.value)} placeholder="Rivera Service" />
+        <Input value={f.business_name} onChange={(e) => set('business_name', e.target.value)} placeholder={({ beauty: 'Salón Iris', storage: 'Guardería Colón', marine: 'Rivera Marine', pool: 'Aqua Pools', auto: 'Taller Rivera' } as Partial<Record<Trade, string>>)[trade] ?? 'Rivera Service'} />
       </Field>
       <Field label="Teléfono / WhatsApp *" icon={Phone} tone="green">
         <Input type="tel" inputMode="tel" autoComplete="tel" value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="787-555-0123" />
