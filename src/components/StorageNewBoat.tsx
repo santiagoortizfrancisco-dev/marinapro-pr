@@ -11,15 +11,15 @@ interface BoatRow { id: string; name: string; length_ft: number | null; clients:
  * Poner un bote en un espacio, todo en el mismo sitio: el dueño, su teléfono, el bote, sus pies y el espacio.
  * Si el bote ya está en Clientes, se escoge de la lista. El precio del mes sale de la zona (y se puede cambiar).
  */
-export default function StorageNewBoat({ zones, spots, contracts, me, presetSpot = null, onDone }: {
-  zones: Zone[]; spots: Spot[]; contracts: Contract[]; me: string; presetSpot?: string | null; onDone: (msg: string) => void
+export default function StorageNewBoat({ zones, spots, contracts, me, presetSpot = null, presetBoat = '', onDone }: {
+  zones: Zone[]; spots: Spot[]; contracts: Contract[]; me: string; presetSpot?: string | null; presetBoat?: string; onDone: (msg: string) => void
 }) {
   const inYard = new Set(contracts.filter((c) => c.status === 'active').map((c) => c.boat_id))
   const { data: boats } = useLoad(async () => ((await db().from('boats').select('id, name, length_ft, clients(full_name)').order('name')).data ?? []) as unknown as BoatRow[], [])
   const known = (boats ?? []).filter((b) => !inYard.has(b.id))
   const free = bySpot(spots.filter((s) => s.id === presetSpot || spotState(s, contracts).state === 'free'), zones)
 
-  const [existing, setExisting] = useState('')
+  const [existing, setExisting] = useState(presetBoat)
   const [owner, setOwner] = useState('')
   const [phone, setPhone] = useState('')
   const [boatName, setBoatName] = useState('')

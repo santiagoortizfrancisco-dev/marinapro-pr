@@ -11,6 +11,7 @@ import { newZoneDraft, ZoneForm, type ZoneDraft } from './StorageSpaces'
 import { Button, Input } from './ui'
 import { useLoad } from '../lib/useLoad'
 import { CARD } from './ui'
+import { useAuth } from '../auth/AuthProvider'
 
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
@@ -22,7 +23,9 @@ export default function StorageHome({ me }: { me: string }) {
   const month = todayPR().slice(0, 8) + '01'
   const [onlyOwing, setOnlyOwing] = useState(false)
   const [zone, setZone] = useState<ZoneDraft>(newZoneDraft())
-  const [zonesNext, setZonesNext] = useState(false)
+  // "Ya tengo todas mis zonas": se acuerda aunque cierre el app
+  const [zonesNext, setZonesNextState] = useState(() => { try { return localStorage.getItem('guarderia-zonas-listas') === '1' } catch { return false } })
+  const setZonesNext = (v: boolean) => { setZonesNextState(v); try { localStorage.setItem('guarderia-zonas-listas', v ? '1' : '0') } catch { /* sin memoria */ } }
   const [newIn, setNewIn] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000) }
@@ -212,7 +215,9 @@ export default function StorageHome({ me }: { me: string }) {
 
 /** Paso 1: el ATH Móvil ahí mismo. */
 function AthStep({ me, onDone }: { me: string; onDone: () => void }) {
-  const [ath, setAth] = useState('')
+  // Casi siempre es el mismo teléfono que puso al registrarse
+  const { profile } = useAuth()
+  const [ath, setAth] = useState(profile?.phone ?? '')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   return (

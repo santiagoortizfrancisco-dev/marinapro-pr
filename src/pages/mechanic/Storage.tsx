@@ -13,7 +13,8 @@ import { basisText, bySpot, priceFor, spotName, spotState, zonePrice, type Basis
 import { must, num, useLoad } from '../../lib/useLoad'
 
 type Boat = StorageBoat
-interface Charge { id: string; boat_id: string; description: string; qty: number; unit_price: number; charged_on: string }
+export interface Charge { id: string; boat_id: string; description: string; qty: number; unit_price: number; charged_on: string }
+export type ChargeData = { rates: Rate[]; charges: Charge[] }
 interface Bill {
   contract_id: string; month: string; work_order_id: string | null
   work_orders: {
@@ -37,10 +38,12 @@ export default function Storage() {
   const { session, profile } = useAuth()
   const me = session!.user.id
   // ?tab=bill|rates abre esa parte; ?bote=ID abre el contrato de ese bote (desde su ficha)
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>(() => (['spaces', 'bill', 'rates'].includes(params.get('tab') ?? '') ? params.get('tab') as Tab : 'boats'))
   // Desde un cuadro de Espacios: abrir el contrato de un bote, o uno nuevo con ese espacio
   const [intent, setIntent] = useState<{ boat?: string; spot?: string } | null>(params.get('bote') ? { boat: params.get('bote')! } : params.get('espacio') ? { spot: params.get('espacio')! } : null)
+  // Se usa una vez: si recarga, no vuelve a abrir el mismo contrato
+  useEffect(() => { if (params.get('bote') || params.get('espacio')) setParams((p) => { p.delete('bote'); p.delete('espacio'); return p }, { replace: true }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [month, setMonth] = useState(firstOf(todayPR()))
   const [toast, setToast] = useState<string | null>(null)
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500) }
@@ -298,7 +301,8 @@ function ContractSheet({ edit, setEdit, data, me, reload }: { edit: Partial<Cont
   )
 }
 
-function ChargeSheet({ contract, onClose, data, me, reload, flash }: { contract: Contract | null; onClose: () => void; data: Data; me: string; reload: () => void; flash: (m: string) => void }) {
+/** Cargos extra de un bote (rampa, noche, lavado…): un toque. También se abre desde la ficha del bote. */
+export function ChargeSheet({ contract, onClose, data, me, reload, flash }: { contract: Pick<Contract, 'boat_id' | 'boats'> | null; onClose: () => void; data: ChargeData; me: string; reload: () => void; flash: (m: string) => void }) {
   const [desc, setDesc] = useState('')
   const [price, setPrice] = useState('')
   const [day, setDay] = useState(todayPR())
@@ -423,24 +427,25 @@ function BillTab({ data, me, month, setMonth, reload, flash, signature }: { data
                 <div className="flex items-start gap-2">
                   <Ship className="mt-1 text-navy-700" size={20} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-lg font-extrabold text-navy-900">{wo.boats?.name} · {c?.full_name}</span>
+                    <span className="block text-lg font-extrabold leading-tight text-navy-900">{wo.boats?.name}</span>
+                    <span className="block text-base text-slate-700">{c?.full_name}</span>
                     {inv && <span className="block text-sm text-slate-600">#{inv.number} · {formatMoney(Number(inv.total))}{inv.due_date ? ` · vence ${formatDate(inv.due_date)}` : ''}</span>}
                   </span>
                   <span className={`rounded-full px-3 py-1 text-sm font-bold ${isPaid ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{isPaid ? 'Pagada' : 'Debe'}</span>
                 </div>
                 <div className="mt-2 flex gap-2">
                   {c?.phone && inv && <a href={whatsappLink(c.phone, msg)} target="_blank" rel="noreferrer" onClick={() => { if (!inv.sent_at) db().from('invoices').update({ sent_at: new Date().toISOString() }).eq('id', inv.id).then(() => reload()) }}
-                    className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl text-base font-bold ${inv.sent_at ? 'bg-white text-emerald-800 ring-2 ring-emerald-300' : 'bg-[#25D366] text-white'}`}><WhatsAppIcon size={20} /> {inv.sent_at ? 'Enviada ✓ (otra vez)' : 'Enviar'}</a>}
+                    className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl text-base font-bold ${inv.sent_at ? 'bg-white text-emerald-800 ring-2 ring-emerald-300' : 'bg-[#25D366] text-white'}`}><WhatsAppIcon size={20} /> {inv.sent_at ? 'Enviada ✓ · Enviar otra vez' : 'Enviar'}</a>}
                   <Link to={`/trabajos/${wo.id}`} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-white text-base font-bold text-slate-800 ring-1 ring-slate-300"><ExternalLink size={18} /> Ver / cobrar</Link>
                 </div>
                 {paid === 0 && (
-                  <button type="button" className="mt-1 min-h-11 w-full text-sm font-bold text-red-700" onClick={async () => {
+                  <button type="button" className="mt-1 min-h-11 w-full text-sm text-slate-500 underline" onClick={async () => {
                     if (!window.confirm('¿Borrar esta factura? Los cargos extra vuelven a quedar pendientes y el mes se puede facturar otra vez.')) return
                     must(await db().from('storage_bills').delete().eq('contract_id', b.contract_id).eq('month', b.month))
                     must(await db().from('work_orders').delete().eq('id', wo.id))
                     flash('Factura borrada')
                     reload()
-                  }}>Borrar esta factura (se hizo por error)</button>
+                  }}>¿Se hizo por error? Borrarla</button>
                 )}
               </article>
             )

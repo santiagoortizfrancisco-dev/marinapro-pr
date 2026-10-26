@@ -1893,7 +1893,7 @@ test('guardería: bote con su espacio (precio por pie), cobro de un toque, factu
   // La ficha del bote dice dónde está (su espacio) y abre el mismo contrato
   await page.goto('/botes/b1')
   await expect(page.getByText('En la guardería · Rack A-12')).toBeVisible()
-  await page.getByRole('link', { name: 'Ver o cambiar el contrato' }).click()
+  await page.getByRole('link', { name: 'Cambiar su espacio o su precio' }).click()
   await expect(page.getByRole('dialog', { name: 'Contrato del bote' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancelar' }).click()
 
@@ -1935,7 +1935,7 @@ test('guardería: bote con su espacio (precio por pie), cobro de un toque, factu
   await page.goBack()
   await page.getByRole('tab', { name: 'Facturar', exact: true }).click()
   page.once('dialog', (d) => d.accept())
-  await bill.getByRole('button', { name: /Borrar esta factura/ }).click()
+  await bill.getByRole('button', { name: /Borrarla/ }).click()
   await expect(page.getByRole('button', { name: /^Facturar / })).toBeVisible()
   const s = await state()
   expect(s.storage_bills).toHaveLength(0)
@@ -1958,7 +1958,7 @@ test('guardería: zonas de tierra y muelles con cuadros; poner un bote, reservar
   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await page.getByRole('button', { name: /Añadir zona/ }).click()
   await page.getByLabel('Nombre de la zona').fill('Muelle C')
-  await page.getByRole('radio', { name: /Agua \/ muelle/ }).click()
+  await page.getByRole('radio', { name: 'Muelle', exact: true }).click()
   await page.getByRole('radio', { name: 'Fijo al mes' }).click()
   await page.getByLabel('Precio de la zona').fill('250')
   await page.getByLabel('Prefijo').fill('C-')
@@ -1999,6 +1999,12 @@ test('guardería: zonas de tierra y muelles con cuadros; poner un bote, reservar
   await expect(tile('C-1')).toHaveAccessibleName(/Ocupado, La Tranquila/)
   await page.goto('/botes/b1')
   await expect(page.getByText('En el agua · C-1')).toBeVisible()
+  // Cobrar algo desde la ficha del bote, sin salir de ella
+  await page.getByRole('button', { name: /Cobrar algo/ }).click()
+  await page.getByRole('button', { name: /Uso de rampa/ }).click()
+  await expect(page.getByRole('region', { name: 'Cobros pendientes' }).getByText('Uso de rampa')).toBeVisible()
+  await page.getByRole('button', { name: 'Listo' }).click()
+  await expect(page).toHaveURL(/\/botes\/b1/)
   await expect(page.getByText(/Su espacio Patio A · A-1 está reservado/)).toBeVisible()
 
   // Vuelve a tierra: el muelle se libera

@@ -11,6 +11,11 @@ import { must, useLoad } from '../../lib/useLoad'
 import ConfirmDelete from '../../components/ConfirmDelete'
 import NextService from '../../components/NextService'
 import { BackTitle, ErrorBox, InfoList, LinkButton, Loading, RowLink, SectionHeader } from '../../components/ui'
+import { Sheet, Toast } from '../../components/Sheet'
+import StorageNewBoat from '../../components/StorageNewBoat'
+import { useAuth } from '../../auth/AuthProvider'
+import type { Contract, Rate, Spot, Zone } from '../../lib/storage'
+import { ChargeSheet, type Charge } from './Storage'
 
 /** Contrato de guardería del bote (solo lo que se enseña aquí). */
 interface StorageContract { id: string; space_label: string | null; monthly_price: number; start_date: string; end_date: string | null; insurance_expires: string | null; away_since: string | null; away_spot_id: string | null }
@@ -20,6 +25,11 @@ export default function BoatDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [addingNext, setAddingNext] = useState(false)
+  const { session } = useAuth()
+  const me = session?.user.id ?? ''
+  const [yardSheet, setYardSheet] = useState<'charge' | 'place' | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500) }
   const { data, loading, error, reload } = useLoad(async () => {
     const boat = must(await db().from('boats').select('*, clients(id, full_name, phone)').eq('id', id!).single()) as Boat & { clients: Pick<Client, 'id' | 'full_name' | 'phone'> }
     const [engines, contracts, equipment, appts, jobs, next] = await Promise.all([
@@ -31,9 +41,17 @@ export default function BoatDetail() {
       db().from('maintenance_schedules').select('id, service_type, due_date, interval_months').eq('boat_id', id!).in('status', ['pending', 'notified']).order('due_date'),
     ])
     const contract = ((contracts.data ?? []) as StorageContract[])[0] ?? null
+    // Guardería: lo que hace falta para cobrar algo o meterlo en un espacio aquí mismo
+    const yard = w.storage ? await Promise.all([
+      db().from('storage_rates').select('*').eq('active', true).order('sort'),
+      db().from('storage_charges').select('*').eq('boat_id', id!).is('work_order_id', null).order('charged_on'),
+      db().from('storage_zones').select('*').order('sort'),
+      db().from('storage_spots').select('*').order('sort'),
+      db().from('storage_contracts').select('*').eq('status', 'active'),
+    ]).then(([r, ch, z, sp, c]) => ({ rates: (r.data ?? []) as Rate[], charges: (ch.data ?? []) as Charge[], zones: (z.data ?? []) as Zone[], spots: (sp.data ?? []) as Spot[], contracts: (c.data ?? []) as Contract[] })) : null
     // Si salió al agua: en cuál muelle está mientras tanto
     const awaySpot = contract?.away_spot_id ? ((await db().from('storage_spots').select('label').eq('id', contract.away_spot_id).maybeSingle()).data as { label: string } | null)?.label ?? null : null
-    return { boat, contract, awaySpot, engines: must(engines) as Engine[], equipment: must(equipment) as Equipment[], appts: must(appts) as (Appointment & { service_requests: { description: string } | null })[], jobs: must(jobs) as { id: string; status: keyof typeof WORK_ORDER_STATUS; complaint: string | null; diagnosis: string | null; work_done: string | null; created_at: string; completed_at: string | null; work_order_parts: { description: string; kind: string }[] }[], next: must(next) as { id: string; service_type: string; due_date: string; interval_months: number | null }[] }
+    return { boat, contract, awaySpot, yard, engines: must(engines) as Engine[], equipment: must(equipment) as Equipment[], appts: must(appts) as (Appointment & { service_requests: { description: string } | null })[], jobs: must(jobs) as { id: string; status: keyof typeof WORK_ORDER_STATUS; complaint: string | null; diagnosis: string | null; work_done: string | null; created_at: string; completed_at: string | null; work_order_parts: { description: string; kind: string }[] }[], next: must(next) as { id: string; service_type: string; due_date: string; interval_months: number | null }[] }
   }, [id])
 
   if (loading) return <Loading />
@@ -76,9 +94,12 @@ export default function BoatDetail() {
               </>}
             </div>
           </div>
-          <Link to={`/guarderia?bote=${b.id}`} className="mt-3 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-navy-800 text-base font-bold text-white active:bg-navy-900">
-            {data.contract ? 'Ver o cambiar el contrato' : 'Meterlo en la guardería'}
-          </Link>
+          {data.contract ? <>
+            <button type="button" onClick={() => setYardSheet('charge')} className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900"><Plus size={22} /> Cobrar algo (rampa, noche…)</button>
+            <Link to={`/guarderia?bote=${b.id}`} className="mt-2 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white text-base font-bold text-navy-800 ring-1 ring-navy-200">Cambiar su espacio o su precio</Link>
+          </> : (
+            <button type="button" onClick={() => setYardSheet('place')} className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-navy-800 text-lg font-bold text-white active:bg-navy-900">Meterlo en la guardería</button>
+          )}
         </section>
       )}
 
@@ -230,6 +251,15 @@ export default function BoatDetail() {
           navigate(`/clientes/${b.client_id}`, { replace: true })
         }}
       />
+      {w.storage && data.yard && data.contract && yardSheet === 'charge' && (
+        <ChargeSheet contract={{ boat_id: b.id, boats: { id: b.id, name: b.name, length_ft: b.length_ft, clients: null } }} data={data.yard} me={me} onClose={() => setYardSheet(null)} reload={reload} flash={flash} />
+      )}
+      {w.storage && data.yard && yardSheet === 'place' && (
+        <Sheet open title="Meterlo en la guardería" onClose={() => setYardSheet(null)}>
+          <StorageNewBoat zones={data.yard.zones} spots={data.yard.spots} contracts={data.yard.contracts} me={me} presetBoat={b.id} onDone={(m) => { setYardSheet(null); flash(m); reload() }} />
+        </Sheet>
+      )}
+      <Toast message={toast} />
     </>
   )
 }

@@ -416,7 +416,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
               <div className="flex justify-between py-0.5 text-slate-600"><dt>Mano de obra y servicios</dt><dd>{formatMoney(totals.labor)}</dd></div>
               <div className="flex justify-between py-0.5 text-slate-600"><dt>Piezas</dt><dd>{formatMoney(totals.parts)}</dd></div>
             </>}
-            <div className="flex justify-between py-0.5 text-slate-600"><dt>IVU {percent(mech.ivu_rate)}</dt><dd>{formatMoney(totals.ivu)}</dd></div>
+            {!(w.storage && totals.ivu === 0) && <div className="flex justify-between py-0.5 text-slate-600"><dt>IVU {percent(mech.ivu_rate)}</dt><dd>{formatMoney(totals.ivu)}</dd></div>}
             <div className="mt-1 flex justify-between border-t-2 border-slate-200 pt-2 text-2xl font-extrabold text-navy-900"><dt>TOTAL</dt><dd>{formatMoney(totals.total)}</dd></div>
           </dl>
           {!locked && (

@@ -144,10 +144,14 @@ export function ZoneForm({ edit, setEdit, spots, contracts, me, reload, flash, i
   const used = mine.some((s) => contracts.some((c) => c.status === 'active' && (c.spot_id === s.id || c.away_spot_id === s.id)))
   const body = (
       <div className="space-y-4">
-        <Field label="Nombre de la zona *"><Input aria-label="Nombre de la zona" value={edit.name ?? ''} onChange={(e) => set({ name: e.target.value })} placeholder="Patio A, Rack norte, Muelle C" /></Field>
+        <Field label="Nombre de la zona *"><Input aria-label="Nombre de la zona" value={edit.name ?? ''} onChange={(e) => {
+          // "Muelle C" → agua; "Patio A" → tierra (se puede cambiar abajo)
+          const name = e.target.value
+          set({ name, ...(/muelle|slip|agua|marina|dock/i.test(name) ? { kind: 'water' as const } : /patio|rack|tierra|seco|terreno/i.test(name) ? { kind: 'land' as const } : {}) })
+        }} placeholder="Patio A, Rack norte, Muelle C" /></Field>
         <Field label="Es">
           <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tipo de zona">
-            {([['land', 'Tierra', Warehouse], ['water', 'Agua / muelle', Anchor]] as const).map(([v, l, Icon]) => (
+            {([['land', 'Tierra', Warehouse], ['water', 'Muelle', Anchor]] as const).map(([v, l, Icon]) => (
               <button key={v} type="button" role="radio" aria-checked={edit.kind === v} onClick={() => set({ kind: v })}
                 className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 text-base font-bold ${edit.kind === v ? 'border-navy-800 bg-navy-800 text-white' : 'border-slate-300 bg-white text-slate-800'}`}><Icon size={20} /> {l}</button>
             ))}
