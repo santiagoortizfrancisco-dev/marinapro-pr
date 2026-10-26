@@ -7,7 +7,7 @@
     "dev": "vite --host",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host",
-    "icons": "pwa-assets-generator --preset minimal-2023 public/logo.svg",
+    "icons": "pwa-assets-generator --preset minimal-2023 public/logo-ff.svg",
     "build:test": "vite build --mode test --outDir dist-test",
     "test:db": "node --test tests/db.test.mjs",
     "test:app": "playwright test",

@@ -74,7 +74,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center bg-navy-800">
-        <img src="/logo.svg" alt="" className="h-24 w-24 animate-pulse" />
+        <img src="/logo-ff.svg" alt="" className="h-24 w-24 animate-pulse" />
       </div>
     )
   }
