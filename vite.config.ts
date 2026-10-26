@@ -16,7 +16,7 @@ export default defineConfig({
       includeAssets: ['favicon-48.png', 'favicon.svg', 'apple-touch-icon-180x180.png', 'logo-ff.svg'],
       manifest: {
         name: 'FacturaFácil PR',
-        short_name: 'FacturaFácil',
+        short_name: 'FacturaFácil PR',
         description: 'Citas, facturas y cobros desde el celular para negocios de servicio en Puerto Rico',
         lang: 'es-PR',
         start_url: '/',
