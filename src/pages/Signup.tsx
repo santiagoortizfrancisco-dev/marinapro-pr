@@ -5,7 +5,7 @@ import { PR_TOWNS } from '../lib/towns'
 import { onlyPin, weakPin } from '../lib/pin'
 import { Button, Choice, Field, Input, Select } from '../components/ui'
 import TradePicker from '../components/TradePicker'
-import type { Trade } from '../lib/trade'
+import { TRADES, type Trade } from '../lib/trade'
 
 /**
  * El mecánico se registra solo desde el link. Su cuenta queda "por aprobar":
@@ -14,7 +14,11 @@ import type { Trade } from '../lib/trade'
  */
 export default function Signup({ onBack, onWaitEmail }: { onBack: () => void; onWaitEmail: (email: string) => void }) {
   const [f, setF] = useState({ full_name: '', business_name: '', phone: '', town: '', email: '' })
-  const [trade, setTrade] = useState<Trade | null>(null)
+  // ?oficio=storage (link para una guardería) ya trae el oficio escogido
+  const [trade, setTrade] = useState<Trade | null>(() => {
+    const t = new URLSearchParams(window.location.search).get('oficio')
+    return TRADES.some((x) => x.value === t) ? t as Trade : null
+  })
   const [kind, setKind] = useState<'pin' | 'password'>('pin')
   const [secret, setSecret] = useState('')
   const [repeat, setRepeat] = useState('')

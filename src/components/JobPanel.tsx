@@ -256,7 +256,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
           {payments.map((pay) => (
             <div key={pay.id} className="flex items-center gap-2 text-base text-emerald-800">
               <span className="min-w-0 flex-1 truncate">
-                {!invoice || pay.paid_at < invoice.created_at ? 'Depósito' : 'Abono'} {formatDate(pay.paid_at).slice(0, 5)} · {({ ath_movil: 'ATH', cash: 'Efectivo', check: 'Cheque', other: 'Otro' } as const)[pay.method]}
+                {!invoice || pay.paid_at < invoice.created_at ? 'Depósito' : Number(pay.amount) >= Number(invoice.total) - 0.004 ? 'Pago' : 'Abono'} {formatDate(pay.paid_at).slice(0, 5)} · {({ ath_movil: 'ATH', cash: 'Efectivo', check: 'Cheque', other: 'Otro' } as const)[pay.method]}
               </span>
               <b className="shrink-0">−{formatMoney(Number(pay.amount))}</b>
               {!invoice?.paid_at ? (
@@ -339,7 +339,7 @@ export default function JobPanel({ woId: id, embedded = false }: { woId: string;
         </div>
       ) : (
         <>
-          <BackTitle to="/trabajos" subtitle={`Abierto el ${formatDate(wo.created_at)}`}>{w.salon ? 'Cuenta' : w.storage ? 'Factura' : 'Trabajo'} · {boat.name}</BackTitle>
+          <BackTitle to="/trabajos" subtitle={`${w.storage ? 'Hecha el' : 'Abierto el'} ${formatDate(wo.created_at)}`}>{w.salon ? 'Cuenta' : w.storage ? 'Factura' : 'Trabajo'} · {boat.name}</BackTitle>
           <div className="mb-3 flex items-center justify-between gap-2">
             <Link to={`/botes/${boat.id}`} className="flex min-h-12 flex-1 items-center gap-2 rounded-xl bg-slate-100 px-4 text-base font-semibold text-slate-800">
               <Ship size={20} /> {boat.name} · {client.full_name}

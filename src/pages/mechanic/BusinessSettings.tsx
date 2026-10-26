@@ -141,9 +141,9 @@ export default function BusinessSettings() {
 
   return (
     <>
-      <BackTitle to="/mas" subtitle="Esto sale en tus estimados y facturas">Mi negocio</BackTitle>
+      <BackTitle to="/mas" subtitle={trade === 'storage' || trade === 'beauty' ? 'Esto sale en tus facturas' : 'Esto sale en tus estimados y facturas'}>Mi negocio</BackTitle>
       <form onSubmit={save} className="space-y-4">
-        <Field label="Logo" hint="Sale arriba en el app y en tus estimados y facturas">
+        <Field label="Logo" hint={trade === 'storage' || trade === 'beauty' ? 'Sale arriba en el app y en tus facturas' : 'Sale arriba en el app y en tus estimados y facturas'}>
           <div className="flex items-center gap-3">
             <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-300 bg-black">
               {logoPath ? <img src={logoUrl(logoPath) ?? ''} alt="Logo" className="h-full w-full object-contain" /> : <ImagePlus className="text-slate-400" size={32} />}

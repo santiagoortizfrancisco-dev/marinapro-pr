@@ -199,7 +199,7 @@ export default function BoatDetail() {
           Último servicio: <b>{formatDate(lastService)}</b> ({ago(lastService)})
         </p>
       )}
-      {jobs.length === 0 && <p className="text-base text-slate-600">{`Todavía no hay trabajos en ${w.item === 'propiedad' ? 'esta' : 'este'} ${w.item}.`}</p>}
+      {jobs.length === 0 && <p className="text-base text-slate-600">{w.storage ? 'Todavía no hay facturas de este bote.' : `Todavía no hay trabajos en ${w.item === 'propiedad' ? 'esta' : 'este'} ${w.item}.`}</p>}
       <div className="space-y-2">
         {jobs.map((j) => {
           const services = j.work_order_parts.filter((p) => p.kind === 'service').map((p) => p.description)

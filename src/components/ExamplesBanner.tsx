@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { Sparkles, Trash2 } from 'lucide-react'
 import { db } from '../lib/db'
 import { useLoad } from '../lib/useLoad'
+import { useWords } from '../lib/trade'
 
 /**
  * La cuenta nueva empieza con ejemplos para ver cómo funciona el app.
  * Este aviso lo dice y los borra con un toque (los de verdad no se tocan).
  */
 export default function ExamplesBanner() {
+  const w = useWords()
   const [busy, setBusy] = useState(false)
   const { data: has } = useLoad(async () => {
     const { data } = await db().from('clients').select('id').eq('is_example', true).limit(1)
@@ -17,7 +19,7 @@ export default function ExamplesBanner() {
   if (!has) return null
 
   async function clear() {
-    if (!window.confirm('¿Borrar los ejemplos? Se borran las clientes, citas y cobros de ejemplo. Lo tuyo no se toca.')) return
+    if (!window.confirm(`¿Borrar los ejemplos? Se borran ${w.salon ? 'las clientas, citas' : 'los clientes, citas'} y cobros de ejemplo. Lo tuyo no se toca.`)) return
     setBusy(true)
     await db().rpc('clear_examples')
     window.location.reload()

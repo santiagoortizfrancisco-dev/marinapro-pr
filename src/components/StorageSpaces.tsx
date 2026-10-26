@@ -4,7 +4,8 @@ import { Sheet } from './Sheet'
 import { Button, CARD, EmptyState, Field, Input } from './ui'
 import { db } from '../lib/db'
 import { formatDate } from '../lib/format'
-import { spotName, spotState, zonePriceText, type Contract, type Spot, type SpotState, type Zone } from '../lib/storage'
+import StorageNewBoat from './StorageNewBoat'
+import { bySpot, spotName, spotState, zonePriceText, type Contract, type Spot, type SpotState, type Zone } from '../lib/storage'
 
 /** Color y texto de cada estado del cuadro. */
 const LOOK: Record<SpotState, { label: string; tile: string }> = {
@@ -19,8 +20,6 @@ const LOOK: Record<SpotState, { label: string; tile: string }> = {
 interface Props {
   zones: Zone[]; spots: Spot[]; contracts: Contract[]; me: string
   reload: () => void; flash: (m: string) => void
-  /** Bote nuevo en la guardería con este espacio ya escogido */
-  onNewContract: (spotId: string) => void
   /** Abre el contrato de ese bote */
   onOpenContract: (boatId: string) => void
 }
@@ -29,14 +28,14 @@ interface Props {
  * Espacios de la guardería: cada zona (tierra o agua / muelle) con sus cuadros numerados.
  * Un toque en el cuadro: asignar bote, reservar, fuera de servicio, salió al agua, volvió, mover o desocupar.
  */
-export default function StorageSpaces({ zones, spots, contracts, me, reload, flash, onNewContract, onOpenContract }: Props) {
+export default function StorageSpaces({ zones, spots, contracts, me, reload, flash, onOpenContract }: Props) {
   const [zoneEdit, setZoneEdit] = useState<ZoneDraft | null>(null)
   const [open, setOpen] = useState<Spot | null>(null)
   const sorted = [...zones].sort((a, b) => (a.kind === b.kind ? a.sort - b.sort || a.name.localeCompare(b.name) : a.kind === 'land' ? -1 : 1))
 
   return (
     <>
-      <Button onClick={() => setZoneEdit({ kind: 'land', prefix: '', count: '10', per_foot: true, priceText: '' })}><Plus /> Añadir zona</Button>
+      <Button onClick={() => setZoneEdit(newZoneDraft())}><Plus /> Añadir zona</Button>
       {zones.length === 0 && (
         <div className="mt-4"><EmptyState icon={Warehouse} title="Todavía no hay zonas" text="Crea tus zonas de tierra (patio, rack) y tus muelles, con sus espacios numerados. Después tocas un cuadro para poner un bote." /></div>
       )}
@@ -50,7 +49,7 @@ export default function StorageSpaces({ zones, spots, contracts, me, reload, fla
       )}
 
       {sorted.map((z) => {
-        const mine = spots.filter((s) => s.zone_id === z.id).sort((a, b) => a.sort - b.sort)
+        const mine = bySpot(spots.filter((s) => s.zone_id === z.id), zones)
         const states = mine.map((s) => spotState(s, contracts))
         const count = (k: SpotState[]) => states.filter((x) => k.includes(x.state)).length
         return (
@@ -80,14 +79,14 @@ export default function StorageSpaces({ zones, spots, contracts, me, reload, fla
         )
       })}
 
-      <ZoneSheet edit={zoneEdit} setEdit={setZoneEdit} spots={spots} contracts={contracts} me={me} reload={reload} flash={flash} />
+      <ZoneForm edit={zoneEdit} setEdit={setZoneEdit} spots={spots} contracts={contracts} me={me} reload={reload} flash={flash} />
       {open && <SpotSheet spot={open} zones={zones} spots={spots} contracts={contracts} onClose={() => setOpen(null)} reload={reload} flash={flash}
-        onNewContract={(id) => { setOpen(null); onNewContract(id) }} onOpenContract={(id) => { setOpen(null); onOpenContract(id) }} />}
+        me={me} onOpenContract={(id) => { setOpen(null); onOpenContract(id) }} />}
     </>
   )
 }
 
-type ZoneDraft = Partial<Zone> & { prefix?: string; count?: string; priceText?: string }
+export type ZoneDraft = Partial<Zone> & { prefix?: string; count?: string; priceText?: string }
 
 /** "A-12" → "A-" (para seguir numerando igual) */
 function guessPrefix(spots: Spot[]) {
@@ -99,9 +98,12 @@ function nextNumber(spots: Spot[], prefix: string) {
   return nums.length ? Math.max(...nums) + 1 : 1
 }
 
-function ZoneSheet({ edit, setEdit, spots, contracts, me, reload, flash }: {
+export const newZoneDraft = (): ZoneDraft => ({ kind: 'land', prefix: '', count: '10', per_foot: true, priceText: '' })
+
+/** Zona nueva o cambiar zona: en una ventana (Espacios) o dentro de la pantalla (paso a paso de Inicio). */
+export function ZoneForm({ edit, setEdit, spots, contracts, me, reload, flash, inline = false }: {
   edit: ZoneDraft | null; setEdit: (z: ZoneDraft | null) => void
-  spots: Spot[]; contracts: Contract[]; me: string; reload: () => void; flash: (m: string) => void
+  spots: Spot[]; contracts: Contract[]; me: string; reload: () => void; flash: (m: string) => void; inline?: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -134,14 +136,13 @@ function ZoneSheet({ edit, setEdit, spots, contracts, me, reload, flash }: {
       if (error) { setBusy(false); return setError('La zona se guardó, pero no se pudieron crear los espacios. Intenta otra vez.') }
     }
     setBusy(false)
-    flash(count > 0 ? `${count} ${count === 1 ? 'espacio' : 'espacios'} listos` : 'Guardado')
-    setEdit(null)
+    flash(count > 0 ? `${edit.name.trim()}: ${count} ${count === 1 ? 'espacio' : 'espacios'} listos` : 'Guardado')
+    setEdit(inline ? newZoneDraft() : null)
     reload()
   }
 
   const used = mine.some((s) => contracts.some((c) => c.status === 'active' && (c.spot_id === s.id || c.away_spot_id === s.id)))
-  return (
-    <Sheet open title={edit.id ? 'Cambiar zona' : 'Zona nueva'} onClose={() => setEdit(null)}>
+  const body = (
       <div className="space-y-4">
         <Field label="Nombre de la zona *"><Input aria-label="Nombre de la zona" value={edit.name ?? ''} onChange={(e) => set({ name: e.target.value })} placeholder="Patio A, Rack norte, Muelle C" /></Field>
         <Field label="Es">
@@ -172,9 +173,9 @@ function ZoneSheet({ edit, setEdit, spots, contracts, me, reload, flash }: {
           {count > 0 && <p className="mt-1 text-sm font-bold text-navy-800">Se crean {prefix}{from} hasta {prefix}{from + count - 1}</p>}
         </div>
         {error && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}
-        <Button disabled={busy} onClick={save}>{busy ? 'Guardando…' : 'Guardar'}</Button>
-        <Button variant="ghost" onClick={() => setEdit(null)}>Cancelar</Button>
-        {edit.id && (
+        <Button disabled={busy} onClick={save}>{busy ? 'Guardando…' : inline ? 'Crear esta zona' : 'Guardar'}</Button>
+        {!inline && <Button variant="ghost" onClick={() => setEdit(null)}>Cancelar</Button>}
+        {edit.id && !inline && (
           <Button variant="ghost" className="text-red-700!" onClick={async () => {
             if (used) return setError('Esta zona tiene botes. Muévelos o desocupa sus espacios antes de borrarla.')
             if (!window.confirm(`¿Borrar la zona “${edit.name}” y sus ${mine.length} espacios?`)) return
@@ -185,17 +186,17 @@ function ZoneSheet({ edit, setEdit, spots, contracts, me, reload, flash }: {
           }}><Trash2 size={20} /> Borrar zona</Button>
         )}
       </div>
-    </Sheet>
   )
+  return inline ? body : <Sheet open title={edit.id ? 'Cambiar zona' : 'Zona nueva'} onClose={() => setEdit(null)}>{body}</Sheet>
 }
 
-function SpotSheet({ spot, zones, spots, contracts, onClose, reload, flash, onNewContract, onOpenContract }: {
-  spot: Spot; zones: Zone[]; spots: Spot[]; contracts: Contract[]; onClose: () => void; reload: () => void; flash: (m: string) => void
-  onNewContract: (spotId: string) => void; onOpenContract: (boatId: string) => void
+function SpotSheet({ spot, zones, spots, contracts, me, onClose, reload, flash, onOpenContract }: {
+  spot: Spot; zones: Zone[]; spots: Spot[]; contracts: Contract[]; me: string; onClose: () => void; reload: () => void; flash: (m: string) => void
+  onOpenContract: (boatId: string) => void
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [mode, setMode] = useState<'main' | 'assign' | 'move' | 'water' | 'reserve' | 'out'>('main')
+  const [mode, setMode] = useState<'main' | 'assign' | 'new' | 'move' | 'water' | 'reserve' | 'out'>('main')
   const [note, setNote] = useState(spot.note ?? '')
   const { state, contract: c } = spotState(spot, contracts)
   const zone = zones.find((z) => z.id === spot.zone_id)
@@ -247,7 +248,7 @@ function SpotSheet({ spot, zones, spots, contracts, onClose, reload, flash, onNe
           {state === 'out' && spot.note && <p className="rounded-xl bg-slate-100 p-3 text-base text-slate-700">Fuera de servicio: {spot.note}</p>}
 
           {(state === 'free' || state === 'reserved') && <>
-            <Button onClick={() => setMode('assign')}>Poner un bote aquí</Button>
+            <Button onClick={() => setMode(unplaced.length ? 'assign' : 'new')}>Poner un bote aquí</Button>
             {state === 'free' && <Button variant="secondary" onClick={() => setMode('reserve')}>Reservar</Button>}
             {state === 'reserved' && <Button variant="secondary" disabled={busy} onClick={() => setStatus('ok', null)}>Quitar la reserva</Button>}
             <Button variant="ghost" onClick={() => setMode('out')}>Fuera de servicio</Button>
@@ -273,14 +274,21 @@ function SpotSheet({ spot, zones, spots, contracts, onClose, reload, flash, onNe
 
       {mode === 'assign' && (
         <div className="space-y-3">
-          <p className="text-base font-bold text-slate-800">¿Qué bote? (los que están en la guardería sin espacio)</p>
-          {unplaced.length === 0 && <p className="text-base text-slate-600">Todos los botes ya tienen su espacio.</p>}
+          <p className="text-base font-bold text-slate-800">Estos botes están en la guardería sin espacio:</p>
           {unplaced.map((x) => (
             <button key={x.id} type="button" disabled={busy} onClick={() => putIn(x.id, spot)} className={`${CARD} flex min-h-14 w-full items-center gap-2 px-3 text-left active:bg-navy-50`}>
               <span className="flex-1"><span className="block text-base font-bold text-navy-900">{x.boats?.name}</span><span className="block text-sm text-slate-600">{x.boats?.clients?.full_name}</span></span>
             </button>
           ))}
-          <Button variant="secondary" onClick={() => onNewContract(spot.id)}><Plus /> Bote nuevo en la guardería</Button>
+          <Button variant="secondary" onClick={() => setMode('new')}><Plus /> Otro bote (nuevo)</Button>
+          <Button variant="ghost" onClick={() => setMode('main')}>Atrás</Button>
+        </div>
+      )}
+
+      {/* Bote nuevo aquí mismo: dueño, bote, pies y precio, sin salir de esta ventana */}
+      {mode === 'new' && (
+        <div className="space-y-3">
+          <StorageNewBoat zones={zones} spots={spots} contracts={contracts} me={me} presetSpot={spot.id} onDone={(m) => { flash(m); onClose(); reload() }} />
           <Button variant="ghost" onClick={() => setMode('main')}>Atrás</Button>
         </div>
       )}

@@ -1843,15 +1843,13 @@ test('salón: en Factura rápida, arriba se puede vender una tarjeta de regalo',
 test('guardería: bote con su espacio (precio por pie), cobro de un toque, facturar el mes y borrar la factura hecha por error', async ({ page }) => {
   await fetch(`${MOCK}/rest/v1/mechanics?profile_id=eq.11111111-1111-4111-8111-111111111111`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ business_type: 'storage' }) })
   await login(page)
-  // Inicio de la guardería: Guardería grande, Factura rápida; sin citas ni Agenda
-  await expect(page.getByRole('link', { name: /Factura rápida/ })).toBeVisible()
+  // Inicio de la guardería: sin citas ni Agenda
   await expect(page.getByRole('link', { name: /Hacer cita/ })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Agenda' })).toHaveCount(0)
   await expect(page.getByText(/No tienes citas hoy/)).toHaveCount(0)
-  // Al comenzar: un paso a la vez (ya tiene ATH; lo próximo es crear sus zonas)
-  const guide = page.getByRole('region', { name: 'Paso a paso' })
-  await expect(guide.getByText('Paso 2 de 4')).toBeVisible()
-  await expect(guide.getByRole('link', { name: /Crear mi primera zona/ })).toBeVisible()
+  // Al comenzar: un paso a la vez (ya tiene ATH; lo próximo es crear sus zonas, ahí mismo)
+  await expect(page.getByRole('region', { name: 'Paso a paso' }).getByText(/Paso 2 de 3/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Crear esta zona' })).toBeVisible()
   await page.screenshot({ path: 'test-results/guarderia-inicio.png', fullPage: true })
   // La ficha del cliente y del bote tampoco hablan de citas
   await page.goto('/clientes/c1')
@@ -1890,7 +1888,7 @@ test('guardería: bote con su espacio (precio por pie), cobro de un toque, factu
   await page.getByRole('button', { name: /Uso de rampa/ }).click()
   await expect(page.getByRole('region', { name: 'Cobros pendientes' }).getByText('Uso de rampa')).toBeVisible()
   await page.getByRole('button', { name: 'Listo' }).click()
-  await expect(card.getByText(/Cobros para la próxima factura: \$15\.00/)).toBeVisible()
+  await expect(card.getByText(/Cargos extra para la factura: \$15\.00/)).toBeVisible()
 
   // La ficha del bote dice dónde está (su espacio) y abre el mismo contrato
   await page.goto('/botes/b1')
@@ -1970,18 +1968,16 @@ test('guardería: zonas de tierra y muelles con cuadros; poner un bote, reservar
   for (const l of ['A-1', 'A-2', 'A-3', 'A-4', 'C-1', 'C-2']) await expect(tile(l)).toHaveAccessibleName(new RegExp(`Espacio ${l}: Disponible`))
 
   // A-1: bote nuevo en la guardería con ese cuadro ya escogido
+  // A-1: el bote se pone ahí mismo (sin ir a otra pantalla); el precio sale de la zona
   await tile('A-1').click()
   await page.getByRole('button', { name: 'Poner un bote aquí' }).click()
-  await expect(page.getByText('Todos los botes ya tienen su espacio.')).toBeVisible()
-  await page.getByRole('button', { name: /Bote nuevo en la guardería/ }).click()
-  await expect(page.getByLabel('Su cuadro')).toHaveValue(/.+/)
-  await page.getByLabel('Bote', { exact: true }).selectOption('b1')
-  await expect(page.getByLabel('Precio del mes')).toHaveValue('300') // 25 pies × $12 de la zona
-  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
-  await expect(page.getByRole('article', { name: 'Guardería de La Tranquila' }).getByText(/Patio A · A-1/)).toBeVisible()
-
-  await page.getByRole('tab', { name: 'Espacios' }).click()
+  await page.getByLabel('Bote que ya está en tus clientes').selectOption('b1')
+  await expect(page.getByText('La Tranquila en A-1: $300.00 al mes')).toBeVisible() // 25 pies × $12 de la zona
+  await page.getByRole('button', { name: 'Guardar el bote en su espacio' }).click()
   await expect(tile('A-1')).toHaveAccessibleName(/Ocupado, La Tranquila/)
+  await page.getByRole('tab', { name: 'Botes' }).click()
+  await expect(page.getByRole('article', { name: 'Guardería de La Tranquila' }).getByText(/Patio A · A-1/)).toBeVisible()
+  await page.getByRole('tab', { name: 'Espacios' }).click()
 
   // A-2 reservado a mano; A-4 fuera de servicio
   await tile('A-2').click()
@@ -2026,4 +2022,62 @@ test('guardería: zonas de tierra y muelles con cuadros; poner un bote, reservar
   await expect(patio.getByText('A-3')).toBeVisible()
   await expect(page.getByRole('region', { name: 'Zona Muelle C' }).getByText('$250.00 al mes')).toBeVisible()
   await page.screenshot({ path: 'test-results/guarderia-inicio-todo.png', fullPage: true })
+})
+
+test('guardería desde cero: el link de guardería, 3 pasos en Inicio sin salir de la pantalla, y todo en una pantalla', async ({ browser }) => {
+  const page = await browser.newPage()
+  await page.goto('http://localhost:4321/?registro=1&oficio=storage')
+  await expect(page.getByText('Rentas, espacios y cobros de tu guardería')).toBeVisible()
+  await expect(page.getByRole('radio', { name: /Guardería \/ Marina/ })).toHaveAttribute('aria-checked', 'true')
+  await page.getByLabel('Tu nombre completo *').fill('Pedro Colón')
+  await page.getByLabel('Nombre de tu compañía').fill('Guardería Colón')
+  await page.getByLabel('Teléfono / WhatsApp *').fill('787-555-4411')
+  await page.getByLabel('Tu email *').fill('pedro@guarderia.test')
+  await page.getByLabel('Tu PIN').fill('482913')
+  await page.getByLabel('Repite el PIN').fill('482913')
+  await page.getByRole('button', { name: /Crear mi cuenta/ }).click()
+
+  // Sin ejemplos; paso 1 de 3: el ATH ahí mismo
+  const guide = page.getByRole('region', { name: 'Paso a paso' })
+  await expect(guide.getByText(/Paso 1 de 3/)).toBeVisible()
+  await expect(page.getByText('Estos son ejemplos')).toHaveCount(0)
+  await page.screenshot({ path: 'test-results/guarderia-cero-1.png', fullPage: true })
+  await page.getByLabel('Tu número de ATH Móvil').fill('787-555-4411')
+  await page.getByRole('button', { name: 'Guardar y seguir' }).click()
+
+  // Paso 2: sus zonas, ahí mismo
+  await expect(guide.getByText(/Paso 2 de 3/)).toBeVisible()
+  await page.getByLabel('Nombre de la zona').fill('Patio')
+  await page.getByLabel('Precio de la zona').fill('10')
+  await page.getByLabel('Prefijo').fill('P-')
+  await page.getByLabel('Cuántos espacios').fill('3')
+  await page.getByRole('button', { name: 'Crear esta zona' }).click()
+  await expect(page.getByText(/Listo ✓ Patio \(3\)/)).toBeVisible()
+  await page.getByRole('button', { name: /Ya tengo todas mis zonas/ }).click()
+
+  // Paso 3: el primer bote en su espacio, ahí mismo
+  await expect(guide.getByText(/Paso 3 de 3/)).toBeVisible()
+  await page.getByLabel('Nombre del dueño').fill('Juan Rivera')
+  await page.getByLabel('Teléfono del dueño').fill('787-555-1001')
+  await page.getByLabel('Nombre del bote').fill('Mar Azul')
+  await page.getByLabel('Pies del bote').fill('22')
+  await page.getByLabel('Su espacio').selectOption({ label: 'Patio · P-1' })
+  await expect(page.getByText('Mar Azul en P-1: $220.00 al mes')).toBeVisible()
+  await page.getByRole('button', { name: 'Guardar el bote en su espacio' }).click()
+
+  // Todo en una pantalla; otro bote desde "Poner bote" sin salir de Inicio
+  const yard = page.getByRole('region', { name: 'Mi guardería' })
+  await expect(yard.getByText('$220.00')).toBeVisible()
+  await expect(page.getByRole('link', { name: /P-1: Mar Azul/ })).toContainText('Al día')
+  await page.getByRole('button', { name: /espacios libres/ }).click()
+  await page.getByLabel('Nombre del dueño').fill('Ana Torres')
+  await page.getByLabel('Nombre del bote').fill('La Gaviota')
+  await page.getByLabel('Pies del bote').fill('30')
+  await expect(page.getByText('La Gaviota en P-2: $300.00 al mes')).toBeVisible()
+  await page.getByRole('button', { name: 'Guardar el bote en su espacio' }).click()
+  await expect(page.getByRole('link', { name: /P-2: La Gaviota/ })).toBeVisible()
+  await expect(yard.getByText('$520.00')).toBeVisible()
+  await expect(page).toHaveURL(/\/inicio|\/$/)
+  await page.screenshot({ path: 'test-results/guarderia-cero-2.png', fullPage: true })
+  await page.close()
 })

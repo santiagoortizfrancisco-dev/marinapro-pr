@@ -106,6 +106,7 @@ const DEFAULTS = {
   payments: () => ({ method: 'cash', paid_at: new Date().toISOString(), note: null, tip: 0, gift_card_id: null }),
   gift_cards: () => ({ recipient_name: null, buyer_name: null, phone: null, method: 'cash', note: null, sold_at: new Date().toISOString() }),
   storage_zones: () => ({ price: null, per_foot: true, sort: 0 }),
+  storage_contracts: () => ({ status: 'active', rate_id: null, end_date: null, insurance_expires: null, notes: null, start_date: prDay() }),
   work_order_parts: () => ({ kind: 'part', part_number: null, qty: 1, unit_cost: 0, supplied_by: 'mechanic', supplier: null, eta: null, received_at: null }),
 }
 

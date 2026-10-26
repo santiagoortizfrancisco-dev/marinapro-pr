@@ -4,7 +4,11 @@ import { AlertTriangle, Anchor, ChevronRight, Receipt, Users, Warehouse } from '
 import { db } from '../lib/db'
 import { addDays, daysUntil, formatMoney, todayPR } from '../lib/format'
 import { balanceOf, loadMoney } from '../lib/money'
-import { spotState, zonePriceText, type Contract, type Spot, type Zone } from '../lib/storage'
+import { bySpot, spotState, zonePriceText, type Contract, type Spot, type Zone } from '../lib/storage'
+import { Sheet } from './Sheet'
+import StorageNewBoat from './StorageNewBoat'
+import { newZoneDraft, ZoneForm, type ZoneDraft } from './StorageSpaces'
+import { Button, Input } from './ui'
 import { useLoad } from '../lib/useLoad'
 import { CARD } from './ui'
 
@@ -17,10 +21,14 @@ const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 
 export default function StorageHome({ me }: { me: string }) {
   const month = todayPR().slice(0, 8) + '01'
   const [onlyOwing, setOnlyOwing] = useState(false)
-  const { data } = useLoad(async () => {
-    const [m, boats, c, z, sp, bills, money] = await Promise.all([
+  const [zone, setZone] = useState<ZoneDraft>(newZoneDraft())
+  const [zonesNext, setZonesNext] = useState(false)
+  const [newIn, setNewIn] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000) }
+  const { data, reload } = useLoad(async () => {
+    const [m, c, z, sp, bills, money] = await Promise.all([
       db().from('mechanics').select('ath_movil_number').eq('profile_id', me).maybeSingle(),
-      db().from('boats').select('id').limit(1),
       db().from('storage_contracts').select('*, boats(id, name, length_ft, clients(full_name, phone))').eq('status', 'active'),
       db().from('storage_zones').select('*').order('sort'),
       db().from('storage_spots').select('*').order('sort'),
@@ -35,10 +43,9 @@ export default function StorageHome({ me }: { me: string }) {
     }
     return {
       ath: Boolean((m.data as { ath_movil_number: string | null } | null)?.ath_movil_number),
-      hasBoats: (boats.data ?? []).length > 0,
       contracts: (c.data ?? []) as unknown as Contract[],
       zones: (z.data ?? []) as Zone[],
-      spots: (sp.data ?? []) as Spot[],
+      spots: bySpot((sp.data ?? []) as Spot[], (z.data ?? []) as Zone[]),
       billed: new Set(((bills.data ?? []) as { contract_id: string }[]).map((x) => x.contract_id)),
       owes,
     }
@@ -47,12 +54,12 @@ export default function StorageHome({ me }: { me: string }) {
 
   const placed = data.contracts.filter((c) => c.spot_id)
 
-  // ---------- La primera vez: un paso a la vez ----------
+  // ---------- La primera vez: un paso a la vez, todo aquí mismo ----------
+  const zonesOk = data.zones.length > 0 && data.spots.length > 0
   const steps = [
-    { done: data.ath, to: '/mas/negocio', title: 'Pon tu ATH Móvil', text: 'Sale en cada factura para que tus clientes te paguen. Toma 1 minuto.', button: 'Poner mi ATH Móvil' },
-    { done: data.zones.length > 0 && data.spots.length > 0, to: '/guarderia?tab=spaces', title: 'Crea tus zonas', text: 'Tu patio, rack o muelle: su nombre, su precio por pie y cuántos espacios tiene.', button: 'Crear mi primera zona' },
-    { done: data.hasBoats, to: '/clientes/nuevo', title: 'Añade un cliente y su bote', text: 'El dueño, su teléfono y su bote con el largo en pies.', button: 'Añadir cliente' },
-    { done: placed.length > 0, to: '/guarderia?tab=spaces', title: 'Pon el bote en su espacio', text: 'Toca un cuadro verde (libre) y escoge el bote. El precio del mes sale solo.', button: 'Ir a mis espacios' },
+    { done: data.ath, title: 'Tu ATH Móvil', text: 'Sale en cada factura para que tus clientes te paguen.' },
+    { done: zonesOk && (zonesNext || placed.length > 0), title: 'Tus zonas y espacios', text: 'Tu patio, rack o muelle: su nombre, su precio y cuántos espacios tiene.' },
+    { done: placed.length > 0, title: 'Tu primer bote en su espacio', text: 'El dueño, su bote con los pies, y en qué espacio está. El precio del mes sale solo.' },
   ]
   const step = steps.findIndex((s) => !s.done)
   if (step >= 0) {
@@ -60,17 +67,28 @@ export default function StorageHome({ me }: { me: string }) {
     return (
       <>
         <section className="rounded-3xl bg-navy-800 p-5 text-white shadow-xl shadow-navy-900/25" aria-label="Paso a paso">
-          <p className="text-sm font-bold uppercase tracking-wider text-navy-100">Paso {step + 1} de {steps.length}</p>
+          <p className="text-sm font-bold uppercase tracking-wider text-navy-100">Paso {step + 1} de {steps.length} para empezar</p>
           <div className="mt-2 flex gap-1.5" aria-hidden="true">
-            {steps.map((x, i) => <span key={i} className={`h-2 flex-1 rounded-full ${x.done ? 'bg-emerald-400' : i === step ? 'bg-white' : 'bg-white/25'}`} />)}
+            {steps.map((x, i) => <span key={i} className={`h-2 flex-1 rounded-full ${i < step ? 'bg-emerald-400' : i === step ? 'bg-white' : 'bg-white/25'}`} />)}
           </div>
           <h2 className="mt-4 text-3xl font-extrabold">{s.title}</h2>
-          <p className="mt-2 text-lg text-navy-100">{s.text}</p>
-          <Link to={s.to} className="mt-5 flex min-h-16 items-center justify-center gap-2 rounded-2xl bg-white text-xl font-extrabold text-navy-900 active:scale-[0.98]">
-            {s.button} <ChevronRight />
-          </Link>
+          <p className="mt-1 text-lg text-navy-100">{s.text}</p>
         </section>
-        <Shortcuts />
+        <div className={`${CARD} -mt-3 p-4 pt-6`}>
+          {step === 0 && <AthStep me={me} onDone={reload} />}
+          {step === 1 && <>
+            {zonesOk && (
+              <div className="mb-4 rounded-2xl bg-emerald-50 p-3">
+                <p className="text-base font-bold text-emerald-900">Listo ✓ {data.zones.map((z) => `${z.name} (${data.spots.filter((x) => x.zone_id === z.id).length})`).join(' · ')}</p>
+                <p className="text-sm text-emerald-800">¿Tienes otra zona, por ejemplo un muelle? Créala abajo. Si no, sigue.</p>
+                <button type="button" onClick={() => setZonesNext(true)} className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-lg font-extrabold text-white active:bg-emerald-700">Ya tengo todas mis zonas · Seguir <ChevronRight /></button>
+              </div>
+            )}
+            <ZoneForm inline edit={zone} setEdit={(z) => setZone(z ?? newZoneDraft())} spots={data.spots} contracts={data.contracts} me={me} reload={reload} flash={flash} />
+          </>}
+          {step === 2 && <StorageNewBoat zones={data.zones} spots={data.spots} contracts={data.contracts} me={me} onDone={(m) => { flash(`¡Listo! ${m}`); reload() }} />}
+        </div>
+        {toast && <p role="status" className="mt-3 rounded-xl bg-navy-900 p-3 text-center text-base font-bold text-white">{toast}</p>}
       </>
     )
   }
@@ -158,13 +176,13 @@ export default function StorageHome({ me }: { me: string }) {
                 )
               })}
               {!onlyOwing && freeSpots.length > 0 && (
-                <Link to={`/guarderia?espacio=${freeSpots[0].s.id}`} className="flex min-h-14 items-center gap-3 bg-emerald-50 px-3 py-2 active:bg-emerald-100">
+                <button type="button" onClick={() => setNewIn(freeSpots[0].s.id)} className="flex min-h-14 w-full items-center gap-3 bg-emerald-50 px-3 py-2 text-left active:bg-emerald-100">
                   <span className="min-w-0 flex-1">
                     <span className="block text-base font-bold text-emerald-900">{freeSpots.length} {freeSpots.length === 1 ? 'espacio libre' : 'espacios libres'}</span>
                     <span className="block truncate text-sm text-emerald-800">{freeSpots.map((x) => x.s.label).join(', ')}</span>
                   </span>
                   <span className="shrink-0 rounded-full bg-emerald-600 px-3 py-1.5 text-sm font-extrabold text-white">Poner bote</span>
-                </Link>
+                </button>
               )}
               {!onlyOwing && other.length > 0 && (
                 <Link to="/guarderia?tab=spaces" className="block px-3 py-2 text-sm text-slate-600">
@@ -184,7 +202,33 @@ export default function StorageHome({ me }: { me: string }) {
       )}
 
       <Shortcuts />
+      <Sheet open={!!newIn} title="Poner un bote" onClose={() => setNewIn(null)}>
+        {newIn && <StorageNewBoat zones={data.zones} spots={data.spots} contracts={data.contracts} me={me} presetSpot={newIn} onDone={(m) => { setNewIn(null); flash(m); reload() }} />}
+      </Sheet>
+      {toast && <p role="status" className="fixed inset-x-4 bottom-24 z-40 rounded-xl bg-navy-900 p-3 text-center text-base font-bold text-white shadow-lg">{toast}</p>}
     </>
+  )
+}
+
+/** Paso 1: el ATH Móvil ahí mismo. */
+function AthStep({ me, onDone }: { me: string; onDone: () => void }) {
+  const [ath, setAth] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  return (
+    <div className="space-y-3">
+      <Input aria-label="Tu número de ATH Móvil" type="tel" inputMode="tel" value={ath} onChange={(e) => setAth(e.target.value)} placeholder="787-555-0100" className="text-center text-2xl! font-extrabold" />
+      {error && <p role="alert" className="rounded-xl bg-red-100 p-3 font-semibold text-red-800">{error}</p>}
+      <Button disabled={busy} onClick={async () => {
+        if (ath.replace(/\D/g, '').length < 7) return setError('Escribe tu número de ATH Móvil (el teléfono).')
+        setBusy(true)
+        const { error } = await db().from('mechanics').update({ ath_movil_number: ath.trim() }).eq('profile_id', me)
+        setBusy(false)
+        if (error) return setError('No se pudo guardar. Intenta otra vez.')
+        onDone()
+      }}>{busy ? 'Guardando…' : 'Guardar y seguir'}</Button>
+      <p className="text-sm text-slate-500">Lo puedes cambiar después en Más → Mi negocio.</p>
+    </div>
   )
 }
 

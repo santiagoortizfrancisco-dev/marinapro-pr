@@ -53,3 +53,12 @@ export function spotState(s: Spot, contracts: Contract[]): { state: SpotState; c
 
 /** Texto del espacio para el contrato y la factura: "Patio A · A-12" */
 export const spotName = (s: Spot, zones: Zone[]) => `${zones.find((z) => z.id === s.zone_id)?.name ?? ''} · ${s.label}`.replace(/^ · /, '')
+
+/** Espacios en orden: tierra primero, por zona, y por número (P-1, P-2 … P-10, no P-1, P-10, P-2). */
+export function bySpot(spots: Spot[], zones: Zone[]) {
+  const zi = (id: string) => {
+    const z = zones.find((x) => x.id === id)
+    return z ? `${z.kind === 'land' ? 0 : 1}-${String(z.sort).padStart(5, '0')}-${z.name}` : 'z'
+  }
+  return [...spots].sort((a, b) => zi(a.zone_id).localeCompare(zi(b.zone_id)) || a.label.localeCompare(b.label, 'es', { numeric: true }))
+}

@@ -9,7 +9,7 @@ import { BackTitle, Button, CARD, EmptyState, Field, Input, Loading, Select, Tex
 import { db } from '../../lib/db'
 import { addDays, daysUntil, formatDate, formatMoney, todayPR } from '../../lib/format'
 import { whatsappLink } from '../../lib/links'
-import { basisText, priceFor, spotName, spotState, zonePrice, type Basis, type Contract, type Rate, type Spot, type StorageBoat, type Zone } from '../../lib/storage'
+import { basisText, bySpot, priceFor, spotName, spotState, zonePrice, type Basis, type Contract, type Rate, type Spot, type StorageBoat, type Zone } from '../../lib/storage'
 import { must, num, useLoad } from '../../lib/useLoad'
 
 type Boat = StorageBoat
@@ -18,7 +18,7 @@ interface Bill {
   contract_id: string; month: string; work_order_id: string | null
   work_orders: {
     id: string; boats: Boat | null
-    invoices: { number: string; total: number; public_token: string; paid_at: string | null; due_date: string | null }[]
+    invoices: { id: string; number: string; total: number; public_token: string; paid_at: string | null; due_date: string | null; sent_at: string | null }[]
     payments: { amount: number }[]
   } | null
 }
@@ -32,7 +32,7 @@ const prevMonth = (m: string) => firstOf(addDays(m, -1))
 
 type Tab = 'boats' | 'spaces' | 'bill' | 'rates'
 
-/** Guardería / Marina: los botes guardados (contrato y cobros sueltos), facturar el mes y la lista de precios. */
+/** Guardería / Marina: los botes guardados (contrato y cargos extra), facturar el mes y la lista de precios. */
 export default function Storage() {
   const { session, profile } = useAuth()
   const me = session!.user.id
@@ -52,7 +52,7 @@ export default function Storage() {
       db().from('storage_charges').select('*').is('work_order_id', null).order('charged_on'),
       db().from('boats').select('id, name, length_ft, clients(full_name, phone)').order('name'),
       db().from('mechanics').select('storage_due_days, storage_late_fee, ath_movil_number').eq('profile_id', me).maybeSingle(),
-      db().from('storage_bills').select('contract_id, month, work_order_id, work_orders(id, boats(id, name, length_ft, clients(full_name, phone)), invoices(number, total, public_token, paid_at, due_date), payments(amount))').eq('month', month),
+      db().from('storage_bills').select('contract_id, month, work_order_id, work_orders(id, boats(id, name, length_ft, clients(full_name, phone)), invoices(id, number, total, public_token, paid_at, due_date, sent_at), payments(amount))').eq('month', month),
       db().from('storage_zones').select('*').order('sort'),
       db().from('storage_spots').select('*').order('sort'),
     ])
@@ -64,7 +64,7 @@ export default function Storage() {
       settings: (m.data ?? { storage_due_days: 10, storage_late_fee: null, ath_movil_number: null }) as Data['settings'],
       bills: (bl.data ?? []) as unknown as Bill[],
       zones: (z.data ?? []) as Zone[],
-      spots: (sp.data ?? []) as Spot[],
+      spots: bySpot((sp.data ?? []) as Spot[], (z.data ?? []) as Zone[]),
     }
   }, [month])
 
@@ -87,9 +87,9 @@ export default function Storage() {
       </div>
       {tab === 'boats' && <BoatsTab key={JSON.stringify(intent)} data={data} me={me} reload={reload} flash={flash} openBoat={intent?.boat ?? null} openSpot={intent?.spot ?? null} />}
       {tab === 'spaces' && <StorageSpaces zones={data.zones} spots={data.spots} contracts={data.contracts} me={me} reload={reload} flash={flash}
-        onNewContract={(spot) => { setIntent({ spot }); setTab('boats') }} onOpenContract={(boat) => { setIntent({ boat }); setTab('boats') }} />}
+        onOpenContract={(boat) => { setIntent({ boat }); setTab('boats') }} />}
       {tab === 'bill' && <BillTab data={data} me={me} month={month} setMonth={setMonth} reload={reload} flash={flash} signature={profile?.full_name ?? ''} />}
-      {tab === 'rates' && <RatesTab rates={data.rates} me={me} reload={reload} />}
+      {tab === 'rates' && <RatesTab rates={data.rates} me={me} reload={reload} onlyExtras={data.zones.length > 0} />}
       <Toast message={toast} />
     </>
   )
@@ -112,6 +112,8 @@ function BoatsTab({ data, me, reload, flash, openBoat, openSpot }: { data: Data;
     if (c) return c
     const b = data.boats.find((x) => x.id === openBoat)
     const space = data.rates.find((r) => r.kind === 'space' && r.active)
+    // Con zonas, el precio sale del espacio que escoja; sin zonas, de la lista de precios
+    if (data.zones.length > 0) return { boat_id: openBoat, start_date: todayPR(), status: 'active' }
     return { boat_id: openBoat, start_date: todayPR(), status: 'active', rate_id: space?.id ?? null, monthly_price: space && b ? priceFor(space, b.length_ft) || undefined : undefined }
   })
   const [charging, setCharging] = useState<Contract | null>(null)
@@ -143,18 +145,18 @@ function BoatsTab({ data, me, reload, flash, openBoat, openSpot }: { data: Data;
     return (
       <article key={c.id} className={`${CARD} p-3 ${c.status === 'ended' ? 'opacity-60' : ''}`} aria-label={`Guardería de ${c.boats?.name ?? 'bote'}`}>
         <div className="flex items-start gap-3">
-          <span className="min-w-0 flex-1">
+          <button type="button" onClick={() => setEdit(c)} className="min-w-0 flex-1 text-left">
             <span className="block truncate text-lg font-extrabold text-navy-900">{c.boats?.name ?? 'Bote'}{c.boats?.length_ft ? ` · ${Number(c.boats.length_ft)}'` : ''}</span>
             <span className="block text-sm text-slate-600">{c.boats?.clients?.full_name ?? ''}{c.space_label ? ` · ${c.space_label}` : ''}</span>
             {c.away_since && <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-sm font-bold text-amber-900">En el agua{c.away_spot_id ? ` · ${data.spots.find((x) => x.id === c.away_spot_id)?.label ?? ''}` : ''} (su espacio está reservado)</span>}
             <span className="block text-base font-bold text-slate-900">{formatMoney(Number(c.monthly_price))} al mes{c.status === 'ended' ? ' · terminado' : ''}</span>
-          </span>
+          </button>
           <button type="button" onClick={() => setEdit(c)} aria-label={`Cambiar contrato de ${c.boats?.name ?? 'bote'}`} className="flex h-12 w-12 items-center justify-center text-slate-500"><Pencil size={20} /></button>
         </div>
         {warn.map((w) => <p key={w} className="mt-2 flex items-center gap-2 rounded-xl bg-amber-50 p-2 text-sm font-bold text-amber-800"><AlertTriangle size={18} /> {w}</p>)}
         {c.status === 'active' && (
           <div className="mt-2 flex items-center gap-2">
-            <span className="flex-1 text-sm text-slate-600">{open.length > 0 ? `Cobros para la próxima factura: ${formatMoney(openTotal)}` : 'Sin cobros sueltos pendientes'}</span>
+            <span className="flex-1 text-sm text-slate-600">{open.length > 0 ? `Cargos extra para la factura: ${formatMoney(openTotal)}` : 'Sin cargos extra este mes'}</span>
             <button type="button" onClick={() => setCharging(c)} className="flex min-h-12 items-center gap-1 rounded-full bg-navy-800 px-4 text-base font-bold text-white active:bg-navy-900"><Plus size={18} /> Cobro</button>
           </div>
         )}
@@ -203,6 +205,7 @@ function ContractSheet({ edit, setEdit, data, me, reload }: { edit: Partial<Cont
 
   async function save() {
     if (!edit?.boat_id) return setError('Escoge el bote.')
+    if (!edit.id && data.spots.length > 0 && !edit.spot_id) return setError('Escoge su espacio.')
     const price = num(String(edit.monthly_price ?? ''))
     if (price == null || price < 0) return setError('Escribe el precio del mes.')
     setBusy(true)
@@ -242,12 +245,12 @@ function ContractSheet({ edit, setEdit, data, me, reload }: { edit: Partial<Cont
             </Select>
           </Field>}
           {data.spots.length > 0 ? (
-            <Field label="Su cuadro" hint="Solo salen los libres. Los cuadros se crean en Espacios.">
-              <Select aria-label="Su cuadro" value={edit.spot_id ?? ''} onChange={(e) => {
+            <Field label="Su espacio" hint="Solo salen los libres. El precio sale de su zona.">
+              <Select aria-label="Su espacio" value={edit.spot_id ?? ''} onChange={(e) => {
                 const sp = data.spots.find((x) => x.id === e.target.value)
                 set({ spot_id: sp?.id ?? null, space_label: sp ? spotName(sp, data.zones) : null, monthly_price: suggest(edit.boat_id, edit.rate_id, sp?.id) ?? edit.monthly_price })
               }}>
-                <option value="">Sin cuadro todavía</option>
+                <option value="">Escoge su espacio</option>
                 {data.spots.filter((sp) => sp.id === edit.spot_id || ['free', 'reserved'].includes(spotState(sp, data.contracts).state)).map((sp) => (
                   <option key={sp.id} value={sp.id}>{spotName(sp, data.zones)}</option>
                 ))}
@@ -263,7 +266,7 @@ function ContractSheet({ edit, setEdit, data, me, reload }: { edit: Partial<Cont
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Desde"><Input type="date" value={edit.start_date ?? ''} onChange={(e) => set({ start_date: e.target.value })} /></Field>
-            <Field label="Vence (opcional)"><Input aria-label="Vence el contrato" type="date" value={edit.end_date ?? ''} onChange={(e) => set({ end_date: e.target.value })} /></Field>
+            <Field label="El contrato termina (opcional)"><Input aria-label="Vence el contrato" type="date" value={edit.end_date ?? ''} onChange={(e) => set({ end_date: e.target.value })} /></Field>
           </div>
           <Field label="El seguro del bote vence (opcional)" hint="Te avisa 15 días antes">
             <Input aria-label="Vence el seguro" type="date" value={edit.insurance_expires ?? ''} onChange={(e) => set({ insurance_expires: e.target.value })} />
@@ -398,7 +401,7 @@ function BillTab({ data, me, month, setMonth, reload, flash, signature }: { data
       <div className={`${CARD} mt-3 p-4`}>
         {pending.length > 0 ? (
           <>
-            <p className="mb-3 text-base text-slate-700">{pending.length} {pending.length === 1 ? 'bote' : 'botes'} sin facturar en {monthLabel(month)}. Cada uno lleva la renta y sus cobros sueltos{data.settings.storage_late_fee != null ? ', y el cargo por atraso si debe una factura vencida' : ''}.</p>
+            <p className="mb-3 text-base text-slate-700">{pending.length} {pending.length === 1 ? 'bote' : 'botes'} sin facturar en {monthLabel(month)}. Cada uno lleva la renta y sus cargos extra{data.settings.storage_late_fee != null ? ', y el cargo por atraso si debe una factura vencida' : ''}.</p>
             <Button disabled={busy} onClick={bill}><FileText /> {busy ? 'Facturando…' : `Facturar ${monthLabel(month)}`}</Button>
           </>
         ) : (
@@ -426,12 +429,13 @@ function BillTab({ data, me, month, setMonth, reload, flash, signature }: { data
                   <span className={`rounded-full px-3 py-1 text-sm font-bold ${isPaid ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{isPaid ? 'Pagada' : 'Debe'}</span>
                 </div>
                 <div className="mt-2 flex gap-2">
-                  {c?.phone && inv && <a href={whatsappLink(c.phone, msg)} target="_blank" rel="noreferrer" className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] text-base font-bold text-white"><WhatsAppIcon size={20} /> Enviar</a>}
+                  {c?.phone && inv && <a href={whatsappLink(c.phone, msg)} target="_blank" rel="noreferrer" onClick={() => { if (!inv.sent_at) db().from('invoices').update({ sent_at: new Date().toISOString() }).eq('id', inv.id).then(() => reload()) }}
+                    className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl text-base font-bold ${inv.sent_at ? 'bg-white text-emerald-800 ring-2 ring-emerald-300' : 'bg-[#25D366] text-white'}`}><WhatsAppIcon size={20} /> {inv.sent_at ? 'Enviada ✓ (otra vez)' : 'Enviar'}</a>}
                   <Link to={`/trabajos/${wo.id}`} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-white text-base font-bold text-slate-800 ring-1 ring-slate-300"><ExternalLink size={18} /> Ver / cobrar</Link>
                 </div>
                 {paid === 0 && (
                   <button type="button" className="mt-1 min-h-11 w-full text-sm font-bold text-red-700" onClick={async () => {
-                    if (!window.confirm('¿Borrar esta factura? Los cobros sueltos vuelven a quedar pendientes y el mes se puede facturar otra vez.')) return
+                    if (!window.confirm('¿Borrar esta factura? Los cargos extra vuelven a quedar pendientes y el mes se puede facturar otra vez.')) return
                     must(await db().from('storage_bills').delete().eq('contract_id', b.contract_id).eq('month', b.month))
                     must(await db().from('work_orders').delete().eq('id', wo.id))
                     flash('Factura borrada')
@@ -464,7 +468,7 @@ function BillTab({ data, me, month, setMonth, reload, flash, signature }: { data
 }
 
 // ---------------------------------------------------------------------------------------------
-function RatesTab({ rates, me, reload }: { rates: Rate[]; me: string; reload: () => void }) {
+function RatesTab({ rates, me, reload, onlyExtras }: { rates: Rate[]; me: string; reload: () => void; onlyExtras: boolean }) {
   const [edit, setEdit] = useState<Partial<Rate> | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -502,19 +506,21 @@ function RatesTab({ rates, me, reload }: { rates: Rate[]; me: string; reload: ()
 
   return (
     <>
-      <Button onClick={() => { setError(''); setEdit({ kind: 'space', basis: 'per_foot', unit: 'mes', active: true }) }}><Plus /> Añadir precio</Button>
-      {list('space', 'Espacios (renta del mes)')}
-      {list('extra', 'Cobros sueltos (un toque)')}
+      {/* Con zonas, la renta de cada espacio sale del precio de su zona: aquí solo los cargos extra */}
+      {onlyExtras && <p className="mb-3 rounded-xl bg-navy-50 p-3 text-base text-navy-900">La renta de cada espacio sale del <b>precio de su zona</b> (en Espacios ✏️). Aquí pones los <b>cargos extra</b>: rampa, noche, lavado…</p>}
+      <Button onClick={() => { setError(''); setEdit(onlyExtras ? { kind: 'extra', basis: 'flat', unit: 'vez', active: true } : { kind: 'space', basis: 'per_foot', unit: 'mes', active: true }) }}><Plus /> {onlyExtras ? 'Añadir cargo extra' : 'Añadir precio'}</Button>
+      {!onlyExtras && list('space', 'Espacios (renta del mes)')}
+      {list('extra', 'Cargos extra (un toque)')}
       <Sheet open={!!edit} title={edit?.id ? 'Cambiar precio' : 'Precio nuevo'} onClose={() => setEdit(null)}>
         {edit && (
           <div className="space-y-4">
             <Field label="Nombre *"><Input aria-label="Nombre del precio" value={edit.name ?? ''} onChange={(e) => set({ name: e.target.value })} placeholder="Guardería en seco (rack)" /></Field>
-            <Field label="Es">
+            {!onlyExtras && <Field label="Es">
               <Select aria-label="Tipo de precio" value={edit.kind} onChange={(e) => set({ kind: e.target.value as Rate['kind'], unit: e.target.value === 'space' ? 'mes' : edit.unit === 'mes' ? 'vez' : edit.unit })}>
                 <option value="space">Un espacio (renta del mes)</option>
-                <option value="extra">Un cobro suelto (rampa, noche, lavado…)</option>
+                <option value="extra">Un cargo extra (rampa, noche, lavado…)</option>
               </Select>
-            </Field>
+            </Field>}
             <Field label="Se cobra">
               <Select aria-label="Cómo se cobra" value={edit.basis} onChange={(e) => set({ basis: e.target.value as Basis, bands: e.target.value === 'bands' && !edit.bands?.length ? [{ max_ft: 20, price: 0 }, { max_ft: 30, price: 0 }] : edit.bands })}>
                 <option value="per_foot">Por pie del bote</option>
