@@ -1,5 +1,5 @@
 import TradePicker from '../../components/TradePicker'
-import { TRADES, useSetTrade, type Trade } from '../../lib/trade'
+import { ALL_TRADES, useSetTrade, type Trade } from '../../lib/trade'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Check, ImagePlus, Trash2 } from 'lucide-react'
 import { BRAND_COLORS, DEFAULT_BRAND, logoUrl, notifyBrandChanged } from '../../lib/brand'
@@ -183,7 +183,7 @@ export default function BusinessSettings() {
             <TradePicker value={trade} onChange={(t) => { setTradeLocal(t); setUseEstimates(t !== 'beauty') }} />
           ) : (
             <div className="rounded-xl bg-slate-100 p-3" aria-label="Tipo de negocio">
-              <p className="text-base font-bold text-slate-900">{TRADES.find((t) => t.value === trade)?.emoji} {TRADES.find((t) => t.value === trade)?.label}</p>
+              <p className="text-base font-bold text-slate-900">{ALL_TRADES.find((t) => t.value === trade)?.emoji} {ALL_TRADES.find((t) => t.value === trade)?.label}</p>
               <p className="mt-1 text-sm text-slate-600">Se escoge una sola vez, al crear la cuenta. Si te equivocaste, escríbele al desarrollador en Más → Contactar al desarrollador.</p>
             </div>
           )}

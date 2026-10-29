@@ -5,7 +5,8 @@ import { db } from './db'
 /** A qué se dedica el negocio: cambia las palabras del app y qué secciones salen. */
 export type Trade = 'marine' | 'beauty' | 'ac' | 'plumbing' | 'electrical' | 'auto' | 'pool' | 'storage' | 'general'
 
-export const TRADES: { value: Trade; label: string; emoji: string }[] = [
+/** Todos los oficios (para enseñar el nombre de cualquier cuenta, también las de guardería que ya existen). */
+export const ALL_TRADES: { value: Trade; label: string; emoji: string }[] = [
   { value: 'beauty', label: 'Uñas, salón y spa', emoji: '💅' },
   { value: 'marine', label: 'Botes y jet skis', emoji: '🚤' },
   { value: 'ac', label: 'Aire acondic.', emoji: '❄️' },
@@ -16,6 +17,10 @@ export const TRADES: { value: Trade; label: string; emoji: string }[] = [
   { value: 'storage', label: 'Guardería / Marina', emoji: '⚓' },
   { value: 'general', label: 'Otro servicio', emoji: '🛠️' },
 ]
+
+/** Los que se pueden escoger al registrarse. La guardería / marina se va a su propio sistema (proyecto aparte);
+ *  las cuentas de guardería que ya existen siguen funcionando. */
+export const TRADES = ALL_TRADES.filter((t) => t.value !== 'storage')
 
 /** El nombre del app para todos (la puerta de entrada). Los de botes ven además su edición marina. */
 export const APP_NAME = 'FacturaFácil PR'

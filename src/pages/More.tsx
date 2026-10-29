@@ -1,4 +1,4 @@
-import { TRADES, useWords } from '../lib/trade'
+import { ALL_TRADES, useWords } from '../lib/trade'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Anchor, Gift, CalendarHeart, Briefcase, ChevronRight, Globe, KeyRound, LifeBuoy, ListChecks, ShieldCheck, Users } from 'lucide-react'
@@ -165,7 +165,7 @@ export default function More() {
         {row('Email', profile?.email ?? session?.user.email)}
         {row('Teléfono', profile?.phone)}
         {row('Pueblo', profile?.town)}
-        {row('Tipo de negocio', TRADES.find((t) => t.value === words.trade)?.label)}
+        {row('Tipo de negocio', ALL_TRADES.find((t) => t.value === words.trade)?.label)}
       </section>
 
       <h2 className="mb-2 mt-6 text-lg font-bold text-navy-900">Formatos</h2>

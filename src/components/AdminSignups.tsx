@@ -3,7 +3,7 @@ import { Mail, Phone, UserPlus } from 'lucide-react'
 import { db } from '../lib/db'
 import { formatDate, formatTime } from '../lib/format'
 import { telLink } from '../lib/links'
-import { TRADES, type Trade } from '../lib/trade'
+import { ALL_TRADES, type Trade } from '../lib/trade'
 import { useLoad } from '../lib/useLoad'
 
 interface Signup { id: string; full_name: string | null; business_name: string | null; business_type: string | null; email: string | null; phone: string | null; town: string | null; created_at: string; seen_at: string | null }
@@ -26,7 +26,7 @@ export default function AdminSignups() {
       </h2>
       <div className="space-y-2">
         {data.slice(0, 30).map((s) => {
-          const t = TRADES.find((x) => x.value === (s.business_type as Trade))
+          const t = ALL_TRADES.find((x) => x.value === (s.business_type as Trade))
           return (
             <div key={s.id} className={`rounded-2xl bg-white p-3 ring-1 ${s.seen_at ? 'ring-slate-200' : 'ring-2 ring-red-300'}`}>
               <div className="flex items-start gap-2">
