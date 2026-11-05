@@ -13,8 +13,8 @@
 }
 
 html, body, #root { height: 100%; }
-/* Todo un poco más grande (18 px de base) para leerlo bien en el muelle */
-html { font-size: 112.5%; }
+/* Tamaño normal de los celulares (16 px de base). A 18 px se veía muy grande, sobre todo en los Android chicos */
+html { font-size: 100%; }
 /* Fondo liso y claro (sin dibujos): las tarjetas blancas resaltan. Cada oficio cambia solo el tono. */
 :root { --page-bg: #f3f6fa; }
 body {
