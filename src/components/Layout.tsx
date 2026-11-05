@@ -116,18 +116,17 @@ export default function Layout() {
     <div className="min-h-full">
       {/* Cabecera y pestañas fijas; la página baja con el dedo normal (más confiable en iPhone) */}
       <header id="app-header" className={`safe-top sticky top-0 z-10 text-white ${headerColor ? '' : style.bg}`} style={headerColor ? { backgroundColor: headerColor } : undefined}>
-        <div className="mx-auto flex max-w-xl items-center gap-3 px-4 pb-3 pt-3">
+        <div className="mx-auto flex max-w-xl items-center gap-3 px-4 py-2.5">
           {brand.logo ? (
-            <img src={brand.logo} alt="" className="h-12 w-12 shrink-0 rounded-xl bg-black object-contain" />
+            <img src={brand.logo} alt="" className="h-10 w-10 shrink-0 rounded-xl bg-black object-contain ring-1 ring-white/20" />
           ) : (
-            <img src={words.appLogo} alt="" className="h-11 w-11 shrink-0 rounded-xl" />
+            <img src={words.appLogo} alt="" className="h-10 w-10 shrink-0 rounded-xl ring-1 ring-white/20" />
           )}
           <div className="min-w-0 flex-1 leading-tight">
-            <div className="text-sm font-bold uppercase tracking-wide text-white/85">
+            <div className="truncate text-lg font-extrabold">{brand.name || (isMechanic ? 'Mecánico' : 'Dueño de bote')}</div>
+            <div className="text-xs font-semibold text-white/70">
               {words.appName}{demo && <span className="ml-2 rounded-full bg-sun-400 px-2 font-bold text-white">DEMO</span>}
             </div>
-            <div className="text-[11px] leading-tight text-white/60">Powered by Francisco Santiago (Joy)</div>
-            <div className="truncate text-lg font-bold">{brand.name || (isMechanic ? 'Mecánico' : 'Dueño de bote')}</div>
           </div>
           {demo && (
             <button
@@ -137,8 +136,8 @@ export default function Layout() {
               <Repeat size={20} /> Cambiar
             </button>
           )}
-          <button onClick={() => setSheet('signout')} className="flex min-h-12 min-w-12 flex-col items-center justify-center rounded-xl text-xs font-semibold active:bg-black/20">
-            <LogOut size={22} /> Salir
+          <button onClick={() => setSheet('signout')} className="flex min-h-11 items-center gap-1.5 rounded-full bg-white/15 px-3 text-sm font-bold active:bg-white/25">
+            <LogOut size={18} /> Salir
           </button>
         </div>
       </header>

@@ -1,8 +1,6 @@
 import { useWords } from '../../lib/trade'
 import { Link } from 'react-router'
-import { Anchor, CalendarDays, CalendarHeart, ChevronRight, Heart, Receipt, Sparkles, Users, Wallet, Wrench, Zap, type LucideIcon } from 'lucide-react'
-import { NailPolishIcon, NailsHandIcon } from '../../components/BeautyIcons'
-import { GaugeIcon, PistonIcon, PropellerIcon, SparkPlugIcon } from '../../components/PartIcons'
+import { CalendarDays, CalendarHeart, ChevronRight, Receipt, Sparkles, Users, Wallet, Wrench, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import DueServices from '../../components/DueServices'
 import StorageHome from '../../components/StorageHome'
@@ -36,58 +34,11 @@ function Post({ sign }: { sign: '+' | '−' }) {
   )
 }
 
-/** Botón grande con forma de batería de bote: dos postes arriba y cuerpo con brillo de metal. */
-function Tile({ to, icon: Icon, label, sub, from, color, badge }: { to: string; icon: LucideIcon; label: string; sub?: string; from: string; color: string; badge?: React.ReactNode }) {
-  return (
-    <Link to={to} className="group block transition active:scale-[0.97]">
-      <span className="flex justify-between px-4">
-        <Post sign="−" />
-        <Post sign="+" />
-      </span>
-      <span
-        className="relative flex h-44 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-black/25 px-3 pb-6 pt-3 text-center text-white shadow-lg [text-shadow:0_1px_2px_rgba(0,0,0,0.3)]"
-        style={{ backgroundImage: `linear-gradient(160deg, ${from} 0%, ${color} 100%)` }}
-      >
-        {/* brillo de metal y las rayitas de la batería */}
-        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/30 to-transparent" />
-        <span aria-hidden="true" className="pointer-events-none absolute inset-x-3 bottom-2 h-1.5 rounded-full bg-black/15" />
-        <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md ring-4 ring-white/40" style={{ color }}>
-          <Icon size={38} strokeWidth={2.2} />
-          {badge && <span className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full text-white ring-2 ring-white" style={{ backgroundColor: color }}>{badge}</span>}
-        </span>
-        <span className="relative text-lg font-extrabold leading-tight">{label}</span>
-        {sub && <span className="relative rounded-full bg-black/20 px-3 py-0.5 text-base font-extrabold">{sub}</span>}
-      </span>
-    </Link>
-  )
-}
-
-/** Botón grande del salón: tarjeta redonda rosada, con su ícono de belleza (sin baterías). */
-function BeautyTile({ to, icon: Icon, label, sub, from, color, badge }: { to: string; icon: LucideIcon; label: string; sub?: string; from: string; color: string; badge?: React.ReactNode }) {
-  return (
-    <Link to={to} className="block transition active:scale-[0.97]">
-      <span
-        className="relative flex h-44 flex-col items-center justify-center gap-2 overflow-hidden rounded-[28px] px-3 text-center text-white shadow-lg shadow-pink-900/20 [text-shadow:0_1px_2px_rgba(0,0,0,0.2)]"
-        style={{ backgroundImage: `linear-gradient(150deg, ${from} 0%, ${color} 100%)` }}
-      >
-        <span aria-hidden="true" className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/15" />
-        <span aria-hidden="true" className="pointer-events-none absolute -bottom-8 -left-4 h-20 w-20 rounded-full bg-white/10" />
-        <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md" style={{ color }}>
-          <Icon size={36} strokeWidth={2} />
-          {badge && <span className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full text-white ring-2 ring-white" style={{ backgroundColor: color }}>{badge}</span>}
-        </span>
-        <span className="relative text-lg font-extrabold leading-tight">{label}</span>
-        {sub && <span className="relative rounded-full bg-black/15 px-3 py-0.5 text-base font-extrabold">{sub}</span>}
-      </span>
-    </Link>
-  )
-}
-
 /** Botón grande sencillo (aire, plomería, electricidad, otros): tarjeta blanca con el ícono de color. */
 function PlainTile({ to, icon: Icon, label, sub, color }: { to: string; icon: LucideIcon; label: string; sub?: string; color: string }) {
   return (
-    <Link to={to} className="flex h-40 flex-col items-center justify-center gap-2 rounded-3xl bg-white px-3 text-center shadow-[0_6px_24px_-14px_rgba(8,47,73,0.45)] ring-1 ring-slate-200 transition active:scale-[0.97]">
-      <span className="flex h-16 w-16 items-center justify-center rounded-2xl text-white" style={{ backgroundColor: color }}><Icon size={34} /></span>
+    <Link to={to} className="flex h-40 flex-col items-center justify-center gap-2 rounded-3xl bg-white px-3 text-center shadow-[0_4px_18px_-12px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/70 transition active:scale-[0.97]">
+      <span className="flex h-16 w-16 items-center justify-center rounded-2xl" style={{ backgroundColor: `${color}1a`, color }}><Icon size={32} strokeWidth={2.2} /></span>
       <span className="text-lg font-extrabold leading-tight text-navy-900">{label}</span>
       {sub && <span className="text-base font-extrabold" style={{ color }}>{sub}</span>}
     </Link>
@@ -117,7 +68,11 @@ export default function Home() {
   const first = (profile?.full_name ?? '').split(' ')[0]
   const debt = data ? formatMoney(data.debt) : '…'
   // Cada negocio con su estilo: baterías para los mecánicos (botes y autos), belleza para el salón, sencillo para los demás
-  const look = words.salon ? 'beauty' : words.storage ? 'storage' : ['marine', 'auto'].includes(words.trade) ? 'battery' : 'plain'
+  // Mismo orden y mismos botones de siempre; todos con el estilo limpio (cada oficio con sus colores)
+  const look = words.storage ? 'storage' : 'plain'
+  const tileColors = words.salon ? ['#db2777', '#9333ea', '#ea580c', '#e11d48']
+    : words.trade === 'pool' ? ['#0891b2', '#0369a1', '#334155', '#dc2626']
+    : ['#1d4ed8', '#0369a1', '#334155', '#dc2626']
 
   return (
     <>
@@ -128,28 +83,12 @@ export default function Home() {
 
       <ExamplesBanner />
 
-      {look === 'battery' && (
-        <div className="grid grid-cols-2 gap-x-3 gap-y-4">
-          <Tile to="/citas/nueva" icon={PropellerIcon as unknown as LucideIcon} badge={<CalendarDays size={16} strokeWidth={2.5} />} label="Hacer cita" from="#3b82f6" color="#1e3a8a" />
-          <Tile to="/cobrar" icon={GaugeIcon as unknown as LucideIcon} badge={<Zap size={16} strokeWidth={2.5} />} label="Factura rápida" from="#38bdf8" color="#0369a1" />
-          <Tile to="/clientes" icon={SparkPlugIcon as unknown as LucideIcon} badge={<Users size={16} strokeWidth={2.5} />} label={words.Clients} from="#64748b" color="#0f172a" />
-          <Tile to="/trabajos" icon={PistonIcon as unknown as LucideIcon} label="Me deben" sub={debt} from="#fca5a5" color="#ef4444" />
-        </div>
-      )}
-      {look === 'beauty' && (
-        <div className="grid grid-cols-2 gap-3">
-          <BeautyTile to="/citas/nueva" icon={NailPolishIcon as unknown as LucideIcon} badge={<CalendarHeart size={15} strokeWidth={2.5} />} label="Hacer cita" from="#f472b6" color="#be185d" />
-          <BeautyTile to="/cobrar" icon={NailsHandIcon as unknown as LucideIcon} badge={<Sparkles size={15} strokeWidth={2.5} />} label="Factura rápida" from="#c084fc" color="#7e22ce" />
-          <BeautyTile to="/clientes" icon={Users} badge={<Heart size={14} strokeWidth={2.5} />} label={words.Clients} from="#fb923c" color="#c2410c" />
-          <BeautyTile to="/trabajos" icon={Wallet} label="Me deben" sub={debt} from="#fb7185" color="#be123c" />
-        </div>
-      )}
       {look === 'plain' && (
         <div className="grid grid-cols-2 gap-3">
-          <PlainTile to="/citas/nueva" icon={CalendarDays} label="Hacer cita" color={words.trade === 'pool' ? '#0891b2' : '#1d4ed8'} />
-          <PlainTile to="/cobrar" icon={Receipt} label="Factura rápida" color="#0369a1" />
-          <PlainTile to="/clientes" icon={Users} label={words.Clients} color="#334155" />
-          <PlainTile to="/trabajos" icon={Wallet} label="Me deben" sub={debt} color="#dc2626" />
+          <PlainTile to="/citas/nueva" icon={words.salon ? CalendarHeart : CalendarDays} label="Hacer cita" color={tileColors[0]} />
+          <PlainTile to="/cobrar" icon={words.salon ? Sparkles : Receipt} label="Factura rápida" color={tileColors[1]} />
+          <PlainTile to="/clientes" icon={Users} label={words.Clients} color={tileColors[2]} />
+          <PlainTile to="/trabajos" icon={Wallet} label="Me deben" sub={debt} color={tileColors[3]} />
         </div>
       )}
 
