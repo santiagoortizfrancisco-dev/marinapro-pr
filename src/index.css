@@ -15,6 +15,12 @@
 html, body, #root { height: 100%; }
 /* Tamaño normal de los celulares (16 px de base). A 18 px se veía muy grande, sobre todo en los Android chicos */
 html { font-size: 100%; }
+/* Pantallas estrechas (iPhone SE/mini, o un iPhone con "Zoom de pantalla" o el "aA" de Safari agrandado):
+   todo un poco más chico para que no se vea enorme. Las cajas de escribir se quedan en 16 px para que el iPhone no haga zoom. */
+@media (max-width: 350px) {
+  html { font-size: 87.5%; }
+  input, select, textarea { font-size: 16px !important; }
+}
 /* Fondo liso y claro (sin dibujos): las tarjetas blancas resaltan. Cada oficio cambia solo el tono. */
 :root { --page-bg: #f3f6fa; }
 body {
