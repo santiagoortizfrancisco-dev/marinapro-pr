@@ -68,11 +68,18 @@ export default function StaffPage() {
     if (!edit?.name?.trim()) return setError('Escribe el nombre.')
     setBusy(true)
     setError('')
+    const rent = edit.pay_type === 'rent'
+    const rentAmount = num(String(edit.rent_amount ?? ''))
+    if (rent && (rentAmount == null || rentAmount < 0)) return setError('Escribe cuánto paga de renta.')
     const row = {
       name: edit.name.trim(),
       phone: edit.phone?.trim() || null,
       color: edit.color ?? STAFF_COLORS[(data?.staff.length ?? 0) % STAFF_COLORS.length],
-      commission_rate: Math.min(100, Math.max(0, num(String(edit.commission_rate ?? 0)) ?? 0)) / 100,
+      // Renta: paga una cantidad fija por su espacio y los servicios son de ella (sin comisión)
+      pay_type: rent ? 'rent' : 'commission',
+      commission_rate: rent ? 0 : Math.min(100, Math.max(0, num(String(edit.commission_rate ?? 0)) ?? 0)) / 100,
+      rent_amount: rent ? rentAmount : null,
+      rent_period: edit.rent_period ?? 'week',
       active: edit.active ?? true,
     }
     const res = edit.id
@@ -90,9 +97,9 @@ export default function StaffPage() {
 
   return (
     <>
-      <BackTitle to="/mas" subtitle="Cada una con su agenda y su comisión">Empleadas y comisiones</BackTitle>
+      <BackTitle to="/mas" subtitle="Cada una con su agenda y su comisión o renta">Empleadas y comisiones</BackTitle>
 
-      <Button onClick={() => { setError(''); setEdit({ commission_rate: 40 as unknown as number, active: true }) }}><Plus /> Añadir empleada</Button>
+      <Button onClick={() => { setError(''); setEdit({ commission_rate: 40 as unknown as number, active: true, pay_type: 'commission', rent_period: 'week' }) }}><Plus /> Añadir empleada</Button>
 
       {staff.length === 0 && <div className="mt-4"><EmptyState icon={Users} title="Todavía no hay empleadas" text="Añade a las que trabajan contigo. En cada cita escoges con quién es, y aquí ves cuánto le toca a cada una." /></div>}
 
@@ -108,24 +115,30 @@ export default function StaffPage() {
           <div className="mt-3 space-y-2">
             {staff.map((s) => {
               const r = report.get(s.id) ?? { visits: 0, services: 0, tips: 0 }
-              const commission = Math.round(r.services * Number(s.commission_rate) * 100) / 100
+              const rent = s.pay_type === 'rent'
+              const commission = rent ? 0 : Math.round(r.services * Number(s.commission_rate) * 100) / 100
+              const rentText = `${formatMoney(Number(s.rent_amount ?? 0))} por ${s.rent_period === 'month' ? 'mes' : 'semana'}`
               return (
                 <article key={s.id} className={`${CARD} p-3 ${s.active ? '' : 'opacity-60'}`} aria-label={`Comisión de ${s.name}`}>
                   <div className="flex items-center gap-3">
                     <span className="h-10 w-10 shrink-0 rounded-full" style={{ backgroundColor: s.color }} aria-hidden="true" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-lg font-extrabold text-navy-900">{s.name}{s.active ? '' : ' (ya no trabaja)'}</span>
-                      <span className="block text-sm text-slate-600">Comisión {Math.round(Number(s.commission_rate) * 100)}% · {r.visits} {r.visits === 1 ? 'clienta' : 'clientas'}</span>
+                      <span className="block text-sm text-slate-600">{rent ? `Renta ${rentText}` : `Comisión ${Math.round(Number(s.commission_rate) * 100)}%`} · {r.visits} {r.visits === 1 ? 'clienta' : 'clientas'}</span>
                     </span>
-                    <button type="button" onClick={() => { setError(''); setEdit({ ...s, commission_rate: Math.round(Number(s.commission_rate) * 100) as unknown as number }) }} aria-label={`Cambiar a ${s.name}`}
+                    <button type="button" onClick={() => { setError(''); setEdit({ ...s, pay_type: s.pay_type ?? 'commission', rent_period: s.rent_period ?? 'week', commission_rate: Math.round(Number(s.commission_rate) * 100) as unknown as number }) }} aria-label={`Cambiar a ${s.name}`}
                       className="flex h-12 w-12 items-center justify-center text-slate-500"><Pencil size={20} /></button>
                   </div>
                   <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-xl bg-slate-50 p-2"><dt className="text-xs font-bold text-slate-500">Servicios</dt><dd className="text-base font-extrabold text-slate-900">{formatMoney(r.services)}</dd></div>
-                    <div className="rounded-xl bg-pink-50 p-2"><dt className="text-xs font-bold text-pink-700">Comisión</dt><dd className="text-base font-extrabold text-pink-900">{formatMoney(commission)}</dd></div>
+                    {rent
+                      ? <div className="rounded-xl bg-amber-50 p-2"><dt className="text-xs font-bold text-amber-700">Renta</dt><dd className="text-base font-extrabold text-amber-900">{formatMoney(Number(s.rent_amount ?? 0))}<span className="block text-xs font-bold">por {s.rent_period === 'month' ? 'mes' : 'semana'}</span></dd></div>
+                      : <div className="rounded-xl bg-pink-50 p-2"><dt className="text-xs font-bold text-pink-700">Comisión</dt><dd className="text-base font-extrabold text-pink-900">{formatMoney(commission)}</dd></div>}
                     <div className="rounded-xl bg-emerald-50 p-2"><dt className="text-xs font-bold text-emerald-700">Propinas</dt><dd className="text-base font-extrabold text-emerald-900">{formatMoney(r.tips)}</dd></div>
                   </dl>
-                  <p className="mt-2 text-right text-base font-bold text-navy-900">Le toca: {formatMoney(commission + r.tips)}</p>
+                  {rent
+                    ? <p className="mt-2 text-right text-base font-bold text-navy-900">Te paga de renta: {rentText}</p>
+                    : <p className="mt-2 text-right text-base font-bold text-navy-900">Le toca: {formatMoney(commission + r.tips)}</p>}
                 </article>
               )
             })}
@@ -145,9 +158,29 @@ export default function StaffPage() {
             <Field label="Teléfono (opcional)">
               <Input type="tel" inputMode="tel" value={edit.phone ?? ''} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} />
             </Field>
-            <Field label="Comisión (%)" hint="Lo que le toca de cada servicio que hace. Ej.: 40">
-              <Input inputMode="decimal" value={String(edit.commission_rate ?? '')} onChange={(e) => setEdit({ ...edit, commission_rate: e.target.value as unknown as number })} />
+            <Field label="¿Cómo trabaja?">
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Cómo trabaja">
+                {([['commission', 'Comisión'], ['rent', 'Renta']] as const).map(([v, l]) => (
+                  <button key={v} type="button" role="radio" aria-checked={(edit.pay_type ?? 'commission') === v} onClick={() => setEdit({ ...edit, pay_type: v })}
+                    className={`min-h-12 rounded-xl border-2 text-base font-bold ${(edit.pay_type ?? 'commission') === v ? 'border-navy-800 bg-navy-800 text-white' : 'border-slate-300 bg-white text-slate-800'}`}>{l}</button>
+                ))}
+              </div>
             </Field>
+            {edit.pay_type === 'rent' ? <>
+              <Field label="Renta ($)" hint="Lo que te paga por su espacio">
+                <Input aria-label="Renta" inputMode="decimal" value={String(edit.rent_amount ?? '')} onChange={(e) => setEdit({ ...edit, rent_amount: e.target.value as unknown as number })} placeholder="100" />
+              </Field>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Cada cuánto paga la renta">
+                {([['week', 'Por semana'], ['month', 'Por mes']] as const).map(([v, l]) => (
+                  <button key={v} type="button" role="radio" aria-checked={(edit.rent_period ?? 'week') === v} onClick={() => setEdit({ ...edit, rent_period: v })}
+                    className={`min-h-12 rounded-xl border-2 text-base font-bold ${(edit.rent_period ?? 'week') === v ? 'border-navy-800 bg-navy-800 text-white' : 'border-slate-300 bg-white text-slate-800'}`}>{l}</button>
+                ))}
+              </div>
+            </> : (
+              <Field label="Comisión (%)" hint="Lo que le toca de cada servicio que hace. Ej.: 40">
+                <Input inputMode="decimal" value={String(edit.commission_rate ?? '')} onChange={(e) => setEdit({ ...edit, commission_rate: e.target.value as unknown as number })} />
+              </Field>
+            )}
             <Field label="Su color en la agenda">
               <div className="flex flex-wrap gap-2">
                 {STAFF_COLORS.map((c) => (

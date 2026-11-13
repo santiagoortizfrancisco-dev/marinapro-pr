@@ -8,6 +8,10 @@ export interface Staff {
   phone: string | null
   color: string
   commission_rate: number
+  /** Comisión por servicio, o renta fija por su espacio */
+  pay_type?: 'commission' | 'rent'
+  rent_amount?: number | null
+  rent_period?: 'week' | 'month'
   active: boolean
 }
 

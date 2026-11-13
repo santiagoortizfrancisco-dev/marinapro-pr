@@ -2044,3 +2044,22 @@ test('guardería: zonas de tierra y muelles con cuadros; poner un bote, reservar
   await expect(page.getByRole('region', { name: 'Zona Muelle C' }).getByText('$250.00 al mes')).toBeVisible()
   await page.screenshot({ path: 'test-results/guarderia-inicio-todo.png', fullPage: true })
 })
+
+test('salón: una empleada puede pagar renta por su espacio en vez de comisión', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/mas/empleadas')
+  await page.getByRole('button', { name: 'Cambiar a Yari' }).click()
+  await page.getByRole('radio', { name: 'Renta' }).click()
+  await page.getByRole('textbox', { name: 'Renta' }).fill('100')
+  await page.getByRole('radio', { name: 'Por semana' }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  const yari = page.getByRole('article', { name: 'Comisión de Yari' })
+  await expect(yari.getByText(/Renta \$100\.00 por semana/)).toBeVisible()
+  await expect(yari.getByText(/Te paga de renta: \$100\.00 por semana/)).toBeVisible()
+  await page.screenshot({ path: 'test-results/empleada-renta.png', fullPage: true })
+  expect((await state()).staff.find((s) => s.name === 'Yari')).toMatchObject({ pay_type: 'rent', rent_amount: 100, rent_period: 'week', commission_rate: 0 })
+  // Kamila sigue con comisión
+  await expect(page.getByRole('article', { name: 'Comisión de Kamila' }).getByText(/Comisión 35%/)).toBeVisible()
+})

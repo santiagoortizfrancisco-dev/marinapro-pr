@@ -763,3 +763,10 @@ test('citas por internet: la cita pedida ya trae el depósito del salón para en
   assert.equal(Number((await sys(`select deposit_asked from appointments where id = '${id}'`))[0].deposit_asked), 20)
   assert.equal(Number((await one(null, `select cita_public('${id}') d`, 'anon')).d.deposit), 20, 'la página de la cita enseña el depósito')
 })
+
+test('empleadas: puede ser comisión o renta por su espacio (por semana o por mes)', async () => {
+  const s = await one(A, `insert into staff (mechanic_id, name, pay_type, rent_amount, rent_period) values ('${A}', 'Renta Prueba', 'rent', 100, 'week') returning pay_type, rent_amount, rent_period`)
+  assert.deepEqual([s.pay_type, Number(s.rent_amount), s.rent_period], ['rent', 100, 'week'])
+  assert.equal((await one(A, `insert into staff (mechanic_id, name) values ('${A}', 'Comision Prueba') returning pay_type`)).pay_type, 'commission', 'por defecto sigue siendo comisión')
+  assert.ok(await fails(() => as(A, `insert into staff (mechanic_id, name, pay_type) values ('${A}', 'Mala', 'otra')`)))
+})
