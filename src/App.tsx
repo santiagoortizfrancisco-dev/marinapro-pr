@@ -33,6 +33,7 @@ import QuickInvoice from './pages/mechanic/QuickInvoice'
 import Invoices from './pages/mechanic/Invoices'
 import SalonAppointmentForm from './pages/mechanic/SalonAppointmentForm'
 import StaffPage from './pages/mechanic/StaffPage'
+import Rents from './pages/mechanic/Rents'
 import Storage from './pages/mechanic/Storage'
 import BookingSettings from './pages/mechanic/BookingSettings'
 import GiftCards from './pages/mechanic/GiftCards'
@@ -118,6 +119,7 @@ export default function App() {
           <Route path="/mas/admin" element={<Admin />} />
           <Route path="/mas/catalogo" element={<Catalog />} />
           <Route path="/mas/empleadas" element={<StaffPage />} />
+          <Route path="/mas/rentas" element={<Rents />} />
           <Route path="/guarderia" element={<Storage />} />
           <Route path="/mas/reservas" element={<BookingSettings />} />
           <Route path="/mas/regalos" element={<GiftCards />} />

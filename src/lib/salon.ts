@@ -12,6 +12,7 @@ export interface Staff {
   pay_type?: 'commission' | 'rent'
   rent_amount?: number | null
   rent_period?: 'week' | 'month'
+  rent_space?: string | null
   active: boolean
 }
 

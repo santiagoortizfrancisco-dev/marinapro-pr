@@ -770,3 +770,14 @@ test('empleadas: puede ser comisión o renta por su espacio (por semana o por me
   assert.equal((await one(A, `insert into staff (mechanic_id, name) values ('${A}', 'Comision Prueba') returning pay_type`)).pay_type, 'commission', 'por defecto sigue siendo comisión')
   assert.ok(await fails(() => as(A, `insert into staff (mechanic_id, name, pay_type) values ('${A}', 'Mala', 'otra')`)))
 })
+
+test('registro semanal de rentas: cada salón ve solo las suyas', async () => {
+  const st = (await one(A, `insert into staff (mechanic_id, name, pay_type, rent_amount, rent_space) values ('${A}', 'Inquilina', 'rent', 120, 'Estación 2') returning id, rent_space`))
+  assert.equal(st.rent_space, 'Estación 2')
+  await as(A, `insert into rent_entries (mechanic_id, week_start, staff_id, tenant, concept, amount) values ('${A}', '2026-11-09', '${st.id}', 'Inquilina', 'Estación 2', 120)`)
+  await as(A, `insert into rent_weeks (mechanic_id, week_start, deposits, done_by) values ('${A}', '2026-11-09', 100, 'Ruth')`)
+  assert.equal(Number((await one(A, `select sum(amount) t from rent_entries where week_start = '2026-11-09'`)).t), 120)
+  assert.equal((await as(B, `select * from rent_entries`)).length, 0, 'otro negocio no las ve')
+  assert.equal((await as(B, `select * from rent_weeks`)).length, 0)
+  assert.ok(await fails(() => as(B, `insert into rent_entries (mechanic_id, week_start, tenant, amount) values ('${A}', '2026-11-09', 'X', 1)`)))
+})

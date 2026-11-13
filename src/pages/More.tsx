@@ -78,6 +78,17 @@ export default function More() {
         </Link>
       )}
 
+      {profile?.role === 'mechanic' && words.salon && (
+        <Link to="/mas/rentas" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+          <IconBadge icon={KeyRound} tone="amber" />
+          <span className="flex-1">
+            <span className="block text-lg font-bold">Registro de rentas</span>
+            <span className="block text-sm text-slate-600">Quién pagó la renta de su espacio cada semana</span>
+          </span>
+          <ChevronRight />
+        </Link>
+      )}
+
       {profile?.role === 'mechanic' && !words.storage && (
         <Link to="/mas/catalogo" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
           <IconBadge icon={ListChecks} tone="amber" />

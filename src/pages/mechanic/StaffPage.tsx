@@ -80,6 +80,7 @@ export default function StaffPage() {
       commission_rate: rent ? 0 : Math.min(100, Math.max(0, num(String(edit.commission_rate ?? 0)) ?? 0)) / 100,
       rent_amount: rent ? rentAmount : null,
       rent_period: edit.rent_period ?? 'week',
+      rent_space: rent ? edit.rent_space?.trim() || null : null,
       active: edit.active ?? true,
     }
     const res = edit.id
@@ -167,6 +168,9 @@ export default function StaffPage() {
               </div>
             </Field>
             {edit.pay_type === 'rent' ? <>
+              <Field label="Espacio que renta" hint="Ej.: Estación 2, Cuarto de masajes">
+                <Input aria-label="Espacio que renta" value={edit.rent_space ?? ''} onChange={(e) => setEdit({ ...edit, rent_space: e.target.value })} placeholder="Estación 2" />
+              </Field>
               <Field label="Renta ($)" hint="Lo que te paga por su espacio">
                 <Input aria-label="Renta" inputMode="decimal" value={String(edit.rent_amount ?? '')} onChange={(e) => setEdit({ ...edit, rent_amount: e.target.value as unknown as number })} placeholder="100" />
               </Field>
