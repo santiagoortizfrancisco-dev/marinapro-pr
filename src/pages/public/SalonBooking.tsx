@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { CalendarHeart, Check, CheckCircle2, Clock, MapPin } from 'lucide-react'
 import { WhatsAppIcon } from '../../components/BrandIcons'
 import { Input } from '../../components/ui'
@@ -41,6 +41,7 @@ export default function SalonBooking() {
   const [note, setNote] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const navigate = useNavigate()
   const [done, setDone] = useState(false)
 
   useEffect(() => {
@@ -95,7 +96,7 @@ export default function SalonBooking() {
     if (phone.replace(/\D/g, '').length < 7) return setError('Escribe tu teléfono.')
     setSending(true)
     setError('')
-    const { error } = await supabase.rpc('booking_request', {
+    const { data: apptId, error } = await supabase.rpc('booking_request', {
       p_slug: slug, p_name: name.trim(), p_phone: phone.trim(), p_services: picked, p_staff: staffId, p_starts_at: prToISO(day, time), p_note: note.trim() || null,
     })
     setSending(false)
@@ -104,6 +105,8 @@ export default function SalonBooking() {
       supabase.rpc('booking_busy', { p_slug: slug, p_day: day }).then(({ data }) => setBusy((data as Busy[] | null) ?? []))
       return
     }
+    // Pasa directo a la página de su cita: ahí ve el depósito, el ATH Móvil y "Acepto y ya envié el depósito"
+    if (apptId) return navigate(`/cita/${apptId}?nueva=1`)
     setDone(true)
   }
 

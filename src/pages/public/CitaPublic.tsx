@@ -80,6 +80,12 @@ export default function CitaPublic() {
 
         <h1 className="mt-6 text-3xl font-black text-slate-900">Hola {cita.client} 💅</h1>
         <p className="mt-1 text-lg text-slate-700">{cancelled ? 'Esta cita quedó cancelada.' : 'Esta es tu cita:'}</p>
+        {/* Recién pedida por internet: lo que falta para que quede confirmada */}
+        {!cancelled && Number(cita.deposit) > 0 && !cita.deposit_ok_at && !cita.reported_at && (
+          <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-base font-bold text-amber-900 ring-1 ring-amber-200">
+            Para separar tu cita, envía el depósito de {formatMoney(Number(cita.deposit))} por ATH Móvil y toca el botón de abajo. {cita.business} la confirma cuando le llegue.
+          </p>
+        )}
 
         <section className="mt-4 rounded-3xl bg-white p-4 shadow-[0_8px_30px_-18px_rgba(157,23,77,0.45)] ring-1 ring-pink-100">
           <div className="text-xl font-extrabold text-slate-900">{formatLongDate(cita.starts_at)}</div>

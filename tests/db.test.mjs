@@ -752,3 +752,14 @@ test('guardería sencilla: precio por zona, la renta dice el mes y el espacio, y
   await as(N, `update mechanics set business_type = 'storage', business_type_set = true where profile_id = '${N}'`)
   assert.match((await one(N, `select policies_text from mechanics where profile_id = '${N}'`)).policies_text, /seguro vigente/)
 })
+
+test('citas por internet: la cita pedida ya trae el depósito del salón para enviarlo en el momento', async () => {
+  const S = (await db.query(`insert into auth.users(email) values ('deposito@salon.test') returning id`)).rows[0].id
+  await as(S, `select set_my_role('mechanic','Iris','787-555-0101','Salinas','Salón Depósito')`)
+  await as(S, `update mechanics set business_type = 'beauty', business_type_set = true, booking_on = true, booking_slug = 'salon-deposito', booking_deposit = 20,
+    booking_hours = '{"0":["00:00","23:59"],"1":["00:00","23:59"],"2":["00:00","23:59"],"3":["00:00","23:59"],"4":["00:00","23:59"],"5":["00:00","23:59"],"6":["00:00","23:59"]}' where profile_id = '${S}'`)
+  const when = (await sys(`select date_trunc('hour', now() + interval '2 days') + interval '10 hours' as t`))[0].t.toISOString()
+  const id = (await one(null, `select booking_request('salon-deposito', 'Ana Prueba', '787-555-0199', '{}', null, '${when}') id`, 'anon')).id
+  assert.equal(Number((await sys(`select deposit_asked from appointments where id = '${id}'`))[0].deposit_asked), 20)
+  assert.equal(Number((await one(null, `select cita_public('${id}') d`, 'anon')).d.deposit), 20, 'la página de la cita enseña el depósito')
+})

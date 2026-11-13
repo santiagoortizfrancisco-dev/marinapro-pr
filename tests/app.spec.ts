@@ -1162,7 +1162,7 @@ test('salón: el inicio tiene su estilo de belleza (sin baterías) y Factura rá
 
 })
 
-test('salón: citas por internet — prende su link, la clienta pide cita sola y el salón la confirma', async ({ page, browser }) => {
+test('salón: citas por internet — la clienta pide su cita y ahí mismo envía el depósito; con "Sí, me llegó" queda confirmada', async ({ page, browser }) => {
   await page.goto('/demo')
   await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
   await page.getByRole('link', { name: 'Más', exact: true }).click()
@@ -1184,11 +1184,14 @@ test('salón: citas por internet — prende su link, la clienta pide cita sola y
   await clienta.getByLabel('Tu nombre').fill('Lola Web')
   await clienta.getByLabel('Tu teléfono').fill('787-555-1212')
   await clienta.getByRole('button', { name: /Pedir cita/ }).click()
-  await expect(clienta.getByText('¡Cita pedida!')).toBeVisible()
-  await expect(clienta.getByText(/depósito/i)).toHaveCount(0) // al reservar no se le pide el depósito
+  // Ahí mismo pasa a su cita: envía el depósito por ATH Móvil y lo dice con un toque
+  await expect(clienta).toHaveURL(/\/cita\//)
+  await expect(clienta.getByText(/Para separar tu cita, envía el depósito de \$15\.00/)).toBeVisible()
+  await clienta.getByRole('button', { name: /Acepto y ya envié el depósito/ }).click()
+  await expect(clienta.getByText(/va a verificar tu depósito/)).toBeVisible()
   await clienta.close()
   const ap = (await state()).appointments.find((a) => a.source === 'online')!
-  expect(ap).toMatchObject({ status: 'requested', title: 'Pedicura', duration_min: 45 })
+  expect(ap).toMatchObject({ status: 'requested', title: 'Pedicura', duration_min: 45, deposit_asked: 15 })
 
   // Al salón le sale en Inicio y la confirma
   await page.goto('/')
@@ -1196,12 +1199,15 @@ test('salón: citas por internet — prende su link, la clienta pide cita sola y
   await expect(page.getByRole('heading', { name: /Pedidas por internet/ })).toBeVisible()
   await page.getByRole('link', { name: /Lola Web/ }).first().click()
   await expect(page.getByText('La pidió por internet')).toBeVisible()
+  // Le llegó el ATH: un toque anota el depósito, confirma la cita y abre el WhatsApp de confirmada
   const popup = page.waitForEvent('popup')
-  await page.getByRole('button', { name: /Confirmar cita.*por WhatsApp/ }).click()
+  await page.getByRole('button', { name: /Sí, me llegó/ }).click()
   const wa = await popup
-  expect(decodeURIComponent(wa.url().replace(/\+/g, ' '))).toContain('envía el depósito de $15.00 por ATH Móvil al 787-555-0100')
+  expect(decodeURIComponent(wa.url().replace(/\+/g, ' '))).toContain('me llegó tu depósito de $15.00')
+  expect(decodeURIComponent(wa.url().replace(/\+/g, ' '))).toContain('queda confirmada')
   await wa.close()
   await expect.poll(async () => (await state()).appointments.find((a) => a.id === ap.id)?.status).toBe('confirmed')
+  expect((await state()).payments.some((x) => x.amount === 15 && x.method === 'ath_movil')).toBe(true)
 
   // Un link que no existe no enseña nada
   const otra = await browser.newPage()

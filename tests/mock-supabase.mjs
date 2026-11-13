@@ -432,7 +432,7 @@ const RPC = {
     let boat = db.boats.find((b) => b.client_id === client.id)
     if (!boat) { boat = { ...DEFAULTS.boats(), id: randomUUID(), client_id: client.id, name: client.full_name, location_type: 'home', created_at: new Date().toISOString() }; db.boats.push(boat) }
     const title = svcs.map((c) => c.name).sort().join(' + ') || null
-    const appt = { ...DEFAULTS.appointments(), id: randomUUID(), mechanic_id: m.profile_id, boat_id: boat.id, staff_id: p_staff ?? null, starts_at: new Date(p_starts_at).toISOString(), duration_min: mins, status: 'requested', title, notes: p_note ?? null, source: 'online', created_at: new Date().toISOString() }
+    const appt = { ...DEFAULTS.appointments(), id: randomUUID(), mechanic_id: m.profile_id, boat_id: boat.id, staff_id: p_staff ?? null, starts_at: new Date(p_starts_at).toISOString(), duration_min: mins, status: 'requested', title, notes: p_note ?? null, source: 'online', deposit_asked: m.booking_deposit ?? null, created_at: new Date().toISOString() }
     db.appointments.push(appt)
     const wo = { ...DEFAULTS.work_orders(), id: randomUUID(), boat_id: boat.id, appointment_id: appt.id, staff_id: p_staff ?? null, complaint: title, status: 'approved', estimate_approved_at: new Date().toISOString(), estimate_approved_by: 'mechanic', sea_trial_required: false, public_token: randomUUID(), created_at: new Date().toISOString() }
     db.work_orders.push(wo)

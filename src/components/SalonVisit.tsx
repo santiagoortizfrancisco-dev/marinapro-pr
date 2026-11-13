@@ -265,11 +265,16 @@ export default function SalonVisit({ appt: a, woId, onEdit, onCancel, onActivate
 
   const reported = link.deposit_reported_at && !link.deposit_ok_at && paid === 0 ? Number(link.deposit_asked) || 0 : 0
 
+  /** Me llegó el depósito: se anota, la cita queda confirmada sola y se le avisa por WhatsApp. */
   async function depositArrived() {
+    // El WhatsApp se abre primero (en el iPhone tiene que ser en el mismo toque)
+    if (c.phone) window.open(whatsappLink(c.phone, `Hola ${firstName}, ¡me llegó tu depósito de ${formatMoney(reported)}! Tu cita del ${formatLongDate(a.starts_at).toLowerCase()} (${formatDate(a.starts_at)}) a las ${formatTime(a.starts_at)} queda confirmada. ¡Te espero! 💅 ${sign}`.trim()), '_blank')
     setBusy(true)
     await addPayment(woId, reported, 'ath_movil', 0)
     await db().from('appointments').update({ deposit_ok_at: new Date().toISOString() }).eq('id', a.id)
     setBusy(false)
+    // Pedida por internet: con el depósito queda confirmada (la pantalla de la cita se pone al día)
+    if (a.status === 'requested') onActivate()
     reload()
   }
 
