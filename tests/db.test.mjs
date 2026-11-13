@@ -781,3 +781,51 @@ test('registro semanal de rentas: cada salón ve solo las suyas', async () => {
   assert.equal((await as(B, `select * from rent_weeks`)).length, 0)
   assert.ok(await fails(() => as(B, `insert into rent_entries (mechanic_id, week_start, tenant, amount) values ('${A}', '2026-11-09', 'X', 1)`)))
 })
+
+test('ChatGPT: con la llave solo lee los números de SU negocio; sin llave o con la vieja, nada', async () => {
+  assert.ok(await fails(() => one(null, `select gpt_new_key() k`, 'anon')), 'alguien sin cuenta no saca llave')
+  const k1 = (await one(A, `select gpt_new_key() k`)).k
+  assert.match(k1, /^ff_[0-9a-f]{64}$/)
+  assert.equal((await one(A, `select key_hint from gpt_keys`)).key_hint, k1.slice(-4))
+  assert.equal((await as(B, `select * from gpt_keys`)).length, 0, 'otro negocio no ve la llave')
+  assert.notEqual((await sys(`select key_hash from gpt_keys`))[0].key_hash, k1, 'la llave no se guarda tal cual')
+
+  const st = (await one(A, `insert into staff (mechanic_id, name, commission_rate) values ('${A}', 'Kamila GPT', 0.4) returning id`)).id
+  const c = (await one(A, `insert into clients(mechanic_id, full_name) values ('${A}','Clienta GPT') returning id`)).id
+  const b = (await one(A, `insert into boats(client_id, name) values ('${c}','-') returning id`)).id
+  const w = (await one(A, `insert into work_orders(boat_id, staff_id, complaint) values ('${b}', '${st}', 'Acrílico') returning id`)).id
+  await as(A, `insert into payments(work_order_id, amount, tip, method, paid_at) values ('${w}', 50, 10, 'ath_movil', '2026-11-05T15:00:00-04:00')`)
+  await as(A, `insert into appointments(mechanic_id, boat_id, staff_id, starts_at, status, title) values ('${A}','${b}','${st}','2026-11-05T14:00:00-04:00','done','Acrílico')`)
+
+  const q = async (what, extra = `'2026-11-01', '2026-11-30'`) => (await one(null, `select gpt_query('${k1}', '${what}', ${extra}) d`, 'anon')).d
+  const ventas = await q('ventas')
+  const mia = ventas.ventas.find((v) => v.cliente === 'Clienta GPT')
+  assert.equal(Number(mia.monto), 50)
+  assert.equal(mia.metodo, 'ATH Móvil')
+  assert.equal(mia.empleada, 'Kamila GPT')
+  const emp = (await q('empleadas')).empleadas.find((e) => e.nombre === 'Kamila GPT')
+  assert.equal(Number(emp.comision_ganada), 20)
+  assert.equal(Number(emp.propinas), 10)
+  const res = await q('resumen')
+  assert.ok(Number(res.cobrado) >= 50)
+  assert.ok(res.citas.hechas >= 1)
+  assert.ok((await q('citas')).citas.some((x) => x.cliente === 'Clienta GPT' && x.estado === 'hecha'))
+  assert.equal((await q('clientas', `null, null, 'Clienta GPT'`)).clientes[0].visitas, 1)
+  assert.equal((await q('negocio', 'null, null')).negocio, 'Taller A')
+  for (const what of ['deudas', 'rentas']) assert.ok(await q(what))
+  assert.ok(await fails(() => q('borrar_todo')), 'solo las preguntas conocidas')
+
+  // no ve nada de otro negocio, y con llave mala o vieja no entra
+  const kB = (await one(B, `select gpt_new_key() k`)).k
+  const vB = (await one(null, `select gpt_query('${kB}', 'ventas', '2026-11-01', '2026-11-30') d`, 'anon')).d
+  assert.equal(vB.ventas.length, 0, 'la llave de B no ve las ventas de A')
+  assert.ok(await fails(() => one(null, `select gpt_query('ff_mala', 'resumen') d`, 'anon')))
+  const k2 = (await one(A, `select gpt_new_key() k`)).k
+  assert.ok(await fails(() => one(null, `select gpt_query('${k1}', 'resumen') d`, 'anon')), 'la llave vieja ya no sirve')
+  assert.ok(await one(null, `select gpt_query('${k2}', 'resumen') d`, 'anon'))
+  await one(null, `select gpt_touch('${k2}')`, 'anon')
+  assert.ok((await one(A, `select last_used_at from gpt_keys`)).last_used_at)
+  // apagar: borrar la llave
+  await as(A, `delete from gpt_keys`)
+  assert.ok(await fails(() => one(null, `select gpt_query('${k2}', 'resumen') d`, 'anon')))
+})

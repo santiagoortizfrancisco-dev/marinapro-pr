@@ -84,6 +84,7 @@ function reset() {
     storage_zones: [],
     storage_spots: [],
     rent_entries: [],
+    gpt_keys: [],
     rent_weeks: [],
   }
 }
@@ -407,6 +408,12 @@ const RPC = {
   },
   admin_unseen_signups: () => (caller === U ? db.admin_signups.filter((x) => !x.seen_at).length : 0),
   admin_mark_signups_seen: () => { if (caller === U) db.admin_signups.forEach((x) => { x.seen_at ??= new Date().toISOString() }); return null },
+  gpt_new_key: () => {
+    const key = 'ff_' + randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '')
+    db.gpt_keys = db.gpt_keys.filter((k) => k.mechanic_id !== caller)
+    db.gpt_keys.push({ mechanic_id: caller, key_hash: 'x' + key.slice(-8), key_hint: key.slice(-4), created_at: new Date().toISOString(), last_used_at: null })
+    return key
+  },
   booking_page: ({ p_slug }) => {
     const m = db.mechanics.find((x) => x.booking_on && String(x.booking_slug).toLowerCase() === String(p_slug).toLowerCase())
     if (!m) return null
