@@ -133,6 +133,10 @@ function withRelations(table, row) {
     const wo = db.work_orders.find((w) => w.id === row.work_order_id)
     r.work_orders = wo ? withRelations('work_orders', wo) : null
   }
+  if (table === 'payments' || table === 'invoices') {
+    const wo = db.work_orders.find((w) => w.id === row.work_order_id)
+    r.work_orders = wo ? withRelations('work_orders', wo) : null
+  }
   if (table === 'work_orders') {
     r.work_order_parts = db.work_order_parts.filter((p) => p.work_order_id === row.id)
     r.boats = boat(row.boat_id)

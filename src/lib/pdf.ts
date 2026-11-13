@@ -30,11 +30,15 @@ export async function shareAsPdf(el: HTMLElement, fileName: string): Promise<'sh
     pdf.addImage(img, 'JPEG', margin, y, imgW, imgH)
     left -= pageH - margin * 2
   }
-  const file = new File([pdf.output('blob')], fileName, { type: 'application/pdf' })
+  return shareFile(new File([pdf.output('blob')], fileName, { type: 'application/pdf' }))
+}
 
+/** Compartir un archivo (en el celular: WhatsApp, correo, Archivos…) o bajarlo (en la computadora). */
+export async function shareFile(file: File): Promise<'shared' | 'downloaded' | 'cancelled'> {
+  const fileName = file.name
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: fileName.replace(/\.pdf$/, '') })
+      await navigator.share({ files: [file], title: fileName.replace(/\.[a-z]+$/, '') })
       return 'shared'
     } catch (e) {
       if ((e as Error).name === 'AbortError') return 'cancelled'

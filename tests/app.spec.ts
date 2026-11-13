@@ -2089,3 +2089,30 @@ test('salón: una empleada puede pagar renta por su espacio en vez de comisión'
   expect((await state()).rent_entries.map((x) => x.amount).sort()).toEqual([100, 50].sort())
   await page.screenshot({ path: 'test-results/registro-rentas.png', fullPage: true })
 })
+
+test('Exportar a Excel: baja un archivo .xlsx del mes con sus hojas', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/mas')
+  await page.getByRole('link', { name: /Exportar a Excel/ }).click()
+  await expect(page.getByText(/Ventas y pagos/).first()).toBeVisible()
+  // mes anterior y vuelta
+  const mes = (await page.locator('[role=group][aria-label=Mes] p').textContent()) ?? ''
+  await page.getByRole('button', { name: 'Mes anterior' }).click()
+  await expect(page.locator('[role=group][aria-label=Mes] p')).not.toHaveText(mes)
+  await page.getByRole('button', { name: 'Mes siguiente' }).click()
+  await expect(page.locator('[role=group][aria-label=Mes] p')).toHaveText(mes)
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: /^Exportar / }).click(),
+  ])
+  expect(download.suggestedFilename()).toMatch(/\.xlsx$/)
+  const file = await download.path()
+  await download.saveAs('test-results/exportar.xlsx')
+  const { readFileSync } = await import('node:fs')
+  const bytes = readFileSync(file)
+  expect(bytes.subarray(0, 2).toString()).toBe('PK') // es un .xlsx (zip)
+  await expect(page.getByRole('status')).toContainText('Listo')
+  await page.screenshot({ path: 'test-results/exportar-excel.png', fullPage: true })
+})

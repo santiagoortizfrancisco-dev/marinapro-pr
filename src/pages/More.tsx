@@ -1,7 +1,7 @@
 import { ALL_TRADES, useWords } from '../lib/trade'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Anchor, Gift, CalendarHeart, Briefcase, ChevronRight, Globe, KeyRound, LifeBuoy, ListChecks, ShieldCheck, Users } from 'lucide-react'
+import { Anchor, Gift, CalendarHeart, Briefcase, ChevronRight, FileSpreadsheet, Globe, KeyRound, LifeBuoy, ListChecks, ShieldCheck, Users } from 'lucide-react'
 import ContactSheet from '../components/ContactSheet'
 import { db } from '../lib/db'
 import { useLoad } from '../lib/useLoad'
@@ -84,6 +84,17 @@ export default function More() {
           <span className="flex-1">
             <span className="block text-lg font-bold">Registro de rentas</span>
             <span className="block text-sm text-slate-600">Quién pagó la renta de su espacio cada semana</span>
+          </span>
+          <ChevronRight />
+        </Link>
+      )}
+
+      {profile?.role === 'mechanic' && (
+        <Link to="/mas/exportar" className={`${CARD} mb-3 flex min-h-16 items-center gap-3 px-3 py-2 text-navy-900 transition active:scale-[0.99]`}>
+          <IconBadge icon={FileSpreadsheet} tone="green" />
+          <span className="flex-1">
+            <span className="block text-lg font-bold">Exportar a Excel</span>
+            <span className="block text-sm text-slate-600">Ventas, facturas, citas y rentas del mes</span>
           </span>
           <ChevronRight />
         </Link>
