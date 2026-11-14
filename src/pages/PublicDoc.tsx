@@ -4,6 +4,8 @@ import { useParams, useSearchParams } from 'react-router'
 import { ArrowLeft, CheckCircle2, FileDown, Printer } from 'lucide-react'
 import { AthMovilBadge, WhatsAppIcon } from '../components/BrandIcons'
 import { supabase } from '../lib/supabase'
+import { usePublicSeason } from '../lib/season'
+import ChristmasBanner from '../components/ChristmasBanner'
 import { PAYMENT_METHODS, SEA_TRIAL_METHODS, labelOf } from '../lib/catalog'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
 import { whatsappLink } from '../lib/links'
@@ -108,6 +110,7 @@ function ApproveBox({ token, doc, color, onApproved }: { token: string; doc: Doc
 /** Estimado o factura que ve el cliente desde el link de WhatsApp (no necesita cuenta). */
 export default function PublicDoc() {
   const { token } = useParams()
+  const season = usePublicSeason('doc', token)
   const pago = useSearchParams()[0].get('pago')
   const [doc, setDoc] = useState<Doc | null>(null)
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading')
@@ -162,9 +165,10 @@ export default function PublicDoc() {
   const salon = words.salon
   // Salón y guardería: un solo subtotal, sin mano de obra ni piezas
   const simple = salon || words.storage
-  const accent = salon ? '#ec4899' : ORANGE
+  const christmas = season === 'christmas'
+  const accent = christmas ? '#166534' : salon ? '#ec4899' : ORANGE
   // Salón sin color propio (o con el negro de siempre): rosado
-  const color = salon && (!doc.business.brand_color || doc.business.brand_color === DEFAULT_BRAND) ? '#db2777' : doc.business.brand_color || DEFAULT_BRAND
+  const color = christmas ? '#b91c1c' : salon && (!doc.business.brand_color || doc.business.brand_color === DEFAULT_BRAND) ? '#db2777' : doc.business.brand_color || DEFAULT_BRAND
   const logo = logoUrl(doc.business.logo_path)
   const isInvoice = doc.kind === 'invoice'
   const ivuOn = [t.ivu_on_labor && 'mano de obra', t.ivu_on_parts && 'piezas'].filter(Boolean).join(' y ')
@@ -192,6 +196,7 @@ export default function PublicDoc() {
           <span className="flex-[3]" style={{ backgroundColor: color }} />
           <span className="flex-1" style={{ backgroundColor: accent }} />
         </div>
+        {christmas && <div className="px-5 pt-4"><ChristmasBanner business={doc.business.name} /></div>}
         <div className="px-5 py-6">
         {/* Encabezado */}
         <header className="flex flex-col gap-3 border-b-2 border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">

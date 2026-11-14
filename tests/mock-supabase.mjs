@@ -367,6 +367,20 @@ const RPC = {
     const p = db.profiles.find((x) => x.id === m.profile_id)
     return { business: m.business_name, phone: p?.phone ?? null, town: p?.town ?? null, logo_path: m.logo_path, brand_color: m.brand_color, code: g.code, amount: g.amount, balance: g.balance, recipient_name: g.recipient_name, buyer_name: g.buyer_name }
   },
+  public_season: ({ p_kind, p_ref }) => {
+    let me = null
+    if (p_kind === 'cita') me = db.appointments.find((x) => x.id === p_ref)?.mechanic_id
+    if (p_kind === 'regalo') me = db.gift_cards.find((x) => x.id === p_ref)?.mechanic_id
+    if (p_kind === 'reservar') me = db.mechanics.find((x) => x.booking_on && String(x.booking_slug).toLowerCase() === String(p_ref).toLowerCase())?.profile_id
+    if (p_kind === 'doc') {
+      const inv = db.invoices.find((x) => x.public_token === p_ref)
+      const wo = db.work_orders.find((x) => x.public_token === p_ref || x.id === inv?.work_order_id)
+      const b = wo && db.boats.find((x) => x.id === wo.boat_id)
+      me = inv?.mechanic_id ?? (b && db.clients.find((c) => c.id === b.client_id)?.mechanic_id)
+    }
+    const m = me ? db.mechanics.find((x) => x.profile_id === me) : null
+    return m?.season ?? null
+  },
   cita_public: ({ p_id }) => {
     const a = db.appointments.find((x) => x.id === p_id)
     if (!a) return null

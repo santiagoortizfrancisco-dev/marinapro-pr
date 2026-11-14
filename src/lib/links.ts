@@ -1,4 +1,5 @@
 /** Links para llamar, WhatsApp, email y mapas. */
+import { festive } from './season'
 
 function digits(phone: string): string {
   const d = phone.replace(/\D/g, '')
@@ -10,7 +11,8 @@ export function telLink(phone: string): string {
 }
 
 export function whatsappLink(phone: string, text?: string): string {
-  return `https://wa.me/${digits(phone)}${text ? `?text=${encodeURIComponent(text)}` : ''}`
+  // Con Navidad prendida, el mensaje sale con su saludo navideño
+  return `https://wa.me/${digits(phone)}${text ? `?text=${encodeURIComponent(festive(text))}` : ''}`
 }
 
 export function mailLink(email: string): string {

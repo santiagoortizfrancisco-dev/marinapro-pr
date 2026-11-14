@@ -65,6 +65,25 @@ body[data-trade="pool"] { --page-bg: #f0fbfd; }
   --color-blue-100: #cffafe;
   --color-blue-700: #0e7490;
 }
+/* Navidad (Más → Navidad): rojo y verde de Navidad, fondo crema */
+body[data-season="christmas"], [data-season="christmas"] {
+  --page-bg: #fbf6ee;
+  --color-navy-50: #fef2f2;
+  --color-navy-100: #fee2e2;
+  --color-navy-600: #b91c1c;
+  --color-navy-700: #991b1b;
+  --color-navy-800: #b91c1c;
+  --color-navy-900: #14532d;
+  --color-sun-400: #15803d;
+  --color-sun-500: #166534;
+  --color-blue-50: #f0fdf4;
+  --color-blue-100: #dcfce7;
+  --color-blue-700: #166534;
+  --color-blue-900: #14532d;
+  --color-sky-50: #f0fdf4;
+  --color-sky-700: #166534;
+}
+body[data-season="christmas"] { color: #1f2a1f; }
 /* Respetar el "notch" del iPhone */
 .safe-top { padding-top: max(env(safe-area-inset-top), 0.25rem); }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }

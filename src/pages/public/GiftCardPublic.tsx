@@ -7,12 +7,15 @@ import { GiftCardView, type GiftCard } from '../mechanic/GiftCards'
 import { formatMoney } from '../../lib/format'
 import { whatsappLink } from '../../lib/links'
 import { supabase } from '../../lib/supabase'
+import { usePublicSeason } from '../../lib/season'
+import ChristmasBanner from '../../components/ChristmasBanner'
 
 interface PublicCard { business: string; phone: string | null; town: string | null; code: string; amount: number; balance: number; recipient_name: string | null; buyer_name: string | null }
 
 /** Lo que ve quien recibe la tarjeta de regalo: la tarjeta en grande, con confeti. */
 export default function GiftCardPublic() {
   const { id } = useParams()
+  const season = usePublicSeason('regalo', id)
   const [card, setCard] = useState<PublicCard | null | undefined>(undefined)
   useEffect(() => {
     if (!supabase) return
@@ -33,9 +36,10 @@ export default function GiftCardPublic() {
   const first = card.recipient_name?.split(' ')[0]
   const asCard = { id: id!, code: card.code, amount: card.amount, balance: card.balance, recipient_name: card.recipient_name, buyer_name: card.buyer_name, phone: null, method: 'cash', sold_at: '' } as GiftCard
   return (
-    <div className="min-h-dvh bg-gradient-to-b from-pink-100 via-pink-50 to-white px-5 py-10" data-trade="beauty">
+    <div className={`min-h-dvh bg-gradient-to-b ${season === 'christmas' ? 'from-red-100 via-white to-green-50' : 'from-pink-100 via-pink-50 to-white'} px-5 py-10`} data-trade="beauty">
       <Confetti />
       <div className="mx-auto max-w-md text-center">
+        {season === 'christmas' && <ChristmasBanner business={card.business} />}
         <div className="text-6xl">🎁</div>
         <h1 className="mt-2 text-3xl font-black text-slate-900">¡{first ? `${first}, tienes` : 'Tienes'} un regalo!</h1>
         {card.buyer_name && <p className="mt-1 text-lg text-slate-700">De parte de <b>{card.buyer_name}</b> 💖</p>}

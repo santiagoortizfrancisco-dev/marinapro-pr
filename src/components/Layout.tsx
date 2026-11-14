@@ -7,6 +7,7 @@ import type { Role } from '../lib/types'
 import { Sheet, Toast } from './Sheet'
 import { BRAND_EVENT, DEFAULT_BRAND, logoUrl } from '../lib/brand'
 import { db } from '../lib/db'
+import { CHRISTMAS_GREETING, setSeason, useSeason } from '../lib/season'
 import { BackButton, Button } from './ui'
 import ApprovalAlerts from './ApprovalAlerts'
 import RequestAlerts from './RequestAlerts'
@@ -73,6 +74,15 @@ export default function Layout() {
     return () => window.removeEventListener(BRAND_EVENT, load)
   }, [isMechanic, demo, profile])
 
+  // Modo Navidad (Más → Navidad): colores y mensajes de WhatsApp navideños
+  const season = useSeason()
+  useEffect(() => {
+    if (!isMechanic || !profile) return
+    db().from('mechanics').select('season').eq('profile_id', profile.id).maybeSingle().then(({ data }) => {
+      setSeason((data as { season?: string | null } | null)?.season === 'christmas' ? 'christmas' : null)
+    })
+  }, [isMechanic, profile])
+
   useEffect(() => {
     if (!toast) return
     const t = setTimeout(() => setToast(null), 3500)
@@ -110,7 +120,7 @@ export default function Layout() {
   const style = ROLE_STYLE[isMechanic ? 'mechanic' : 'client']
   // Salón: si no escogió color (o tiene el negro de siempre), la barra es rosada
   const plainBrand = !brand.color || brand.color === DEFAULT_BRAND
-  const headerColor = words.salon && plainBrand ? '#db2777' : words.trade === 'pool' && plainBrand ? '#0e7490' : brand.color
+  const headerColor = season === 'christmas' ? '#b91c1c' : words.salon && plainBrand ? '#db2777' : words.trade === 'pool' && plainBrand ? '#0e7490' : brand.color
 
   return (
     <div className="min-h-full">
@@ -140,6 +150,11 @@ export default function Layout() {
             <LogOut size={18} /> Salir
           </button>
         </div>
+        {season === 'christmas' && (
+          <div aria-label="Navidad" className="bg-[#166534] py-1 text-center text-sm font-bold tracking-wide text-white">
+            ❄️ {CHRISTMAS_GREETING} ❄️
+          </div>
+        )}
       </header>
 
       <Sheet open={sheet === 'switch'} title="¿Cómo quieres ver la app?" onClose={() => setSheet(null)}>

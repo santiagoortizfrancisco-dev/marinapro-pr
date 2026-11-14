@@ -8,6 +8,8 @@ import { formatDate, formatLongDate, formatMoney, formatTime } from '../../lib/f
 import { whatsappLink } from '../../lib/links'
 import { minutesLabel } from '../../lib/salon'
 import { supabase } from '../../lib/supabase'
+import { usePublicSeason } from '../../lib/season'
+import ChristmasBanner from '../../components/ChristmasBanner'
 
 interface Cita {
   business: string; phone: string | null; town: string | null; logo_path: string | null; ath: string | null; policies: string | null; ivu_rate: number
@@ -19,6 +21,7 @@ interface Cita {
 /** Lo que ve la clienta en el link de su cita: la cita, el estimado, el depósito y un botón para aceptar. */
 export default function CitaPublic() {
   const { id } = useParams()
+  const season = usePublicSeason('cita', id)
   const [cita, setCita] = useState<Cita | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -67,9 +70,10 @@ export default function CitaPublic() {
   }
 
   return (
-    <div className="min-h-dvh bg-gradient-to-b from-pink-100 via-pink-50 to-white px-5 py-8" data-trade="beauty">
+    <div className={`min-h-dvh bg-gradient-to-b ${season === 'christmas' ? 'from-red-100 via-white to-green-50' : 'from-pink-100 via-pink-50 to-white'} px-5 py-8`} data-trade="beauty">
       {justSent && <Confetti />}
       <div className="mx-auto max-w-md">
+        {season === 'christmas' && cita && <ChristmasBanner business={cita.business} />}
         <header className="flex items-center gap-3">
           {logo && <img src={logo} alt="" className="h-14 w-14 rounded-2xl bg-white object-contain" />}
           <div>

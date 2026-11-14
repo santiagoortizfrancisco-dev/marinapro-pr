@@ -8,6 +8,8 @@ import { addDays, formatMoney, formatTime, prToISO, todayPR } from '../../lib/fo
 import { whatsappLink } from '../../lib/links'
 import { minutesLabel } from '../../lib/salon'
 import { supabase } from '../../lib/supabase'
+import { usePublicSeason } from '../../lib/season'
+import ChristmasBanner from '../../components/ChristmasBanner'
 
 interface Page {
   name: string; town: string | null; phone: string | null; logo_path: string | null; brand_color: string | null
@@ -30,6 +32,7 @@ const dow = (day: string) => new Date(`${day}T12:00:00Z`).getUTCDay()
  */
 export default function SalonBooking() {
   const { slug } = useParams()
+  const season = usePublicSeason('reservar', slug)
   const [page, setPage] = useState<Page | null | undefined>(undefined)
   const [picked, setPicked] = useState<string[]>([])
   const [staffId, setStaffId] = useState<string | null>(null)
@@ -126,8 +129,8 @@ export default function SalonBooking() {
   const whenText = day && time ? `${DAY_NAMES[dow(day)]} ${day.slice(8)}/${day.slice(5, 7)} a las ${formatTime(new Date(prToISO(day, time)))}` : ''
 
   return (
-    <div className="min-h-dvh bg-pink-50 pb-12" data-trade="beauty">
-      <header className="safe-top px-5 pb-6 pt-5 text-white" style={{ backgroundColor: color }}>
+    <div className={`min-h-dvh ${season === 'christmas' ? 'bg-[#fbf6ee]' : 'bg-pink-50'} pb-12`} data-trade="beauty">
+      <header className="safe-top px-5 pb-6 pt-5 text-white" style={{ backgroundColor: season === 'christmas' ? '#b91c1c' : color }}>
         <div className="mx-auto flex max-w-xl items-center gap-3">
           {logo && <img src={logo} alt="" className="h-14 w-14 rounded-2xl bg-white object-contain" />}
           <div className="min-w-0">
@@ -137,6 +140,7 @@ export default function SalonBooking() {
         </div>
         <p className="mx-auto mt-3 max-w-xl text-lg font-bold">Pide tu cita 💅</p>
       </header>
+      {season === 'christmas' && <div className="mx-auto max-w-xl px-5 pt-4"><ChristmasBanner business={page.name} /></div>}
 
       <main className="mx-auto max-w-xl space-y-4 px-4 pt-4">
         {done ? (

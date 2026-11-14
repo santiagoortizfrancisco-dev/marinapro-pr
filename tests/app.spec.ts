@@ -2139,3 +2139,40 @@ test('Conectar con ChatGPT: saca la llave (se ve una sola vez), queda conectado 
   await expect(page.getByText('Todavía no tienes llave.')).toBeVisible()
   expect((await state()).gpt_keys).toHaveLength(0)
 })
+
+test('Navidad: se prende en Más, el app se pone navideño, los WhatsApp llevan saludo y la página de la clienta también', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  await page.goto('/mas')
+  const sw = page.getByRole('switch', { name: /Navidad/ })
+  await expect(sw).toHaveAttribute('aria-checked', 'false')
+  await sw.click()
+  await expect(sw).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByLabel('Navidad', { exact: true })).toContainText('Felices Fiestas')
+  await expect(page.locator('body')).toHaveAttribute('data-season', 'christmas')
+  await expect.poll(async () => (await state()).mechanics.some((m) => m.season === 'christmas')).toBe(true)
+  await page.screenshot({ path: 'test-results/navidad-mas.png' })
+
+  // la página que abre la clienta sale navideña, y su WhatsApp también lleva el saludo
+  const st = await state()
+  const salon = st.mechanics.find((m) => m.season === 'christmas')
+  const res = await fetch(`${MOCK}/rest/v1/appointments`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify({ mechanic_id: salon.profile_id, boat_id: st.boats[0].id, starts_at: new Date(Date.now() + 2 * 86400000).toISOString(), status: 'confirmed', title: 'Uñas acrílicas' }),
+  })
+  const appt = [await res.json()].flat()[0]
+  await page.goto(`/cita/${appt.id}`)
+  await expect(page.getByRole('note', { name: 'Felices Fiestas' })).toBeVisible()
+  await page.screenshot({ path: 'test-results/navidad-cita.png', fullPage: true })
+  await page.getByRole('button', { name: /^Acepto/ }).click()
+  const wa = page.locator('a[href^="https://wa.me/"][href*="text="]').first()
+  await expect(wa).toHaveAttribute('href', /Felices%20Fiestas/)
+
+  // se apaga y vuelve a lo normal
+  await page.goto('/mas')
+  await page.getByRole('switch', { name: /Navidad/ }).click()
+  await expect(page.getByRole('switch', { name: /Navidad/ })).toHaveAttribute('aria-checked', 'false')
+  await expect(page.getByLabel('Navidad', { exact: true })).toHaveCount(0)
+  await expect.poll(async () => (await state()).mechanics.some((m) => m.season === 'christmas')).toBe(false)
+})

@@ -829,3 +829,18 @@ test('ChatGPT: con la llave solo lee los números de SU negocio; sin llave o con
   await as(A, `delete from gpt_keys`)
   assert.ok(await fails(() => one(null, `select gpt_query('${k2}', 'resumen') d`, 'anon')))
 })
+
+test('Navidad: el negocio la prende y sus páginas públicas lo saben; nadie más se la cambia', async () => {
+  await as(A, `update mechanics set season = 'christmas' where profile_id = '${A}'`)
+  assert.equal((await one(A, `select season from mechanics where profile_id = '${A}'`)).season, 'christmas')
+  assert.ok(await fails(() => as(A, `update mechanics set season = 'otra' where profile_id = '${A}'`)))
+  await as(B, `update mechanics set season = null where profile_id = '${A}'`)
+  assert.equal((await sys(`select season from mechanics where profile_id = '${A}'`))[0].season, 'christmas', 'B no le cambia la Navidad a A')
+  const appt = (await sys(`select id from appointments where mechanic_id = '${A}' limit 1`))[0].id
+  assert.equal((await one(null, `select public_season('cita', '${appt}') s`, 'anon')).s, 'christmas')
+  const tok = (await sys(`select public_token from invoices where mechanic_id = '${A}' limit 1`))[0]?.public_token
+  if (tok) assert.equal((await one(null, `select public_season('doc', '${tok}') s`, 'anon')).s, 'christmas')
+  assert.equal((await one(null, `select public_season('cita', '00000000-0000-0000-0000-000000000000') s`, 'anon')).s, null)
+  await as(A, `update mechanics set season = null where profile_id = '${A}'`)
+  assert.equal((await one(null, `select public_season('cita', '${appt}') s`, 'anon')).s, null)
+})

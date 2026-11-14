@@ -5,6 +5,7 @@ import { Anchor, Bot, Gift, CalendarHeart, Briefcase, ChevronRight, FileSpreadsh
 import ContactSheet from '../components/ContactSheet'
 import { db } from '../lib/db'
 import { useLoad } from '../lib/useLoad'
+import { setSeason, useSeason } from '../lib/season'
 import { useAuth } from '../auth/AuthProvider'
 import { formatDate, formatMoney, formatTime } from '../lib/format'
 import { CARD, IconBadge, PageTitle } from '../components/ui'
@@ -22,6 +23,15 @@ export default function More() {
   const { data: pending } = useLoad(async () => (isAdmin ? Number((await db().rpc('admin_pending_count')).data ?? 0) : 0), [isAdmin])
   const { data: signups } = useLoad(async () => (isAdmin ? Number((await db().rpc('admin_unseen_signups')).data ?? 0) + Number((await db().rpc('admin_unseen_info')).data ?? 0) : 0), [isAdmin])
   const [contactOpen, setContactOpen] = useState(false)
+  const season = useSeason()
+  const [seasonError, setSeasonError] = useState('')
+  async function toggleChristmas() {
+    const next = season === 'christmas' ? null : 'christmas'
+    setSeasonError('')
+    setSeason(next)
+    const { error } = await db().from('mechanics').update({ season: next }).eq('profile_id', profile?.id ?? '')
+    if (error) { setSeason(season); setSeasonError('No se pudo guardar. Intenta otra vez.') }
+  }
 
   const row = (label: string, value: string | null | undefined) => (
     <div className="flex justify-between gap-4 border-b border-slate-200 py-3 last:border-0">
@@ -33,6 +43,23 @@ export default function More() {
   return (
     <>
       <PageTitle>Más</PageTitle>
+
+      {profile?.role === 'mechanic' && (
+        <div className={`${CARD} mb-4 px-3 py-2`}>
+          <button type="button" role="switch" aria-checked={season === 'christmas'} onClick={toggleChristmas}
+            className="flex min-h-14 w-full items-center gap-3 text-left text-navy-900">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-50 text-2xl" aria-hidden="true">🎄</span>
+            <span className="flex-1">
+              <span className="block text-lg font-bold">Navidad</span>
+              <span className="block text-sm text-slate-600">{season === 'christmas' ? 'Prendida: el app y los WhatsApp salen navideños' : 'El app y los WhatsApp con saludo de Navidad'}</span>
+            </span>
+            <span className={`relative h-8 w-14 shrink-0 rounded-full transition ${season === 'christmas' ? 'bg-green-700' : 'bg-slate-300'}`}>
+              <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${season === 'christmas' ? 'left-7' : 'left-1'}`} />
+            </span>
+          </button>
+          {seasonError && <p role="alert" className="pb-1 text-sm font-bold text-red-700">{seasonError}</p>}
+        </div>
+      )}
 
       {profile?.role === 'mechanic' && words.salon && <h2 className="mb-2 mt-5 px-1 text-sm font-extrabold uppercase tracking-wider text-pink-700">Tu salón, en este orden</h2>}
       {profile?.role === 'mechanic' && (
