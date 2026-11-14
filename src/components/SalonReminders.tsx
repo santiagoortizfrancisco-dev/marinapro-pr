@@ -38,7 +38,7 @@ export default function SalonReminders() {
   const { data } = useLoad(async () => {
     const [start, end] = prRange(tomorrow, 1)
     const [today0, today1] = prRange(todayPR(), 1)
-    const [asked, next, mech, paid, today, working, back] = await Promise.all([
+    const [asked, next, mech, paid, today, working, back, gifts] = await Promise.all([
       db().from('appointments').select(SELECT).eq('status', 'requested').gte('starts_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(20),
       db().from('appointments').select(SELECT).gte('starts_at', start).lt('starts_at', end).in('status', ['requested', 'confirmed']).order('starts_at'),
       db().from('mechanics').select('business_name').eq('profile_id', session!.user.id).single(),
@@ -46,6 +46,7 @@ export default function SalonReminders() {
       db().from('appointments').select(SELECT).gte('starts_at', today0).lt('starts_at', today1).neq('status', 'cancelled').order('starts_at'),
       db().from('work_orders').select('id, appointment_id, boats(clients(full_name)), appointments(starts_at, title)').in('status', ['approved', 'waiting_parts', 'in_progress', 'sea_trial']).order('created_at', { ascending: false }).limit(30),
       db().from('maintenance_schedules').select('id').in('status', ['pending', 'notified']).lte('due_date', addDays(todayPR(), 30)),
+      db().from('gift_card_orders').select('id').eq('status', 'pending'),
     ])
     const nowMs = Date.now()
     type W = { id: string; appointment_id: string | null; boats: { clients: { full_name: string } }; appointments: { starts_at: string; title: string | null } | null }
@@ -58,6 +59,7 @@ export default function SalonReminders() {
       due: ((working.data ?? []) as unknown as W[]).filter((x) => !x.appointments || new Date(x.appointments.starts_at).getTime() <= nowMs)
         .sort((x, y) => (y.appointments?.starts_at ?? '').localeCompare(x.appointments?.starts_at ?? '')),
       back: (back.data ?? []).length,
+      gifts: (gifts.data ?? []).length,
       business: ((mech.data as { business_name: string | null } | null)?.business_name) ?? '',
     }
   }, [tomorrow])
@@ -87,6 +89,13 @@ export default function SalonReminders() {
 
   return (
     <>
+      {data.gifts > 0 && (
+        <Link to="/mas/regalos" className="mt-5 flex min-h-14 items-center gap-3 rounded-2xl bg-amber-50 px-4 py-2 text-base font-bold text-amber-900 ring-1 ring-amber-200 active:bg-amber-100">
+          <span className="text-2xl" aria-hidden="true">🎁</span>
+          <span className="flex-1">{data.gifts === 1 ? '1 tarjeta de regalo pedida por internet' : `${data.gifts} tarjetas de regalo pedidas por internet`}</span>
+          <span aria-hidden="true">›</span>
+        </Link>
+      )}
       {/* Todo lo pendiente de un vistazo: cada cuadro dice cuántas hay; al tocarlo sale su lista */}
       <div className="mt-5 grid grid-cols-3 gap-x-2 gap-y-4">
         {tiles.map((t) => {

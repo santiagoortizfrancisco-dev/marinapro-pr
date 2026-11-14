@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { Banknote, CreditCard, Gift, Plus, Search, Smartphone, type LucideIcon } from 'lucide-react'
+import { Banknote, Check, CreditCard, Gift, Megaphone, Plus, Search, Smartphone, X, type LucideIcon } from 'lucide-react'
 import { WhatsAppIcon } from '../../components/BrandIcons'
 import { Sheet } from '../../components/Sheet'
 import { BackTitle, Button, EmptyState, ErrorBox, Input, Loading } from '../../components/ui'
@@ -12,6 +12,9 @@ import { shareAsImage } from '../../lib/shareImage'
 import { must, num, useLoad } from '../../lib/useLoad'
 import { useDraft } from '../../lib/draft'
 import DraftBanner from '../../components/DraftBanner'
+import { useSeason } from '../../lib/season'
+
+interface GiftOrder { id: string; amount: number; buyer_name: string; buyer_phone: string; recipient_name: string | null; reported_at: string | null; created_at: string }
 
 export interface GiftCard {
   id: string; code: string; amount: number; balance: number; recipient_name: string | null; buyer_name: string | null
@@ -56,12 +59,39 @@ export default function GiftCards() {
   const [show, setShow] = useState<GiftCard | null>(null)
   const [search, setSearch] = useState('')
   const { data, loading, error, reload } = useLoad(async () => {
-    const [cards, mech] = await Promise.all([
+    const [cards, mech, orders] = await Promise.all([
       db().from('gift_cards').select('*').order('sold_at', { ascending: false }),
-      db().from('mechanics').select('business_name').eq('profile_id', session!.user.id).single(),
+      db().from('mechanics').select('business_name, booking_slug, ath_movil_number').eq('profile_id', session!.user.id).single(),
+      db().from('gift_card_orders').select('id, amount, buyer_name, buyer_phone, recipient_name, reported_at, created_at').eq('status', 'pending').order('created_at', { ascending: false }),
     ])
-    return { cards: must(cards) as GiftCard[], business: ((mech.data as { business_name: string | null } | null)?.business_name) ?? 'Mi salón' }
+    const m = mech.data as { business_name: string | null; booking_slug: string | null; ath_movil_number: string | null } | null
+    return {
+      cards: must(cards) as GiftCard[], business: m?.business_name ?? 'Mi salón',
+      shopRef: m?.booking_slug || session!.user.id, ath: m?.ath_movil_number ?? null,
+      orders: ((orders.data ?? []) as GiftOrder[]).sort((a, b) => Number(Boolean(b.reported_at)) - Number(Boolean(a.reported_at))),
+    }
   }, [])
+  const season = useSeason()
+  const [orderBusy, setOrderBusy] = useState('')
+  const [orderError, setOrderError] = useState('')
+
+  async function confirmOrder(o: GiftOrder) {
+    setOrderBusy(o.id)
+    setOrderError('')
+    const { data, error } = await db().rpc('gift_order_confirm', { p_id: o.id })
+    setOrderBusy('')
+    if (error || !data) return setOrderError('No se pudo crear la tarjeta. Intenta otra vez.')
+    setShow(data as GiftCard)
+    reload()
+  }
+
+  async function cancelOrder(o: GiftOrder) {
+    if (!window.confirm(`¿Cancelar el pedido de ${o.buyer_name} por ${formatMoney(Number(o.amount))}? Hazlo solo si no te llegó el pago.`)) return
+    setOrderBusy(o.id)
+    await db().from('gift_card_orders').update({ status: 'cancelled' }).eq('id', o.id)
+    setOrderBusy('')
+    reload()
+  }
 
   if (loading && !data) return <Loading />
   if (error || !data) return <ErrorBox message={error || 'No se pudo abrir.'} onRetry={reload} />
@@ -74,6 +104,34 @@ export default function GiftCards() {
     <>
       <BackTitle subtitle={data.cards.length ? `Les queda ${formatMoney(left)} por usar` : 'Véndelas para regalos, cumpleaños y Navidad'}>Tarjetas de regalo</BackTitle>
       <Button onClick={() => setSellOpen(true)} className="bg-pink-600! active:bg-pink-700!"><Plus /> Vender tarjeta de regalo</Button>
+
+      {data.orders.length > 0 && (
+        <section aria-label="Pedidos por internet" className="mt-4 space-y-2 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
+          <p className="text-base font-extrabold text-amber-900">🎁 Pedidos por internet ({data.orders.length})</p>
+          {data.orders.map((o) => (
+            <div key={o.id} className="rounded-xl bg-white p-3 ring-1 ring-amber-100">
+              <p className="text-base text-slate-800"><b>{o.buyer_name}</b> pidió una de <b>{formatMoney(Number(o.amount))}</b>{o.recipient_name ? ` para ${o.recipient_name}` : ''}.</p>
+              <p className={`text-sm font-bold ${o.reported_at ? 'text-emerald-700' : 'text-slate-500'}`}>{o.reported_at ? 'Dice que ya te envió el ATH Móvil. ¿Te llegó?' : 'Todavía no ha avisado que pagó.'}</p>
+              <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
+                <button type="button" disabled={orderBusy === o.id} onClick={() => confirmOrder(o)}
+                  className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-emerald-600 text-base font-bold text-white active:bg-emerald-700 disabled:opacity-60"><Check size={20} /> Sí, me llegó</button>
+                <button type="button" disabled={orderBusy === o.id} onClick={() => cancelOrder(o)} aria-label={`Cancelar pedido de ${o.buyer_name}`}
+                  className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-slate-100 px-3 text-base font-bold text-slate-700"><X size={20} /> Cancelar</button>
+              </div>
+            </div>
+          ))}
+          {orderError && <p role="alert" className="rounded-xl bg-red-100 p-2 font-semibold text-red-800">{orderError}</p>}
+        </section>
+      )}
+
+      {data.ath ? (
+        <a href={whatsappLink('', `🎁 ${season === 'christmas' ? '¡Regala belleza esta Navidad!' : '¡Regala belleza!'} Ya puedes comprar tu tarjeta de regalo de ${data.business} desde tu celular: escoges la cantidad, pagas por ATH Móvil y te llega por WhatsApp. Cómprala aquí: ${window.location.origin}/regalar/${data.shopRef} 💅`)}
+          target="_blank" rel="noreferrer" className="mt-3 flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-lg font-bold text-white">
+          <Megaphone size={22} /> Anunciar por WhatsApp
+        </a>
+      ) : (
+        <p className="mt-3 rounded-xl bg-slate-100 p-3 text-center text-sm text-slate-600">Para vender tarjetas por internet, pon tu número de ATH Móvil en <b>Más → Mi negocio</b>.</p>
+      )}
 
       {data.cards.length > 3 && (
         <div className="relative mt-4">

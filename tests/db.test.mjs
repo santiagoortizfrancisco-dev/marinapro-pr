@@ -844,3 +844,40 @@ test('Navidad: el negocio la prende y sus páginas públicas lo saben; nadie má
   await as(A, `update mechanics set season = null where profile_id = '${A}'`)
   assert.equal((await one(null, `select public_season('cita', '${appt}') s`, 'anon')).s, null)
 })
+
+test('Regalos por internet: la clienta pide, avisa que pagó, el negocio confirma y la tarjeta se crea sola', async () => {
+  await sys(`update mechanics set ath_movil_number = '787-555-0100', booking_slug = 'taller-a-regalos' where profile_id = '${A}'`)
+  await sys(`update mechanics set ath_movil_number = null where profile_id = '${B}'`)
+  const page = (await one(null, `select gift_shop_page('taller-a-regalos') p`, 'anon')).p
+  assert.equal(page.ath, '787-555-0100')
+  assert.ok((await one(null, `select gift_shop_page('${A}') p`, 'anon')).p, 'también por su número')
+  assert.equal((await one(null, `select gift_shop_page('${B}') p`, 'anon')).p, null, 'sin ATH Móvil no vende por aquí')
+
+  assert.ok(await fails(() => one(null, `select gift_order_create('taller-a-regalos', 2, 'Ana', '7875550123') id`, 'anon')), 'mínimo $5')
+  assert.ok(await fails(() => one(null, `select gift_order_create('taller-a-regalos', 50, '', '7875550123') id`, 'anon')), 'nombre')
+  assert.ok(await fails(() => one(null, `select gift_order_create('taller-a-regalos', 50, 'Ana', '123') id`, 'anon')), 'teléfono')
+  const id = (await one(null, `select gift_order_create('taller-a-regalos', 50, 'Ana Compra', '787-555-0123', 'Mami') id`, 'anon')).id
+  assert.equal((await as(null, `select * from gift_card_orders`, 'anon').catch(() => [])).length, 0, 'anon no ve la lista')
+  assert.equal((await as(B, `select * from gift_card_orders`)).length, 0, 'otro negocio no la ve')
+
+  await one(null, `select gift_order_paid('${id}')`, 'anon')
+  assert.ok((await one(null, `select gift_order_public('${id}') o`, 'anon')).o.reported_at)
+  assert.ok(await fails(() => one(B, `select gift_order_confirm('${id}') c`)), 'B no la confirma')
+  assert.ok(await fails(() => one(null, `select gift_order_confirm('${id}') c`, 'anon')))
+
+  const card = (await one(A, `select gift_order_confirm('${id}') c`)).c
+  assert.equal(Number(card.amount), 50)
+  assert.equal(Number(card.balance), 50)
+  assert.equal(card.recipient_name, 'Mami')
+  assert.equal(card.method, 'ath_movil')
+  assert.match(card.code, /^[A-Z]{1,6}-\d{4}$/)
+  const again = (await one(A, `select gift_order_confirm('${id}') c`)).c
+  assert.equal(again.id, card.id, 'confirmar dos veces no hace dos tarjetas')
+  const o = (await one(null, `select gift_order_public('${id}') o`, 'anon')).o
+  assert.equal(o.status, 'done')
+  assert.equal(o.gift_card_id, card.id)
+  await sys(`update mechanics set season = 'christmas' where profile_id = '${A}'`)
+  assert.equal((await one(null, `select public_season('pedido', '${id}') s`, 'anon')).s, 'christmas')
+  assert.equal((await one(null, `select public_season('regalar', 'taller-a-regalos') s`, 'anon')).s, 'christmas')
+  await sys(`update mechanics set season = null where profile_id = '${A}'`)
+})

@@ -2176,3 +2176,46 @@ test('Navidad: se prende en Más, el app se pone navideño, los WhatsApp llevan 
   await expect(page.getByLabel('Navidad', { exact: true })).toHaveCount(0)
   await expect.poll(async () => (await state()).mechanics.some((m) => m.season === 'christmas')).toBe(false)
 })
+
+test('Regalos por internet: anunciar por WhatsApp, la clienta pide y paga, "Sí, me llegó" crea la tarjeta', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('radio', { name: /Uñas, salón y spa/ }).click()
+  await expect(page.getByRole('link', { name: /Hacer cita/ })).toBeVisible()
+  const salon = (await state()).mechanics.find((m) => m.business_name === 'Salón de Prueba')
+  await fetch(`${MOCK}/rest/v1/mechanics?profile_id=eq.${salon.profile_id}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ath_movil_number: '787-555-0142', booking_slug: 'salon-prueba' }),
+  })
+  await page.goto('/mas/regalos')
+  await expect(page.getByRole('link', { name: /Anunciar por WhatsApp/ })).toHaveAttribute('href', /regalar%2Fsalon-prueba/)
+
+  // la clienta abre el link
+  await page.goto('/regalar/salon-prueba')
+  await page.getByRole('radio', { name: '$75' }).click()
+  await page.getByLabel('Para quién es').fill('Mami')
+  await page.getByLabel('Tu nombre').fill('Carla Compra')
+  await page.getByLabel('Tu WhatsApp').fill('787-555-0177')
+  await page.screenshot({ path: 'test-results/regalar.png', fullPage: true })
+  await page.getByRole('button', { name: /Pedir tarjeta de \$75\.00/ }).click()
+  await expect(page).toHaveURL(/\/regalar\/pedido\//)
+  const orderUrl = page.url()
+  await expect(page.getByText('787-555-0142')).toBeVisible()
+  await page.getByRole('button', { name: /Ya envié el ATH Móvil/ }).click()
+  await expect(page.getByText(/¡Gracias, Carla!/)).toBeVisible()
+
+  // al salón le sale en Inicio y en Tarjetas de regalo
+  await page.goto('/')
+  await page.getByRole('link', { name: /1 tarjeta de regalo pedida por internet/ }).click()
+  const pedidos = page.getByRole('region', { name: 'Pedidos por internet' })
+  await expect(pedidos.getByText(/Carla Compra/)).toBeVisible()
+  await expect(pedidos.getByText(/ya te envió el ATH Móvil/)).toBeVisible()
+  await pedidos.getByRole('button', { name: /Sí, me llegó/ }).click()
+  await expect(page.getByLabel(/^Tarjeta REGA-/)).toBeVisible()
+  await expect(page.getByRole('link', { name: /Enviar por WhatsApp/ })).toHaveAttribute('href', /wa\.me\/17875550177/)
+  const card = (await state()).gift_cards.find((g) => g.buyer_name === 'Carla Compra')
+  expect(card).toMatchObject({ amount: 75, balance: 75, recipient_name: 'Mami', method: 'ath_movil' })
+
+  // la clienta ve su tarjeta lista
+  await page.goto(orderUrl)
+  await page.getByRole('link', { name: /Ver mi tarjeta de regalo/ }).click()
+  await expect(page).toHaveURL(new RegExp(`/regalo/${card.id}`))
+})

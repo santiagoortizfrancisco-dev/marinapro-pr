@@ -85,6 +85,7 @@ function reset() {
     storage_spots: [],
     rent_entries: [],
     gpt_keys: [],
+    gift_card_orders: [],
     rent_weeks: [],
   }
 }
@@ -367,11 +368,48 @@ const RPC = {
     const p = db.profiles.find((x) => x.id === m.profile_id)
     return { business: m.business_name, phone: p?.phone ?? null, town: p?.town ?? null, logo_path: m.logo_path, brand_color: m.brand_color, code: g.code, amount: g.amount, balance: g.balance, recipient_name: g.recipient_name, buyer_name: g.buyer_name }
   },
+  gift_shop_page: ({ p_ref }) => {
+    const m = db.mechanics.find((x) => x.profile_id === p_ref || (x.booking_slug && String(x.booking_slug).toLowerCase() === String(p_ref).toLowerCase()))
+    if (!m || !m.ath_movil_number) return null
+    const p = db.profiles.find((x) => x.id === m.profile_id)
+    return { business: m.business_name, town: p?.town ?? null, phone: p?.phone ?? null, logo_path: m.logo_path ?? null, ath: m.ath_movil_number }
+  },
+  gift_order_create: ({ p_ref, p_amount, p_buyer, p_phone, p_recipient }) => {
+    const m = db.mechanics.find((x) => x.profile_id === p_ref || (x.booking_slug && String(x.booking_slug).toLowerCase() === String(p_ref).toLowerCase()))
+    if (!m || !m.ath_movil_number) throw Object.assign(new Error('Este negocio no está vendiendo tarjetas por aquí.'), { status: 400 })
+    if (!(p_amount >= 5 && p_amount <= 1000)) throw Object.assign(new Error('Escoge una cantidad entre $5 y $1,000.'), { status: 400 })
+    const o = { id: randomUUID(), mechanic_id: m.profile_id, amount: Number(p_amount), buyer_name: p_buyer, buyer_phone: p_phone, recipient_name: p_recipient ?? null, status: 'pending', reported_at: null, gift_card_id: null, created_at: new Date().toISOString() }
+    db.gift_card_orders.push(o)
+    return o.id
+  },
+  gift_order_public: ({ p_id }) => {
+    const o = db.gift_card_orders.find((x) => x.id === p_id)
+    if (!o) return null
+    const m = db.mechanics.find((x) => x.profile_id === o.mechanic_id)
+    const p = db.profiles.find((x) => x.id === o.mechanic_id)
+    return { business: m?.business_name, phone: p?.phone ?? null, logo_path: m?.logo_path ?? null, ath: m?.ath_movil_number ?? null, amount: o.amount, buyer: o.buyer_name, recipient: o.recipient_name, status: o.status, reported_at: o.reported_at, gift_card_id: o.gift_card_id }
+  },
+  gift_order_paid: ({ p_id }) => {
+    const o = db.gift_card_orders.find((x) => x.id === p_id && x.status === 'pending')
+    if (o) o.reported_at ??= new Date().toISOString()
+    return null
+  },
+  gift_order_confirm: ({ p_id }) => {
+    const o = db.gift_card_orders.find((x) => x.id === p_id)
+    if (!o) throw Object.assign(new Error('Ese pedido no es de tu negocio.'), { status: 400 })
+    if (o.status === 'done') return db.gift_cards.find((g) => g.id === o.gift_card_id)
+    const g = { id: randomUUID(), mechanic_id: o.mechanic_id, code: `REGA-${1000 + Math.floor(Math.random() * 9000)}`, amount: o.amount, balance: o.amount, recipient_name: o.recipient_name, buyer_name: o.buyer_name, phone: o.buyer_phone, method: 'ath_movil', note: 'Comprada por internet', sold_at: new Date().toISOString(), created_at: new Date().toISOString() }
+    db.gift_cards.push(g)
+    o.status = 'done'; o.gift_card_id = g.id
+    return g
+  },
   public_season: ({ p_kind, p_ref }) => {
     let me = null
     if (p_kind === 'cita') me = db.appointments.find((x) => x.id === p_ref)?.mechanic_id
     if (p_kind === 'regalo') me = db.gift_cards.find((x) => x.id === p_ref)?.mechanic_id
     if (p_kind === 'reservar') me = db.mechanics.find((x) => x.booking_on && String(x.booking_slug).toLowerCase() === String(p_ref).toLowerCase())?.profile_id
+    if (p_kind === 'regalar') me = db.mechanics.find((x) => x.profile_id === p_ref || (x.booking_slug && String(x.booking_slug).toLowerCase() === String(p_ref).toLowerCase()))?.profile_id
+    if (p_kind === 'pedido') me = db.gift_card_orders.find((x) => x.id === p_ref)?.mechanic_id
     if (p_kind === 'doc') {
       const inv = db.invoices.find((x) => x.public_token === p_ref)
       const wo = db.work_orders.find((x) => x.public_token === p_ref || x.id === inv?.work_order_id)

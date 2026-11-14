@@ -34,7 +34,7 @@ export function festive(text: string): string {
 }
 
 /** Páginas que abre la clientela (factura, cita, reservar, regalo): toman la época del negocio. */
-export function usePublicSeason(kind: 'doc' | 'cita' | 'reservar' | 'regalo', ref: string | undefined): Season {
+export function usePublicSeason(kind: 'doc' | 'cita' | 'reservar' | 'regalo' | 'regalar' | 'pedido', ref: string | undefined): Season {
   useEffect(() => {
     if (!ref) return
     let alive = true

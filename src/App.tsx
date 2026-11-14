@@ -36,6 +36,7 @@ import StaffPage from './pages/mechanic/StaffPage'
 import Rents from './pages/mechanic/Rents'
 import ExportExcel from './pages/mechanic/ExportExcel'
 import ConnectChatGPT from './pages/mechanic/ConnectChatGPT'
+import { GiftOrder, GiftShop } from './pages/public/GiftShop'
 import Storage from './pages/mechanic/Storage'
 import BookingSettings from './pages/mechanic/BookingSettings'
 import GiftCards from './pages/mechanic/GiftCards'
@@ -60,7 +61,7 @@ export default function App() {
   const { pathname } = useLocation()
 
   // Estimado / factura y directorio de mecánicos: se abren sin cuenta
-  if (pathname.startsWith('/d/') || pathname === '/mecanicos' || pathname.startsWith('/mecanicos/') || pathname.startsWith('/reservar/') || pathname === '/info' || pathname.startsWith('/regalo/') || pathname.startsWith('/cita/')) {
+  if (pathname.startsWith('/d/') || pathname === '/mecanicos' || pathname.startsWith('/mecanicos/') || pathname.startsWith('/reservar/') || pathname === '/info' || pathname.startsWith('/regalo/') || pathname.startsWith('/regalar/') || pathname.startsWith('/cita/')) {
     return (
       <Routes>
         <Route path="/d/:token" element={<PublicDoc />} />
@@ -69,6 +70,8 @@ export default function App() {
         <Route path="/reservar/:slug" element={<SalonBooking />} />
         <Route path="/info" element={<Landing />} />
         <Route path="/regalo/:id" element={<GiftCardPublic />} />
+        <Route path="/regalar/pedido/:id" element={<GiftOrder />} />
+        <Route path="/regalar/:ref" element={<GiftShop />} />
         <Route path="/cita/:id" element={<CitaPublic />} />
       </Routes>
     )
